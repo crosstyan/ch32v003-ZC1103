@@ -19,12 +19,13 @@ include_directories(${VENDOR_DIRECTORY}/Peripheral/inc)
 file(GLOB SYSTEM_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/system/*.c)
 include_directories(src/system)
 
-set(LIB_PRINTF_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/printf)
-set(LIB_PRINTF_SRC ${LIB_PRINTF_DIRECTORY}/printf.c)
-include_directories(${LIB_PRINTF_DIRECTORY})
+set(LIB_PRINTF_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/printf)
+set(LIB_PRINTF_SRC ${LIB_PRINTF_DIRECTORY}/src/printf/printf.c)
+include_directories(${LIB_PRINTF_DIRECTORY}/src)
+include_directories(${LIB_PRINTF_DIRECTORY}/src/printf)
 
 set(APP_SRC src/main.cpp)
-add_executable(${CMAKE_PROJECT_NAME}.elf ${VENDOR_SRC} ${SYSTEM_SRC} ${APP_SRC})
+add_executable(${CMAKE_PROJECT_NAME}.elf ${VENDOR_SRC} ${SYSTEM_SRC} ${APP_SRC} ${LIB_PRINTF_SRC})
 
 # Generate the binary file
 add_custom_target(
