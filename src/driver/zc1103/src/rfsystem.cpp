@@ -380,7 +380,7 @@ void RfSystem::idle() {
       return;
     }
   }
-  systemStatus =IDLE;
+  systemStatus = IDLE;
 }
 
 void RfSystem::rx() {
@@ -523,7 +523,8 @@ void RfSystem::isr() {
     // 接收到正确的 sync word
     if (!(tmp & (1 << 7))) {
       preamble_timeout = 200;
-    } else if (!(tmp & (1 << 5))) { /*Crc 错误指示 */
+      // Crc 错误指示
+    } else if (!(tmp & (1 << 5))) {
       preamble_timeout = 0;
       tx_flag = 0x01;
     } else {
@@ -531,7 +532,7 @@ void RfSystem::isr() {
       //RfRecEn();
       preamble_timeout = 0;
     }
-  // 发送完成
+    // 发送完成
   } else {
     preamble_timeout = 0;
     // RfRecEn();
@@ -540,10 +541,13 @@ void RfSystem::isr() {
 
 }
 
-unsigned char RfSystem::is_interrupt_pending() {
+bool RfSystem::is_interrupt_pending() const {
   return rf_interrupt_pending;
 }
 
 void RfSystem::clear_interrupt_flags() {
-  rf_interrupt_pending = 0;
+  rf_interrupt_pending = false;
 }
+
+RfSystem::RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin, SPI_TypeDef *spi) :
+    RST_PIN(rst_pin), CS_PIN(cs_pin), IRQ_PIN(irq_pin), SDN_PIN(sdn_pin), SPI(spi) {}

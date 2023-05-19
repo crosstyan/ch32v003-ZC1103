@@ -56,7 +56,7 @@ class RfSystem {
   // what flag?
   volatile uint8_t tx_flag = 0;
   RfStatus systemStatus = IDLE;
-  volatile unsigned char rf_interrupt_pending = 0;
+  volatile bool rf_interrupt_pending = false;
   unsigned char g_paValue = 10;
   double g_freq = 476;
 
@@ -179,9 +179,7 @@ class RfSystem {
   void writeFifo(const unsigned char *SrcBuf, unsigned char len);
 
 /**
- * \brief  初始化rf寄存器
- * \param  None
- * \retval  None
+ * \brief  初始化 rf 寄存器
  */
   void registerInit();
 
@@ -215,34 +213,36 @@ public:
 /**
  * \brief  设置频率
  * \param [IN]  freq 频率值
- * \retval  None
  */
   void setRefFreq(const double freq);
 
 /**
   * \brief  外部检查是否有中断发生
-  * \param   None
   * \retval  0 没有 RF 中断; 1 有 RF 中断
   */
-  unsigned char is_interrupt_pending();
+  bool is_interrupt_pending() const;
 
   void clear_interrupt_flags();
 
 /**
   * \brief  切换到睡眠状态
-  * \param  None
-  * \retval None
   */
   void sleep();
 
 /**
   * \brief  切换到待机状态
-  * \param  None
-  * \retval None
   */
   void standBy();
 
   void isr();
+
+  RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin, SPI_TypeDef *spi = SPI1);
+
+  RfSystem(const RfSystem &) = delete;
+  RfSystem &operator=(const RfSystem &) = delete;
+  RfSystem(RfSystem &&) = delete;
+  RfSystem &operator=(RfSystem &&) = delete;
+  ~RfSystem() = delete;
 };
 
 
