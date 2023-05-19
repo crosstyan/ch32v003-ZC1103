@@ -154,7 +154,7 @@ static void SetSysClock(void)
     SetSysClockTo_48MHz_HSE();
 #endif
  
- /* If none of the define above is enabled, the HSI is used as System clock£¬
+ /* If none of the define above is enabled, the HSI is used as System clockï¿½ï¿½
   * source (default after reset) 
 	*/ 
 }
@@ -369,7 +369,7 @@ static void SetSysClockTo_24MHz_HSE(void)
 /*********************************************************************
  * @fn      SetSysClockTo_48MHz_HSE
  *
- * @brief   Sets System clock frequency to 72MHz and configure HCLK, PCLK2 and PCLK1 prescalers.
+ * @brief   Sets System clock frequency to 72MHz and begin HCLK, PCLK2 and PCLK1 prescalers.
  *
  * @return  none
  */

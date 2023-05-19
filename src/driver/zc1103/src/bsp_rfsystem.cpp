@@ -11,27 +11,27 @@
 //#define  RfCsHigh()         SPI_NSS_OUT_High
 //#define  RfCsLow()           SPI_NSS_OUT_Low
 
-inline void RfSystem::RF_RST_LOW() {
+inline void RfSystem::RST_LOW() {
   // unimplemented
 }
 
-inline void RfSystem::RF_RST_HIGH() {
+inline void RfSystem::RST_HIGH() {
   // unimplemented
 }
 
-inline void RfSystem::RF_SDN_LOW() {
+inline void RfSystem::SDN_LOW() {
   // unimplemented
 }
 
-inline void RfSystem::RF_SDN_HIGH() {
+inline void RfSystem::SDN_HIGH() {
   // unimplemented
 }
 
-inline void RfSystem::RfCsHigh() {
+inline void RfSystem::CS_HIGH() {
   // unimplemented
 }
 
-inline void RfSystem::RfCsLow() {
+inline void RfSystem::CS_LOW() {
   // unimplemented
 }
 
@@ -57,61 +57,39 @@ void RfSystem::reset() {
   unsigned int loopCount;
   unsigned int i;
   /*复位寄存器*/
-  RF_RST_LOW();
+  RST_LOW();
   for (i = 10; i > 0; i--) {
     for (loopCount = 0xfff; loopCount != 0; loopCount--);
   }
-  RF_RST_HIGH();
-  RF_SDN_LOW();
+  RST_HIGH();
+  SDN_LOW();
   for (i = 10; i > 0; i--) {
     for (loopCount = 0xfff; loopCount != 0; loopCount--);
   }
 }
 
-/**
- * \brief  通过spi传输一个字节
- * \param  [IN] byte 发送的字节
- * \retval  接收的字节
- */
 unsigned char RfSystem::sendByte(unsigned char byte) {
-//  unsigned char tmp = 0;
-//  tmp = Spi_Read_Write_Byte(byte);
-//  return tmp;
-// unimplemented
+  //  unsigned char tmp = 0;
+  //  tmp = Spi_Read_Write_Byte(byte);
+  //  return tmp;
+  // unimplemented
 }
 
-/**
- * \brief  写RF寄存器
- * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
- * \param[IN] val  写入的值
- * \retval  None
- */
 void RfSystem::registerWrite(const unsigned char addr, const unsigned char val) {
-  RfCsLow();
+  CS_LOW();
   sendByte(addr & 0x7f);
   sendByte(val);
-  RfCsHigh();
+  CS_HIGH();
 }
 
-/**
- * \brief  读RF寄存器
- * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
- * \retval  读取寄存器的值
- */
 unsigned char RfSystem::registerRead(const unsigned char addr) {
-
-  RfCsLow();
+  CS_LOW();
   sendByte(addr | 0x80);
   auto readData = sendByte(0xff);
-  RfCsHigh();
+  CS_HIGH();
   return readData;
 }
 
-/**
- * \brief  初始化rf寄存器
- * \param  None
- * \retval  None
- */
 void RfSystem::registerInit() {
   unsigned int i = 0;
   unsigned int loopCount = 0;
@@ -196,11 +174,6 @@ void RfSystem::registerInit() {
   }
 }
 
-/**
- * \brief  设置频率
- * \param [IN]  freq 频率值
- * \retval  None
- */
 void RfSystem::setRefFreq(const double freq) {
   unsigned int Fre = 0;
   unsigned char reg73 = 0, reg72 = 0, reg71 = 0, reg70 = 0;
@@ -217,11 +190,6 @@ void RfSystem::setRefFreq(const double freq) {
   registerWrite(0x70, reg70);
 }
 
-/**
- * \brief  设置PA增益
- * \param [IN]  x_dBm 增益
- * \retval  None
- */
 void RfSystem::setPA(PA_LEVEL x_dBm) {
   unsigned char r_reg;
 #if 0
@@ -293,7 +261,7 @@ void RfSystem::setVcoFreq(const double freq) {
   registerWrite(0x74, reg74);
 }
 
-void RfSystem::setFreq_N(const unsigned char N) {
+void RfSystem::setFreq(const unsigned char N) {
   if (N > 0x7F)
     return;
   registerWrite(0x00, (0x80 | N));
@@ -316,7 +284,7 @@ void RfSystem::freqSet(const double f0, const unsigned char N, const double step
 
   g_freq = f0;
   setVcoFreq(f0);
-  setFreq_N(N);
+  setFreq(N);
   setFreqStep(step);
 }
 
@@ -344,11 +312,6 @@ unsigned char RfSystem::getPktStatus(void) {
 
 }
 
-/**
-  * \brief  读取Rssi值
-  * \param  None
-  * \retval
-  */
 unsigned char RfSystem::readRssi(void) {
   unsigned char r_reg;
 
@@ -356,37 +319,25 @@ unsigned char RfSystem::readRssi(void) {
   return r_reg / 2;
 }
 
-/**
-  * \brief  发送数据
-  * \param [IN] SrcBuf 待发送数据
-  * \param [IN] len 待发送数据长度
-  * \retval None
-  */
 void RfSystem::writeFifo(const unsigned char *SrcBuf, unsigned char len) {
   unsigned char i = 0;
 
-  RfCsLow();
+  CS_LOW();
   sendByte(0x55 & 0x7F);
   for (i = 0; i < len; i++) {
     sendByte(*(SrcBuf++));
   }
-  RfCsHigh();
+  CS_HIGH();
 }
 
-/**
-  * \brief  读数据
-  * \param [OUT] StoreBuf 保存数据地址
-  * \param [IN] len 读取长度
-  * \retval None
-  */
 void RfSystem::readFifo(unsigned char *StoreBuf, unsigned char Len) {
   unsigned char i = 0;
-  RfCsLow();
+  CS_LOW();
   sendByte(0x52 | 0x80);
   for (i = 0; i < Len; i++) {
     *(StoreBuf + i) = sendByte(0xFF);
   }
-  RfCsHigh();
+  CS_HIGH();
 }
 
 /**
@@ -431,7 +382,7 @@ int RfSystem::getSystemStatus() {
   * \param  None
   * \retval None
   */
-void RfSystem::idleEn(void) {
+void RfSystem::idle(void) {
   int i = 0;
   registerWrite(0x60, 0xff);
   while (registerRead(0x46) != 0x80) {
@@ -443,15 +394,10 @@ void RfSystem::idleEn(void) {
   systemStatus = 0;
 }
 
-/**
-  * \brief  使能接收模式
-  * \param  None
-  * \retval None
-  */
-void RfSystem::recEn(void) {
+void RfSystem::rx(void) {
   int i = 0;
   registerWrite(0x51, 0x80);
-  idleEn();
+  idle();
   registerWrite(0x66, 0xff);
   while (registerRead(0x46) != 0x20) {
     if (i++ > 256) {
@@ -462,68 +408,32 @@ void RfSystem::recEn(void) {
   systemStatus = 2;
 }
 
-/**
-* \brief  切换到发送状态
-  * \param  None
-  * \retval None
-  */
-void RfSystem::tranEn(void) {
-  idleEn();
+void RfSystem::tx(void) {
+  idle();
   registerWrite(0x65, 0xff);
   while (registerRead(0x46) != 0x40);
   systemStatus = 1;
 }
 
-/**
-  * \brief  切换到睡眠状态
-  * \param  None
-  * \retval None
-  */
-void RfSystem::sleepEn() {
-  idleEn();
+void RfSystem::sleep() {
+  idle();
   registerWrite(0x67, 0xff);
   systemStatus = 3;
 }
 
-/**
-  * \brief  切换到待机状态
-  * \param  None
-  * \retval None
-  */
-void RfSystem::standByEn(void) {
-  idleEn();
+void RfSystem::standBy(void) {
+  idle();
   registerWrite(0x68, 0xff);
   systemStatus = 4;
 }
 
-/**
-* \brief  发送单音载波
-  * \param  None
-  * \retval None
-  */
 void RfSystem::txCW(void) {
-  idleEn();
+  idle();
   registerWrite(0x24, (registerRead(0x24) | 0x80));
   registerWrite(0x06, (registerRead(0x06) & 0xFC));
-  tranEn();
+  tx();
 }
 
-
-void RfSystem::testPackageSend(const unsigned char *buffer, const unsigned char size) {
-
-  idleEn();
-  clrTxFifoWrPtr();
-  writeFifo(&buffer[0], size);
-  tranEn();
-
-}
-
-/**
-  * \brief  发送数据包
-  * \param [IN] buffer 发送数据
-  * \param [IN] size   发送数数据长度
-  * \retval None
-  */
 void RfSystem::dataPackageSend(const unsigned char *buffer, const unsigned char size) {
 
   /*Fix SPI concurrency conflicts, disable irq */
@@ -533,20 +443,15 @@ void RfSystem::dataPackageSend(const unsigned char *buffer, const unsigned char 
 
     buf[0] = size;
     memcpy(buf + 1, buffer, size);
-    idleEn();
+    idle();
     clrTxFifoWrPtr();
     writeFifo(&buf[0], size + 1);
-    tranEn();
+    tx();
 
   }
 
 }
 
-/**
-  * \brief  接收数据包
-  * \param [OUT] buf 接收数据
-  * \retval 接收数据长度
-  */
 int RfSystem::packageRecv(char *buf) {
   int len;
 
@@ -555,12 +460,12 @@ int RfSystem::packageRecv(char *buf) {
   registerWrite(0x51, 0x80);
   len = registerRead(0x52 | 0x80);
   if (len == 0) {
-    recEn();
+    rx();
     return -3;
   } else {
     rx_rssi = readRssi();
     readFifo((uint8_t *) buf, len);
-    recEn();
+    rx();
     #if 0
     printf("rece data len = %d  rssi = -%bd dB\r\n", len,rx_rssi);
     for(i=0; i<len; i++){
@@ -577,13 +482,13 @@ int RfSystem::packageRecv(char *buf) {
   * \param None
   * \retval None
   */
-void RfSystem::configure(void) {
+void RfSystem::begin(void) {
   unsigned int i = 0;
 
 
   gpioConfigure();
 
-  RfCsHigh();
+  CS_HIGH();
 
   spiConfigure();
   //重启芯片
@@ -604,7 +509,7 @@ void RfSystem::configure(void) {
   //设置发射功率
   setPA(DBM20);
   //设置为接收态
-  recEn();
+  rx();
   //打印初始化参数
 
   for (i = 0; i <= 0x7f; i++) {
@@ -640,58 +545,15 @@ void RfSystem::isr() {
   } else { /*发送完成*/
     preamble_timeout = 0;
     // RfRecEn();
-    idleEn();
+    idle();
   }
 
 }
 
-/**
-  * \brief  外部检查是否有中断发生
-  * \param   None
-  * \retval  0 没有rf中断 1有rf中断
-  */
 unsigned char RfSystem::is_interrupt_pending() {
   return rf_interrupt_pending;
 }
 
-/**
-  * \brief   清除中断标记
-  * \param   None
-  * \retval  None
-  */
 void RfSystem::clear_interrupt_flags(void) {
   rf_interrupt_pending = 0;
 }
-
-///**
-//  * \brief   rf中断顶半段
-//  * \param   None
-//  * \retval  None
-//  */
-//void rf_ist_0(void) {
-//  rf_interrupt_pending = 1;
-//}
-//
-
-//
-//#if 0
-///**
-// * \brief   timer2 中断服务
-// * \param 	None
-// * \retval  None
-// */
-//void TIM2_IRQHandler(void)
-//{
-//    if (TRUE == Bt_GetIntFlag(TIM2)){
-//
-//     Bt_ClearIntFlag(TIM2);
-//
-//      if(preamble_timeout > 0){
-//            preamble_timeout--;
-//        }
-//        if(preamble_timeout  == 1){
-//
-//        }
-//    }
-//}
-//#endif

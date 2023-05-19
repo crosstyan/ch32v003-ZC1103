@@ -10,7 +10,6 @@
 #define RF_RSSI_THRESHOLD                   65
 
 
-
 typedef enum {
   DBM20,
   DBM19,
@@ -59,81 +58,170 @@ class RfSystem {
 
   void spiConfigure();
 
-  void configure();
-
-  void testPackageSend(const unsigned char *buffer, const unsigned char size);
-
-  void dataPackageSend(const unsigned char *buffer, const unsigned char size);
-
-  int packageRecv(char *buf);
-
-  void freqSet(const double f0, const unsigned char N, const double step);
-
+/**
+ * \brief  写RF寄存器
+ * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
+ * \param[IN] val  写入的值
+ * \retval  None
+ */
   void registerWrite(const unsigned char addr, const unsigned char val);
 
+/**
+ * \brief  读RF寄存器
+ * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
+ * \retval  读取寄存器的值
+ */
   unsigned char registerRead(const unsigned char addr);
 
+/**
+  * \brief  读数据
+  * \param [OUT] StoreBuf 保存数据地址
+  * \param [IN] len 读取长度
+  * \retval None
+  */
   void readFifo(unsigned char *StoreBuf, unsigned char Len);
 
+/**
+  * \brief  读取Rssi值
+  * \param  None
+  * \retval
+  */
   unsigned char readRssi(void);
 
-  void recEn();
+/**
+  * \brief  使能接收模式
+  * \param  None
+  * \retval None
+  */
+  void rx();
 
+/**
+* \brief  发送单音载波
+  * \param  None
+  * \retval None
+  */
   void txCW();
 
-  void idleEn();
+  void idle();
 
-  int getSystemStatus();
+/**
+* \brief  切换到发送状态
+  * \param  None
+  * \retval None
+  */
+  void tx();
 
-  void sleepEn();
-
-  void standByEn();
-
-  void tranEn();
-
+/**
+ * \brief  设置PA增益
+ * \param [IN]  x_dBm 增益
+ * \retval  None
+ */
   void setPA(PA_LEVEL x_dBm);
 
-  void setRefFreq(const double freq);
 
-  void isr();
+  void RST_LOW();
 
-  unsigned char is_interrupt_pending();
+  void RST_HIGH();
 
-  void clear_interrupt_flags();
+  void SDN_LOW();
 
-  void RF_RST_LOW();
+  void SDN_HIGH();
 
-  void RF_RST_HIGH();
+  void CS_HIGH();
 
-  void RF_SDN_LOW();
+  void CS_LOW();
 
-  void RF_SDN_HIGH();
 
-  void RfCsHigh();
-
-  void RfCsLow();
-
-  void reset();
-
+/**
+ * \brief  通过spi传输一个字节
+ * \param  [IN] byte 发送的字节
+ * \retval  接收的字节
+ */
   unsigned char sendByte(unsigned char byte);
 
   void setSyncLockRssi(void);
 
   void setVcoFreq(const double freq);
 
-  void setFreq_N(const unsigned char N);
+  void setFreq(const unsigned char N);
 
   void setFreqStep(double step);
 
-  void clrTxFifoWrPtr(void);
+  void clrTxFifoWrPtr();
 
+/**
+  * \brief  发送数据
+  * \param [IN] SrcBuf 待发送数据
+  * \param [IN] len 待发送数据长度
+  * \retval None
+  */
   void writeFifo(const unsigned char *SrcBuf, unsigned char len);
 
+/**
+ * \brief  初始化rf寄存器
+ * \param  None
+ * \retval  None
+ */
   void registerInit();
 
-  unsigned char getPktStatus(void);
-
   int RF_IRQ_INPUT();
+
+  void freqSet(const double f0, const unsigned char N, const double step);
+
+public:
+  void begin();
+
+  void reset();
+
+/**
+  * \brief  发送数据包
+  * \param [IN] buffer 发送数据
+  * \param [IN] size   发送数数据长度
+  */
+  void dataPackageSend(const unsigned char *buffer, const unsigned char size);
+
+/**
+  * @brief  接收数据包
+  * @param [OUT] buf 接收数据
+  * @return 接收数据长度
+  */
+  int packageRecv(char *buf);
+
+  int getSystemStatus();
+
+  unsigned char getPktStatus();
+
+/**
+ * \brief  设置频率
+ * \param [IN]  freq 频率值
+ * \retval  None
+ */
+  void setRefFreq(const double freq);
+
+/**
+  * \brief  外部检查是否有中断发生
+  * \param   None
+  * \retval  0 没有 RF 中断; 1 有 RF 中断
+  */
+  unsigned char is_interrupt_pending();
+
+  void clear_interrupt_flags();
+
+/**
+  * \brief  切换到睡眠状态
+  * \param  None
+  * \retval None
+  */
+  void sleep();
+
+/**
+  * \brief  切换到待机状态
+  * \param  None
+  * \retval None
+  */
+  void standBy();
+
+  void isr();
 };
 
 
