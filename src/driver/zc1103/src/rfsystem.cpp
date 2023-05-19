@@ -1,16 +1,5 @@
 #include "rfsystem.h"
 
-//#define RF_RST_HIGH()       GPIO_WriteBit(RF_RST_Port, RF_RST_Pin, Bit_SET)
-//#define RF_RST_LOW()        GPIO_WriteBit(RF_RST_Port, RF_RST_Pin, Bit_RESET)
-//
-//#define RF_SDN_HIGH()       GPIO_WriteBit(RF_SDN_Port, RF_SDN_Pin, Bit_SET)
-//#define RF_SDN_LOW()        GPIO_WriteBit(RF_SDN_Port, RF_SDN_Pin, Bit_RESET)
-//
-//#define  RF_IRQ_INPUT()     GPIO_ReadInputDataBit(RF_IRQ_Port, RF_IRQ_Pin)
-//
-//#define  RfCsHigh()         SPI_NSS_OUT_High
-//#define  RfCsLow()           SPI_NSS_OUT_Low
-
 inline void RfSystem::RST_LOW() {
   digitalWrite(this->RST_PIN, LOW);
 }
