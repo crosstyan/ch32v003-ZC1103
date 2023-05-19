@@ -48,7 +48,7 @@ inline int RfSystem::RF_IRQ_INPUT() {
 }
 
 /**
- * \brief  ¸´Î»ÉäÆµĞ¾Æ¬
+ * \brief  å¤ä½å°„é¢‘èŠ¯ç‰‡
  * \param   None
  * \retval  None
  */
@@ -56,7 +56,7 @@ void RfSystem::reset() {
 
   unsigned int loopCount;
   unsigned int i;
-  /*¸´Î»¼Ä´æÆ÷*/
+  /*å¤ä½å¯„å­˜å™¨*/
   RF_RST_LOW();
   for (i = 10; i > 0; i--) {
     for (loopCount = 0xfff; loopCount != 0; loopCount--);
@@ -69,9 +69,9 @@ void RfSystem::reset() {
 }
 
 /**
- * \brief  Í¨¹ıspi´«ÊäÒ»¸ö×Ö½Ú
- * \param  [IN] byte ·¢ËÍµÄ×Ö½Ú
- * \retval  ½ÓÊÕµÄ×Ö½Ú
+ * \brief  é€šè¿‡spiä¼ è¾“ä¸€ä¸ªå­—èŠ‚
+ * \param  [IN] byte å‘é€çš„å­—èŠ‚
+ * \retval  æ¥æ”¶çš„å­—èŠ‚
  */
 unsigned char RfSystem::sendByte(unsigned char byte) {
 //  unsigned char tmp = 0;
@@ -81,9 +81,9 @@ unsigned char RfSystem::sendByte(unsigned char byte) {
 }
 
 /**
- * \brief  Ğ´RF¼Ä´æÆ÷
- * \param[IN] addr ¼Ä´æÆ÷µØÖ· È¡Öµ0x00 - 0x7F
- * \param[IN] val  Ğ´ÈëµÄÖµ
+ * \brief  å†™RFå¯„å­˜å™¨
+ * \param[IN] addr å¯„å­˜å™¨åœ°å€ å–å€¼0x00 - 0x7F
+ * \param[IN] val  å†™å…¥çš„å€¼
  * \retval  None
  */
 void RfSystem::registerWrite(const unsigned char addr, const unsigned char val) {
@@ -94,9 +94,9 @@ void RfSystem::registerWrite(const unsigned char addr, const unsigned char val) 
 }
 
 /**
- * \brief  ¶ÁRF¼Ä´æÆ÷
- * \param[IN] addr ¼Ä´æÆ÷µØÖ· È¡Öµ0x00 - 0x7F
- * \retval  ¶ÁÈ¡¼Ä´æÆ÷µÄÖµ
+ * \brief  è¯»RFå¯„å­˜å™¨
+ * \param[IN] addr å¯„å­˜å™¨åœ°å€ å–å€¼0x00 - 0x7F
+ * \retval  è¯»å–å¯„å­˜å™¨çš„å€¼
  */
 unsigned char RfSystem::registerRead(const unsigned char addr) {
 
@@ -108,7 +108,7 @@ unsigned char RfSystem::registerRead(const unsigned char addr) {
 }
 
 /**
- * \brief  ³õÊ¼»¯rf¼Ä´æÆ÷
+ * \brief  åˆå§‹åŒ–rfå¯„å­˜å™¨
  * \param  None
  * \retval  None
  */
@@ -149,9 +149,9 @@ void RfSystem::registerInit() {
   registerWrite(0x4f, 0xc5);
   ////10kps
   registerWrite(0x74, 0x9d);/*bit[7-6] ADC clock select*/
-  registerWrite(0x08, 0x01);/*·½·¨1ÉèÖÃÆµÆ«25k   */
-  registerWrite(0x24, 0x19);/*ÖĞÆµÉèÖÃ[7-0]      */
-  registerWrite(0x3D, 0x53);/*ÖĞÆµÉèÖÃ[7-0]      */
+  registerWrite(0x08, 0x01);/*æ–¹æ³•1è®¾ç½®é¢‘å25k   */
+  registerWrite(0x24, 0x19);/*ä¸­é¢‘è®¾ç½®[7-0]      */
+  registerWrite(0x3D, 0x53);/*ä¸­é¢‘è®¾ç½®[7-0]      */
 
   registerWrite(0x38, 0x56);
   registerWrite(0x3C, 0xD1);
@@ -172,7 +172,7 @@ void RfSystem::registerInit() {
   //25k->20k   0x66->0x51
   //25k->20k   0x66->0xEC
 
-  registerWrite(0x78, 0xC0);  //·½·¨2ÉèÖÃÆµÆ«10k --Î´Ê¹ÓÃ 25->20K
+  registerWrite(0x78, 0xC0);  //æ–¹æ³•2è®¾ç½®é¢‘å10k --æœªä½¿ç”¨ 25->20K
   registerWrite(0x79, 0x51);  //25->20K
   registerWrite(0x7a, 0xEC);  //25->20K
 
@@ -197,8 +197,8 @@ void RfSystem::registerInit() {
 }
 
 /**
- * \brief  ÉèÖÃÆµÂÊ
- * \param [IN]  freq ÆµÂÊÖµ
+ * \brief  è®¾ç½®é¢‘ç‡
+ * \param [IN]  freq é¢‘ç‡å€¼
  * \retval  None
  */
 void RfSystem::setRefFreq(const double freq) {
@@ -218,8 +218,8 @@ void RfSystem::setRefFreq(const double freq) {
 }
 
 /**
- * \brief  ÉèÖÃPAÔöÒæ
- * \param [IN]  x_dBm ÔöÒæ
+ * \brief  è®¾ç½®PAå¢ç›Š
+ * \param [IN]  x_dBm å¢ç›Š
  * \retval  None
  */
 void RfSystem::setPA(PA_LEVEL x_dBm) {
@@ -266,7 +266,7 @@ void RfSystem::setPA(PA_LEVEL x_dBm) {
 }
 
 /**
-  * \brief  Ê¹ÄÜ½ÓÊÕµ½Í¬²½×ÖºóËø¶¨rssi
+  * \brief  ä½¿èƒ½æ¥æ”¶åˆ°åŒæ­¥å­—åé”å®šrssi
   * \param  None
   * \retval  None
   */
@@ -321,7 +321,7 @@ void RfSystem::freqSet(const double f0, const unsigned char N, const double step
 }
 
 /**
-  * \brief  Çå¿Õ·¢ËÍÇøÓò
+  * \brief  æ¸…ç©ºå‘é€åŒºåŸŸ
   * \param  None
   * \retval  None
   */
@@ -330,7 +330,7 @@ void RfSystem::clrTxFifoWrPtr(void) {
 }
 
 /**
-  * \brief  »ñÈ¡°ü×´Ì¬
+  * \brief  è·å–åŒ…çŠ¶æ€
   * \param  None
   * \retval
   */
@@ -345,7 +345,7 @@ unsigned char RfSystem::getPktStatus(void) {
 }
 
 /**
-  * \brief  ¶ÁÈ¡RssiÖµ
+  * \brief  è¯»å–Rssiå€¼
   * \param  None
   * \retval
   */
@@ -357,9 +357,9 @@ unsigned char RfSystem::readRssi(void) {
 }
 
 /**
-  * \brief  ·¢ËÍÊı¾İ
-  * \param [IN] SrcBuf ´ı·¢ËÍÊı¾İ
-  * \param [IN] len ´ı·¢ËÍÊı¾İ³¤¶È
+  * \brief  å‘é€æ•°æ®
+  * \param [IN] SrcBuf å¾…å‘é€æ•°æ®
+  * \param [IN] len å¾…å‘é€æ•°æ®é•¿åº¦
   * \retval None
   */
 void RfSystem::writeFifo(const unsigned char *SrcBuf, unsigned char len) {
@@ -374,9 +374,9 @@ void RfSystem::writeFifo(const unsigned char *SrcBuf, unsigned char len) {
 }
 
 /**
-  * \brief  ¶ÁÊı¾İ
-  * \param [OUT] StoreBuf ±£´æÊı¾İµØÖ·
-  * \param [IN] len ¶ÁÈ¡³¤¶È
+  * \brief  è¯»æ•°æ®
+  * \param [OUT] StoreBuf ä¿å­˜æ•°æ®åœ°å€
+  * \param [IN] len è¯»å–é•¿åº¦
   * \retval None
   */
 void RfSystem::readFifo(unsigned char *StoreBuf, unsigned char Len) {
@@ -390,9 +390,9 @@ void RfSystem::readFifo(unsigned char *StoreBuf, unsigned char Len) {
 }
 
 /**
-  * \brief  RF µ±Ç°×´Ì¬
+  * \brief  RF å½“å‰çŠ¶æ€
   * \param  None
-  * \retval rfĞ¾Æ¬×´Ì¬
+  * \retval rfèŠ¯ç‰‡çŠ¶æ€
   */
 
 int RfSystem::getSystemStatus() {
@@ -427,7 +427,7 @@ int RfSystem::getSystemStatus() {
 }
 
 /**
-  * \brief  Ê¹ÄÜIDLE Ä£Ê½
+  * \brief  ä½¿èƒ½IDLE æ¨¡å¼
   * \param  None
   * \retval None
   */
@@ -444,7 +444,7 @@ void RfSystem::idleEn(void) {
 }
 
 /**
-  * \brief  Ê¹ÄÜ½ÓÊÕÄ£Ê½
+  * \brief  ä½¿èƒ½æ¥æ”¶æ¨¡å¼
   * \param  None
   * \retval None
   */
@@ -463,7 +463,7 @@ void RfSystem::recEn(void) {
 }
 
 /**
-* \brief  ÇĞ»»µ½·¢ËÍ×´Ì¬
+* \brief  åˆ‡æ¢åˆ°å‘é€çŠ¶æ€
   * \param  None
   * \retval None
   */
@@ -475,7 +475,7 @@ void RfSystem::tranEn(void) {
 }
 
 /**
-  * \brief  ÇĞ»»µ½Ë¯Ãß×´Ì¬
+  * \brief  åˆ‡æ¢åˆ°ç¡çœ çŠ¶æ€
   * \param  None
   * \retval None
   */
@@ -486,7 +486,7 @@ void RfSystem::sleepEn() {
 }
 
 /**
-  * \brief  ÇĞ»»µ½´ı»ú×´Ì¬
+  * \brief  åˆ‡æ¢åˆ°å¾…æœºçŠ¶æ€
   * \param  None
   * \retval None
   */
@@ -497,7 +497,7 @@ void RfSystem::standByEn(void) {
 }
 
 /**
-* \brief  ·¢ËÍµ¥ÒôÔØ²¨
+* \brief  å‘é€å•éŸ³è½½æ³¢
   * \param  None
   * \retval None
   */
@@ -519,9 +519,9 @@ void RfSystem::testPackageSend(const unsigned char *buffer, const unsigned char 
 }
 
 /**
-  * \brief  ·¢ËÍÊı¾İ°ü
-  * \param [IN] buffer ·¢ËÍÊı¾İ
-  * \param [IN] size   ·¢ËÍÊıÊı¾İ³¤¶È
+  * \brief  å‘é€æ•°æ®åŒ…
+  * \param [IN] buffer å‘é€æ•°æ®
+  * \param [IN] size   å‘é€æ•°æ•°æ®é•¿åº¦
   * \retval None
   */
 void RfSystem::dataPackageSend(const unsigned char *buffer, const unsigned char size) {
@@ -543,9 +543,9 @@ void RfSystem::dataPackageSend(const unsigned char *buffer, const unsigned char 
 }
 
 /**
-  * \brief  ½ÓÊÕÊı¾İ°ü
-  * \param [OUT] buf ½ÓÊÕÊı¾İ
-  * \retval ½ÓÊÕÊı¾İ³¤¶È
+  * \brief  æ¥æ”¶æ•°æ®åŒ…
+  * \param [OUT] buf æ¥æ”¶æ•°æ®
+  * \retval æ¥æ”¶æ•°æ®é•¿åº¦
   */
 int RfSystem::packageRecv(char *buf) {
   int len;
@@ -573,7 +573,7 @@ int RfSystem::packageRecv(char *buf) {
 
 
 /**
-  * \brief RFĞ¾Æ¬ÅäÖÃ
+  * \brief RFèŠ¯ç‰‡é…ç½®
   * \param None
   * \retval None
   */
@@ -586,26 +586,26 @@ void RfSystem::configure(void) {
   RfCsHigh();
 
   spiConfigure();
-  //ÖØÆôĞ¾Æ¬
+  //é‡å¯èŠ¯ç‰‡
 //  delay_ms(200);
   reset();
-  //³õÊ¼»¯rf ²ÎÊı
+  //åˆå§‹åŒ–rf å‚æ•°
 
   registerInit();
-  //ÉèÖÃ²Î¿¼ÆµÂÊ
+  //è®¾ç½®å‚è€ƒé¢‘ç‡
   registerWrite(0x70, 0x12);
   registerWrite(0x71, 0x14);
   registerWrite(0x72, 0x7A); // 6D 48    A1  7A 18.08
   registerWrite(0x73, 0xE1); // 32 00    84  E1
-  //ÉèÖÃËøÆµ
+  //è®¾ç½®é”é¢‘
   setSyncLockRssi();
-  //ÉèÖÃÖĞĞÄÆµµã
+  //è®¾ç½®ä¸­å¿ƒé¢‘ç‚¹
   freqSet(476.0, 0, 0);
-  //ÉèÖÃ·¢Éä¹¦ÂÊ
+  //è®¾ç½®å‘å°„åŠŸç‡
   setPA(DBM20);
-  //ÉèÖÃÎª½ÓÊÕÌ¬
+  //è®¾ç½®ä¸ºæ¥æ”¶æ€
   recEn();
-  //´òÓ¡³õÊ¼»¯²ÎÊı
+  //æ‰“å°åˆå§‹åŒ–å‚æ•°
 
   for (i = 0; i <= 0x7f; i++) {
     printf("read  reg0x%02x = %2.2x \n", i, registerRead(i));
@@ -614,7 +614,7 @@ void RfSystem::configure(void) {
 
 
 /**
- * \brief   rf ÖĞ¶Ïµ×°ë¶Î
+ * \brief   rf ä¸­æ–­åº•åŠæ®µ
  * \param   None
  * \retval  None
  */
@@ -625,11 +625,11 @@ void RfSystem::isr() {
 
   printf("%2.2x\r\n", tmp);
 
-  if (tmp & (1 << 6)) {          /*½ÓÊÕµ½ÕıÈ·µÄpreamble*/
-    if (!(tmp & (1 << 7))) {   /*½ÓÊÕµ½ÕıÈ·µÄsyncword*/
+  if (tmp & (1 << 6)) {          /*æ¥æ”¶åˆ°æ­£ç¡®çš„preamble*/
+    if (!(tmp & (1 << 7))) {   /*æ¥æ”¶åˆ°æ­£ç¡®çš„syncword*/
       preamble_timeout = 200;
 
-    } else if (!(tmp & (1 << 5))) { /*Crc ´íÎóÖ¸Ê¾ */
+    } else if (!(tmp & (1 << 5))) { /*Crc é”™è¯¯æŒ‡ç¤º */
       preamble_timeout = 0;
       rece_falg = 0x01;
     } else {
@@ -637,7 +637,7 @@ void RfSystem::isr() {
       //RfRecEn();
       preamble_timeout = 0;
     }
-  } else { /*·¢ËÍÍê³É*/
+  } else { /*å‘é€å®Œæˆ*/
     preamble_timeout = 0;
     // RfRecEn();
     idleEn();
@@ -646,16 +646,16 @@ void RfSystem::isr() {
 }
 
 /**
-  * \brief  Íâ²¿¼ì²éÊÇ·ñÓĞÖĞ¶Ï·¢Éú
+  * \brief  å¤–éƒ¨æ£€æŸ¥æ˜¯å¦æœ‰ä¸­æ–­å‘ç”Ÿ
   * \param   None
-  * \retval  0 Ã»ÓĞrfÖĞ¶Ï 1ÓĞrfÖĞ¶Ï
+  * \retval  0 æ²¡æœ‰rfä¸­æ–­ 1æœ‰rfä¸­æ–­
   */
 unsigned char RfSystem::is_interrupt_pending() {
   return rf_interrupt_pending;
 }
 
 /**
-  * \brief   Çå³ıÖĞ¶Ï±ê¼Ç
+  * \brief   æ¸…é™¤ä¸­æ–­æ ‡è®°
   * \param   None
   * \retval  None
   */
@@ -664,7 +664,7 @@ void RfSystem::clear_interrupt_flags(void) {
 }
 
 ///**
-//  * \brief   rfÖĞ¶Ï¶¥°ë¶Î
+//  * \brief   rfä¸­æ–­é¡¶åŠæ®µ
 //  * \param   None
 //  * \retval  None
 //  */
@@ -676,7 +676,7 @@ void RfSystem::clear_interrupt_flags(void) {
 //
 //#if 0
 ///**
-// * \brief   timer2 ÖĞ¶Ï·şÎñ
+// * \brief   timer2 ä¸­æ–­æœåŠ¡
 // * \param 	None
 // * \retval  None
 // */
