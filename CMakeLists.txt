@@ -7,19 +7,21 @@ enable_language(C)
 enable_language(CXX)
 
 set(VENDOR_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor)
-
 file(GLOB VENDOR_CORE_SRC       ${VENDOR_DIRECTORY}/Core/*.c)
 file(GLOB VENDOR_DEBUG_SRC      ${VENDOR_DIRECTORY}/Debug/*.c)
 file(GLOB VENDOR_PERIPHERAL_SRC ${VENDOR_DIRECTORY}/Peripheral/src/*.c)
 set(VENDOR_STARTUP_SRC ${VENDOR_DIRECTORY}/Startup/startup_ch32v00x.S)
 set(VENDOR_SRC  ${VENDOR_STARTUP_SRC} ${VENDOR_CORE_SRC} ${VENDOR_DEBUG_SRC} ${VENDOR_PERIPHERAL_SRC})
-
 include_directories(${VENDOR_DIRECTORY}/Core)
 include_directories(${VENDOR_DIRECTORY}/Debug)
 include_directories(${VENDOR_DIRECTORY}/Peripheral/inc)
 
 file(GLOB SYSTEM_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/system/*.c)
 include_directories(src/system)
+
+set(LIB_PRINTF_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/printf)
+set(LIB_PRINTF_SRC ${LIB_PRINTF_DIRECTORY}/printf.c)
+include_directories(${LIB_PRINTF_DIRECTORY})
 
 set(APP_SRC src/main.cpp)
 add_executable(${CMAKE_PROJECT_NAME}.elf ${VENDOR_SRC} ${SYSTEM_SRC} ${APP_SRC})
@@ -31,14 +33,6 @@ add_custom_target(
         "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.elf"
         "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin"
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.elf)
-
-# Generate the hex file
-# add_custom_target(
-#         hex COMMAND
-#         ${TOOLCHAIN_PREFIX}/bin/${TOOLCHAIN}-objcopy -Oihex
-#         "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.elf"
-#         "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex"
-#         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.elf)
 
 # Echo the size Infomation
 add_custom_target(

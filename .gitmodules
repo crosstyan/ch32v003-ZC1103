@@ -1,3 +1,6 @@
 [submodule "vendor"]
 	path = vendor
 	url = https://github.com/crosstyan/ch32v003-template
+[submodule "libs/printf"]
+	path = libs/printf
+	url = https://github.com/mpaland/printf
