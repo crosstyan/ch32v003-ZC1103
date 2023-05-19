@@ -6,12 +6,14 @@
 #include <cstring>
 #include <cstdint>
 #include "printf.h"
+#include "ch32v00x.h"
+#include "ch32v00x_spi.h"
+#include "gpio.h"
 
 #define RF_RSSI_THRESHOLD                   65
 
-
-typedef enum {
-  DBM20,
+enum PA_LEVEL {
+  DBM20 = 0,
   DBM19,
   DBM18,
   DBM17,
@@ -38,21 +40,35 @@ typedef enum {
   DBM_4,
   DBM_5,
   DBM_6,
-} PA_LEVEL;
+};
 
-#define RFSYSSTAIDLE      (0)
-#define RFSYSSTAREC        (2)
-#define RFSYSSTATRAN      (1)
-#define RFSYSSTASLEEP      (3)
-#define RFSYSSTATSTANDBY    (4)
+enum RfStatus {
+  IDLE = 0,
+  RX,
+  TX,
+  SLEEP,
+  STANDBY,
+  ERROR,
+};
 
 class RfSystem {
   volatile uint32_t preamble_timeout = 0;
-  volatile uint8_t rece_falg = 0;
-  int systemStatus = 0;
-  unsigned char g_paValue = 10;
+  // what flag?
+  volatile uint8_t tx_flag = 0;
+  RfStatus systemStatus = IDLE;
   volatile unsigned char rf_interrupt_pending = 0;
-  double g_freq = 476.3;
+  unsigned char g_paValue = 10;
+  double g_freq = 476;
+
+  /// 芯片复位脚，低电平有效，复位后寄存器数值丢失，全部变为默认值。
+  pin_size_t RST_PIN;
+  /// 使能信号，低有效，拉低可使芯片退出 sleep mode
+  pin_size_t CS_PIN;
+  /// IRQ
+  pin_size_t IRQ_PIN;
+  /// 芯片关断使能，高有效
+  pin_size_t SDN_PIN;
+  SPI_TypeDef *SPI;
 
   void gpioConfigure();
 
@@ -139,6 +155,11 @@ class RfSystem {
  */
   unsigned char sendByte(unsigned char byte);
 
+/**
+  * \brief  使能接收到同步字后锁定rssi
+  * \param  None
+  * \retval  None
+  */
   void setSyncLockRssi(void);
 
   void setVcoFreq(const double freq);
@@ -187,7 +208,7 @@ public:
   */
   int packageRecv(char *buf);
 
-  int getSystemStatus();
+  RfStatus getSystemStatus() const;
 
   unsigned char getPktStatus();
 

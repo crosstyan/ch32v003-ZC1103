@@ -25,11 +25,11 @@ include_directories(${LIB_PRINTF_DIRECTORY}/src)
 include_directories(${LIB_PRINTF_DIRECTORY}/src/printf)
 
 set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
-set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/bsp_rfsystem.cpp)
+set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
 include_directories(${ZC1103_DIRECTORY}/inc)
 
-set(APP_SRC src/main.cpp)
-include_directories(src/inc)
+set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp)
+include_directories(src/inc src/driver/gpio)
 
 add_executable(${CMAKE_PROJECT_NAME}.elf ${VENDOR_SRC} ${SYSTEM_SRC} ${APP_SRC} ${LIB_PRINTF_SRC} ${ZC1103_SRC})
 add_compile_definitions(PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1)
