@@ -24,8 +24,15 @@ set(LIB_PRINTF_SRC ${LIB_PRINTF_DIRECTORY}/src/printf/printf.c)
 include_directories(${LIB_PRINTF_DIRECTORY}/src)
 include_directories(${LIB_PRINTF_DIRECTORY}/src/printf)
 
+set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
+set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/bsp_rfsystem.cpp)
+include_directories(${ZC1103_DIRECTORY}/inc)
+
 set(APP_SRC src/main.cpp)
-add_executable(${CMAKE_PROJECT_NAME}.elf ${VENDOR_SRC} ${SYSTEM_SRC} ${APP_SRC} ${LIB_PRINTF_SRC})
+include_directories(src/inc)
+
+add_executable(${CMAKE_PROJECT_NAME}.elf ${VENDOR_SRC} ${SYSTEM_SRC} ${APP_SRC} ${LIB_PRINTF_SRC} ${ZC1103_SRC})
+add_compile_definitions(PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1)
 
 # Generate the binary file
 add_custom_target(

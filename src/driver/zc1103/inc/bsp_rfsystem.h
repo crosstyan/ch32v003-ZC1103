@@ -2,11 +2,16 @@
 #ifndef _BSP_RFSYSTEM_H
 #define _BSP_RFSYSTEM_H
 
+#include <cmath>
+#include <cstring>
+#include <cstdint>
+#include "printf.h"
+
 #define RF_RSSI_THRESHOLD                   65
 
 
-typedef enum
-{
+
+typedef enum {
   DBM20,
   DBM19,
   DBM18,
@@ -34,56 +39,102 @@ typedef enum
   DBM_4,
   DBM_5,
   DBM_6,
-}PA_LEVEL;
+} PA_LEVEL;
 
-#define RFSYSSTAIDLE  		(0)
-#define RFSYSSTAREC	  		(2)
-#define RFSYSSTATRAN  		(1)
-#define RFSYSSTASLEEP  		(3)
-#define RFSYSSTATSTANDBY  	(4)
+#define RFSYSSTAIDLE      (0)
+#define RFSYSSTAREC        (2)
+#define RFSYSSTATRAN      (1)
+#define RFSYSSTASLEEP      (3)
+#define RFSYSSTATSTANDBY    (4)
 
-extern void RfConfigure(void);
+class RfSystem {
+  volatile uint32_t preamble_timeout = 0;
+  volatile uint8_t rece_falg = 0;
+  int systemStatus = 0;
+  unsigned char g_paValue = 10;
+  volatile unsigned char rf_interrupt_pending = 0;
+  double g_freq = 476.3;
 
-extern void RfTestPackageSend(const unsigned char *buffer,const unsigned char size);
+  void gpioConfigure();
 
-extern void RfDataPackageSend(const unsigned char *buffer, const unsigned char size);
+  void spiConfigure();
 
-extern int  RfPackageRecv(char *buf);
+  void configure();
 
-extern void RfFreqSet(const double f0,const unsigned char N,const double step);
+  void testPackageSend(const unsigned char *buffer, const unsigned char size);
 
-extern void RfRegisterWrite(const unsigned char addr,const unsigned char val);
+  void dataPackageSend(const unsigned char *buffer, const unsigned char size);
 
-extern unsigned char RfRegisterRead(const unsigned char addr);
+  int packageRecv(char *buf);
 
-extern void RfReadFIFO(unsigned char *StoreBuf,unsigned char Len);
+  void freqSet(const double f0, const unsigned char N, const double step);
 
-extern unsigned char RfReadRssi(void);
+  void registerWrite(const unsigned char addr, const unsigned char val);
 
-extern void RfRecEn(void);
+  unsigned char registerRead(const unsigned char addr);
 
-extern void RF_TxCW(void);
+  void readFifo(unsigned char *StoreBuf, unsigned char Len);
 
-extern void RfIdleEn(void);
+  unsigned char readRssi(void);
 
-extern int  RfSystemStatus(void);
+  void recEn();
 
-extern void RfSleepEn(void);
+  void txCW();
 
-extern void RfStandByEn(void);
+  void idleEn();
 
-extern void RfTranEn(void);
+  int getSystemStatus();
 
-extern void RfSetPA(PA_LEVEL x_dBm);
+  void sleepEn();
 
-extern void  RFSetRefFreq(const double freq);
+  void standByEn();
 
-extern void rf_isr(void);
+  void tranEn();
 
-unsigned char is_there_a_rf_interrupt_pending(void);
+  void setPA(PA_LEVEL x_dBm);
 
-void clear_rf_interrupt_flags(void);
+  void setRefFreq(const double freq);
 
+  void isr();
+
+  unsigned char is_interrupt_pending();
+
+  void clear_interrupt_flags();
+
+  void RF_RST_LOW();
+
+  void RF_RST_HIGH();
+
+  void RF_SDN_LOW();
+
+  void RF_SDN_HIGH();
+
+  void RfCsHigh();
+
+  void RfCsLow();
+
+  void reset();
+
+  unsigned char sendByte(unsigned char byte);
+
+  void setSyncLockRssi(void);
+
+  void setVcoFreq(const double freq);
+
+  void setFreq_N(const unsigned char N);
+
+  void setFreqStep(double step);
+
+  void clrTxFifoWrPtr(void);
+
+  void writeFifo(const unsigned char *SrcBuf, unsigned char len);
+
+  void registerInit();
+
+  unsigned char getPktStatus(void);
+
+  int RF_IRQ_INPUT();
+};
 
 
 #endif
