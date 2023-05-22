@@ -24,15 +24,13 @@ set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp src/inc/clock.h src/inc/spi.h 
 include_directories(src/inc src/driver/gpio)
 
 add_executable(${CMAKE_PROJECT_NAME}.elf
-#        ${VENDOR_SRC}
-#        ${SYSTEM_SRC}
         ${FUN_SRC}
         ${APP_SRC}
         ${LIB_PRINTF_SRC}
         ${ZC1103_SRC})
 add_compile_definitions(
         PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1
-        STDOUT_UART=1
+#        STDOUT_UART=1
 )
 
 # Generate the binary file

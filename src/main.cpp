@@ -11,6 +11,7 @@ int rand_range(int min, int max) {
 
 int main() {
   SystemInit48HSI();
+//  SystemInitHSE(0);
   SysTick_init();
   SetupUART(115200);
 
@@ -19,14 +20,13 @@ int main() {
 
   bool i = false;
   auto last = millis();
-  uint32_t d = rand_range(10, 100);
+  uint32_t d = 500;
   while (true) {
     if (millis() - last > d) {
       digitalWrite(LED_pin, boolToStatus(i));
       i = !i;
       printf("delayed %d ms; count: %d;\n", d, millis());
       last = millis();
-      d = rand_range(10, 100);
     }
   }
 }
