@@ -15,6 +15,7 @@ extern "C" void SysTick_init();
 /*
  * SysTick ISR just counts ticks
  * note - the __attribute__((interrupt)) syntax is crucial!
+ * extern "C" is also important for C++ linkage
  */
 extern "C" void SysTick_Handler() __attribute__((interrupt));
 

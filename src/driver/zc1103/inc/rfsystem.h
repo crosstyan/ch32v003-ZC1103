@@ -70,7 +70,6 @@ class RfSystem {
   pin_size_t IRQ_PIN;
   /// 芯片关断使能，高有效
   pin_size_t SDN_PIN;
-  SPI_TypeDef *SPI;
 
   void gpioConfigure();
 
@@ -135,7 +134,6 @@ class RfSystem {
  * \retval  None
  */
   void setPA(PA_LEVEL x_dBm);
-
 
   void RST_LOW();
 
@@ -226,6 +224,8 @@ public:
 
   void clear_interrupt_flags();
 
+  uint8_t version();
+
 /**
   * \brief  切换到睡眠状态
   */
@@ -238,7 +238,8 @@ public:
 
   void isr();
 
-  RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin, SPI_TypeDef *spi = SPI1);
+  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
+  RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
 
   RfSystem(const RfSystem &) = delete;
   RfSystem &operator=(const RfSystem &) = delete;
@@ -246,7 +247,6 @@ public:
   RfSystem &operator=(RfSystem &&) = delete;
   ~RfSystem() = delete;
 };
-
 
 #endif
 

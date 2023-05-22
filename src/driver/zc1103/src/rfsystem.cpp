@@ -314,35 +314,8 @@ void RfSystem::readFifo(unsigned char *StoreBuf, unsigned char Len) {
   * \retval rf芯片状态
   */
 RfStatus RfSystem::getSystemStatus() const {
+  // See also register 0x46
   return systemStatus;
-  // read status from register?
-  /*
-    switch(registerRead(0x46))
-    {
-      case 0x80:
-         return systemStatus;
-      break;
-      case 0x20:
-        return 2;
-      break;
-      case 0x40:
-        return 1;
-      break;
-      case 0x10:
-        return 6;
-      break;
-      case 0x08:
-        return 7;
-      case 0x04:
-        return 8;
-      case 0x02:
-        return 9;
-      case 0x01:
-        return 10;
-      break;
-      default:
-        break;
-    }*/
 }
 
 /**
@@ -518,6 +491,12 @@ void RfSystem::isr() {
 
 }
 
+uint8_t RfSystem::version() {
+  auto tmp = registerRead(0x04);
+  // only need first two bit
+  return tmp & 0b11;
+};
+
 bool RfSystem::is_interrupt_pending() const {
   return rf_interrupt_pending;
 }
@@ -526,5 +505,5 @@ void RfSystem::clear_interrupt_flags() {
   rf_interrupt_pending = false;
 }
 
-RfSystem::RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin, SPI_TypeDef *spi) :
-    RST_PIN(rst_pin), CS_PIN(cs_pin), IRQ_PIN(irq_pin), SDN_PIN(sdn_pin), SPI(spi) {}
+RfSystem::RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin) :
+    RST_PIN(rst_pin), CS_PIN(cs_pin), IRQ_PIN(irq_pin), SDN_PIN(sdn_pin) {}

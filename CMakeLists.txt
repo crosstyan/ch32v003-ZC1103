@@ -23,6 +23,12 @@ include_directories(${ZC1103_DIRECTORY}/inc)
 set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp src/inc/clock.h src/inc/spi.h src/system_tick.cpp src/inc/system_tick.h src/inc/instant.h)
 include_directories(src/inc src/driver/gpio)
 
+set(GIT_DIR_LOOKUP_POLICY ALLOW_LOOKING_ABOVE_CMAKE_SOURCE_DIR)
+set(ETL_DIR libs/etl)
+add_subdirectory(${ETL_DIR})
+include_directories(${ETL_DIR}/include)
+
+
 add_executable(${CMAKE_PROJECT_NAME}.elf
         ${FUN_SRC}
         ${APP_SRC}
@@ -32,6 +38,10 @@ add_compile_definitions(
         PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1
 #        STDOUT_UART=1
 )
+
+target_link_libraries(${CMAKE_PROJECT_NAME}.elf
+        PRIVATE
+        etl::etl)
 
 # Generate the binary file
 add_custom_target(
@@ -52,3 +62,7 @@ add_custom_target(
         flash COMMAND
         minichlink -w ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin flash -b
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin)
+
+#add_custom_target(
+#        monitor
+#        COMMAND minichlink -b -T)

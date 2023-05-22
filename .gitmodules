@@ -7,3 +7,6 @@
 [submodule "fun"]
 	path = fun
 	url = https://github.com/crosstyan/ch32v003fun
+[submodule "libs/etl"]
+	path = libs/etl
+	url = https://github.com/ETLCPP/etl

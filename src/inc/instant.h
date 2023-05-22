@@ -7,7 +7,11 @@
 
 #include "system_tick.h"
 #include <chrono>
+#ifdef FUNCTIONAL
 #include <functional>
+#else
+#include <utility>
+#endif
 
 class Instant {
   uint64_t time;
@@ -41,7 +45,8 @@ public:
     return this->time;
   }
 
-  /// can't be used in CH32V003. Don't have enough memory to run this.
+  #ifdef FUNCTIONAL
+  /// region `FLASH' overflowed by 3934 bytes
   template<typename T>
   void try_run(std::function<T> f, std::chrono::duration<uint64_t, std::milli> d) {
     if (this->elapsed() > d) {
@@ -49,6 +54,7 @@ public:
       this->reset();
     }
   }
+  #endif
 };
 
 #endif //SIMPLE_INSTANT_H
