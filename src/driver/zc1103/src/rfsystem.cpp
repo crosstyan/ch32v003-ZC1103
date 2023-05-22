@@ -349,18 +349,18 @@ void RfSystem::dataPackageSend(const char *buffer, const unsigned char size) {
   }
 }
 
-int RfSystem::packageRecv(char *buf) {
+etl::optional<int>
+RfSystem::packageRecv(char *buf) {
   int len;
-
   registerWrite(0x51, 0x80);
   len = registerRead(0x52 | 0x80);
   if (len == 0) {
     rx();
-    return -3;
+    return etl::nullopt;
   } else {
     readFifo((uint8_t *) buf, len);
     rx();
-    return len;
+    return etl::make_optional(len);
   }
 }
 

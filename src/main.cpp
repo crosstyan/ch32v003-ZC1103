@@ -19,7 +19,7 @@ int main() {
   SystemInit48HSI();
   SysTick_init();
   SetupDebugPrintf();
-  printf("start\n");
+  printf("restart\n");
 
   pin_size_t LED_pin = GPIO::D6;
   pinMode(LED_pin, OUTPUT);
@@ -56,10 +56,10 @@ int main() {
       RF::printStatus(status);
       instant.reset();
     }
-    if (rf.pollIrqPin()) {
-      etl::string<256> buf;
-      auto size = rf.packageRecv(buf.data());
-      buf.resize(size);
+    etl::string<256> buf;
+    auto maybe = rf.packageRecv(buf.data());
+    if (maybe) {
+      buf.resize(maybe.value());
       printf("recv: %s\n", buf.c_str());
       rf.resetRxFlag();
     }

@@ -10,6 +10,7 @@
 #include "clock.h"
 #include "ch32v003fun.h"
 #include "ch32v003_SPI.h"
+#include <etl/optional.h>
 #include "gpio.h"
 
 #define RF_RSSI_THRESHOLD                   65
@@ -213,7 +214,7 @@ public:
   * @param [OUT] buf 接收数据
   * @return 接收数据长度
   */
-  int packageRecv(char *buf);
+  etl::optional<int> packageRecv(char *buf);
 
 
 /**
