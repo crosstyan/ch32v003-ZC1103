@@ -40,22 +40,13 @@ inline int RfSystem::RF_IRQ_INPUT() {
   return digitalRead(this->IRQ_PIN);
 }
 
-/**
- * \brief  复位射频芯片
- */
 void RfSystem::reset() {
   unsigned int loopCount;
   unsigned int i;
-  /*复位寄存器*/
   RST_LOW();
-  for (i = 10; i > 0; i--) {
-    for (loopCount = 0xfff; loopCount != 0; loopCount--);
-  }
+  Delay_Ms(10);
   RST_HIGH();
   SDN_LOW();
-  for (i = 10; i > 0; i--) {
-    for (loopCount = 0xfff; loopCount != 0; loopCount--);
-  }
 }
 
 inline uint8_t RfSystem::sendByte(unsigned char byte) {
@@ -189,7 +180,6 @@ void RfSystem::setPA(PA_LEVEL x_dBm) {
   const unsigned char vReg26Tbl_h31[] = {0x83, 0x81, 0xaf, 0x82, 0x8f, 0x85, 0x95, 0xbf, 0x81, 0xab, \
                                     0x81, 0x68, 0x6b, 0x5c, 0x75, 0x72, 0x7b, 0x79, 0x7a, 0x68, \
                                     0x6f, 0x7c, 0x6a, 0x7f, 0x6e, 0x62, 0x58};
-  g_paValue = 0;
   r_reg = registerRead(0x47);
   if ((r_reg & 0x07) == 0x04) {
     registerWrite(0x25, vReg25Tbl_h4[x_dBm]);
@@ -243,35 +233,13 @@ void RfSystem::setFreqStep(double step) {
 }
 
 void RfSystem::freqSet(const double f0, const unsigned char N, const double step) {
-
-  g_freq = f0;
   setVcoFreq(f0);
   setFreq(N);
   setFreqStep(step);
 }
 
-/**
-  * \brief  清空发送区域
-  * \param  None
-  * \retval  None
-  */
 void RfSystem::clrTxFifoWrPtr() {
   registerWrite(0x53, 0x80);      /*Reset FIFO write Pointer*/
-}
-
-/**
-  * \brief  获取包状态
-  * \param  None
-  * \retval
-  */
-unsigned char RfSystem::getPktStatus() {
-
-  if (RF_IRQ_INPUT()) {
-    return 1;
-  } else {
-    return 0;
-  }
-
 }
 
 unsigned char RfSystem::readRssi() {
@@ -289,6 +257,7 @@ void RfSystem::writeFifo(const char *src, uint8_t len) {
   }
   CS_HIGH();
 }
+
 void RfSystem::writeFifo(char src) {
   CS_LOW();
   sendByte(0x55 & 0x7F);
@@ -306,24 +275,33 @@ void RfSystem::writeFifoWithSize(const char *src, uint8_t len) {
   CS_HIGH();
 }
 
-void RfSystem::readFifo(unsigned char *StoreBuf, unsigned char Len) {
+void RfSystem::readFifo(unsigned char *dst, unsigned char Len) {
   unsigned char i = 0;
   CS_LOW();
   sendByte(0x52 | 0x80);
   for (i = 0; i < Len; i++) {
-    *(StoreBuf + i) = sendByte(0xFF);
+    *(dst + i) = sendByte(0xFF);
   }
   CS_HIGH();
 }
 
-/**
-  * \brief  RF 当前状态
-  * \param  None
-  * \retval rf芯片状态
-  */
-RfStatus RfSystem::getSystemStatus() const {
-  // See also register 0x46
-  return systemStatus;
+void RfSystem::refreshStatus() {
+  auto s = registerRead(0x46);
+  auto status = RfStatus{
+      .idle = (s & 0x01) == 0x01,
+      .tx = (s & 0x02) == 0x02,
+      .rx = (s & 0x04) == 0x04,
+      .fs = (s & 0x08) == 0x08,
+      .scan = (s & 0x10) == 0x10,
+      .rc_cal = (s & 0x20) == 0x20,
+      .vco_cal = (s & 0x40) == 0x40,
+      .wor = (s & 0x80) == 0x80,
+  };
+  this->systemStatus = status;
+}
+
+const RfStatus & RfSystem::getStatus() const {
+  return this->systemStatus;
 }
 
 /**
@@ -331,32 +309,27 @@ RfStatus RfSystem::getSystemStatus() const {
   */
 void RfSystem::idle() {
   registerWrite(0x60, 0xff);
-  systemStatus = IDLE;
 }
 
 void RfSystem::rx() {
   registerWrite(0x51, 0x80);
   idle();
   registerWrite(0x66, 0xff);
-  systemStatus = RX;
 }
 
 void RfSystem::tx() {
   idle();
   registerWrite(0x65, 0xff);
-  systemStatus = TX;
 }
 
 void RfSystem::sleep() {
   idle();
   registerWrite(0x67, 0xff);
-  systemStatus = SLEEP;
 }
 
 void RfSystem::standBy() {
   idle();
   registerWrite(0x68, 0xff);
-  systemStatus = STANDBY;
 }
 
 void RfSystem::txCW() {
@@ -367,15 +340,12 @@ void RfSystem::txCW() {
 }
 
 void RfSystem::dataPackageSend(const char *buffer, const unsigned char size) {
-
-  /*Fix SPI concurrency conflicts, disable irq */
   if (size > 0) {
     idle();
     clrTxFifoWrPtr();
     writeFifoWithSize(buffer, size);
     tx();
   }
-
 }
 
 int RfSystem::packageRecv(char *buf) {
@@ -431,7 +401,7 @@ void RfSystem::begin() {
   rx();
 }
 
-void RfSystem::printRegisters(){
+void RfSystem::printRegisters() {
   for (auto i = 0; i <= 0x7f; i++) {
     printf("reg(0x%02x) = 0x%02x \n", i, registerRead(i));
   }
@@ -445,8 +415,6 @@ void RfSystem::printRegisters(){
 void RfSystem::isr() {
   auto tmp = registerRead(0x40);
 
-//  printf("%2.2x\r\n", tmp);
-
   // 接收到正确的 preamble
   if (tmp & (1 << 6)) {
     // 接收到正确的 sync word
@@ -455,16 +423,12 @@ void RfSystem::isr() {
       // Crc 错误指示
     } else if (!(tmp & (1 << 5))) {
       preamble_timeout = 0;
-      tx_flag = 0x01;
     } else {
-      tx_flag = 0x02;
-      //RfRecEn();
       preamble_timeout = 0;
     }
     // 发送完成
   } else {
     preamble_timeout = 0;
-    // RfRecEn();
     idle();
   }
 
@@ -477,13 +441,26 @@ uint8_t RfSystem::version() {
   return tmp & 0b11;
 };
 
-bool RfSystem::is_interrupt_pending() const {
-  return rf_interrupt_pending;
+bool RfSystem::rx_flag() const {
+  return _rx_flag;
 }
 
-void RfSystem::clear_interrupt_flags() {
-  rf_interrupt_pending = false;
+void RfSystem::reset_rx_flag() {
+  _rx_flag = false;
 }
 
 RfSystem::RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin) :
     RST_PIN(rst_pin), CS_PIN(cs_pin), IRQ_PIN(irq_pin), SDN_PIN(sdn_pin) {}
+
+
+void RF::printStatus(const RfStatus &status) {
+  printf("idle=%d, tx=%d, rx=%d, fs=%d, scan=%d, rc_cal=%d, vco_cal=%d, wor=%d\n",
+         status.idle,
+         status.tx,
+         status.rx,
+         status.fs,
+         status.scan,
+         status.rc_cal,
+         status.vco_cal,
+         status.wor);
+};

@@ -1,12 +1,12 @@
 #include "spi.h"
 #include "clock.h"
 #include "ch32v003fun.h"
-#include "ch32v003_SPI.h"
 #include "system_tick.h"
 #include "gpio.h"
-#include <cstdlib>
+#include "utils.h"
 #include "instant.h"
 #include <etl/string.h>
+#include <etl/to_string.h>
 #include "rfsystem.h"
 #include <printf.h>
 
@@ -14,10 +14,6 @@ static const pin_size_t IRQ_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN = GPIO::C2;
 static const pin_size_t CS_PIN = GPIO::C4;
 static const pin_size_t RST_PIN = GPIO::C0;
-
-int rand_range(int min, int max) {
-  return min + (std::rand() % (max - min + 1));
-}
 
 int main() {
   SystemInit48HSI();
@@ -27,8 +23,11 @@ int main() {
 
   pin_size_t LED_pin = GPIO::D6;
   pinMode(LED_pin, OUTPUT);
-  auto rf  = RfSystem(RST_PIN, CS_PIN, IRQ_PIN, SDN_PIN);
+
+  auto rf = RfSystem(RST_PIN, CS_PIN, IRQ_PIN, SDN_PIN);
   rf.begin();
+
+  // expect 0x00
   auto version = rf.version();
   printf("version=%d\n", version);
 
@@ -36,10 +35,17 @@ int main() {
   auto d = std::chrono::duration<uint64_t, std::milli>(500);
 
   while (true) {
-    if (instant.elapsed() > d) {
-      printf("elapsed=%d\n", instant.elapsed().count());
-      etl::string<32> payload = "hello world";
+    if (instant.elapsed() >= d) {
+      // construct a payload
+      etl::string<32> payload = "hello world:";
+      auto r = utils::rand_range(0, 100);
+      etl::to_string(r, payload, true);
+      payload.append("\n");
+
       rf.dataPackageSend(payload.c_str(), payload.length());
+      rf.refreshStatus();
+      auto status = rf.getStatus();
+      RF::printStatus(status);
       instant.reset();
     }
   }

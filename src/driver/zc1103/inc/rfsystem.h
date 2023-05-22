@@ -44,23 +44,30 @@ enum PA_LEVEL {
   DBM_6,
 };
 
-enum RfStatus {
-  IDLE = 0,
-  RX,
-  TX,
-  SLEEP,
-  STANDBY,
-  ERROR,
+struct RfStatus {
+  bool idle = false;
+  bool tx = false;
+  bool rx = false;
+  bool fs = false;
+  bool scan = false;
+  bool rc_cal = false;
+  bool vco_cal = false;
+  bool wor = false;
 };
 
 class RfSystem {
   volatile uint32_t preamble_timeout = 0;
-  // what flag?
-  volatile uint8_t tx_flag = 0;
-  RfStatus systemStatus = IDLE;
-  volatile bool rf_interrupt_pending = false;
-  unsigned char g_paValue = 10;
-  double g_freq = 476;
+  struct RfStatus systemStatus = {
+      .idle = true,
+      .tx = false,
+      .rx = false,
+      .fs = false,
+      .scan = false,
+      .rc_cal = false,
+      .vco_cal = false,
+      .wor = false
+  };
+  volatile bool _rx_flag = false;
 
   /// 芯片复位脚，低电平有效，复位后寄存器数值丢失，全部变为默认值。
   pin_size_t RST_PIN;
@@ -77,11 +84,11 @@ class RfSystem {
 
 /**
   * \brief  读数据
-  * \param [OUT] StoreBuf 保存数据地址
+  * \param [OUT] dst 保存数据地址
   * \param [IN] len 读取长度
   * \retval None
   */
-  void readFifo(unsigned char *StoreBuf, unsigned char Len);
+  void readFifo(unsigned char *dst, unsigned char Len);
 
 /**
   * \brief  读取Rssi值
@@ -153,16 +160,31 @@ class RfSystem {
 
   void setFreqStep(double step);
 
+/**
+  * \brief  清空发送区域
+  */
   void clrTxFifoWrPtr();
 
 /**
-  * \brief  发送数据
-  * \param [IN] SrcBuf 待发送数据
-  * \param [IN] len 待发送数据长度
+  * \brief  发送数据 (without size written in the first byte)
+  * \param [IN] src
+  * \param [IN] len
   * \retval None
   */
   void writeFifo(const char *src, uint8_t len);
+
+/**
+  * \brief  发送数据
+  * \param [IN] src 待发送数据 (单字节)
+  * \retval None
+  */
   void writeFifo(char src);
+
+  /**
+   * @brief write src to FIFO with size written in the first byte
+   * @param [IN] src
+   * @param len
+   */
   void writeFifoWithSize(const char *src, uint8_t len);
 
 /**
@@ -193,9 +215,6 @@ public:
   */
   int packageRecv(char *buf);
 
-  RfStatus getSystemStatus() const;
-
-  unsigned char getPktStatus();
 
 /**
  * \brief  设置频率
@@ -205,11 +224,11 @@ public:
 
 /**
   * \brief  外部检查是否有中断发生
-  * \retval  0 没有 RF 中断; 1 有 RF 中断
+  * \retval  0 没有 RF 中断; 1 有 RF 中断;
   */
-  bool is_interrupt_pending() const;
+  bool rx_flag() const;
 
-  void clear_interrupt_flags();
+  void reset_rx_flag();
 
   uint8_t version();
 
@@ -247,12 +266,25 @@ public:
   void printRegisters();
 
   RfSystem(const RfSystem &) = delete;
+
   RfSystem &operator=(const RfSystem &) = delete;
+
   RfSystem(RfSystem &&) = delete;
+
   RfSystem &operator=(RfSystem &&) = delete;
 
 
+  // refresh status by 0x46 register
+  void refreshStatus();
+
+  // get status but not refresh
+  [[nodiscard]]
+  const RfStatus & getStatus() const;
 };
+
+namespace RF {
+  void printStatus(const RfStatus &status);
+}
 
 #endif
 
