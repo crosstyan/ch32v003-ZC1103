@@ -226,9 +226,15 @@ public:
   * \brief  外部检查是否有中断发生
   * \retval  0 没有 RF 中断; 1 有 RF 中断;
   */
-  bool rx_flag() const;
+  bool rxFlag() const;
 
-  void reset_rx_flag();
+  void resetRxFlag();
+
+  /**
+   * @brief polling IRQ pin
+   * @effect `rxFlag` will be set to true if IRQ pin is high
+   */
+  bool pollIrqPin();
 
   uint8_t version();
 
@@ -262,7 +268,9 @@ public:
   /// ch32v003 only has one SPI so there's no need to specify the SPI bus
   RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
 
-  // 打印初始化参数
+  /**
+   * @brief print all registers
+   */
   void printRegisters();
 
   RfSystem(const RfSystem &) = delete;
@@ -273,13 +281,12 @@ public:
 
   RfSystem &operator=(RfSystem &&) = delete;
 
-
   // refresh status by 0x46 register
   void refreshStatus();
 
   // get status but not refresh
   [[nodiscard]]
-  const RfStatus & getStatus() const;
+  const RfStatus &getStatus() const;
 };
 
 namespace RF {

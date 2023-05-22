@@ -300,7 +300,7 @@ void RfSystem::refreshStatus() {
   this->systemStatus = status;
 }
 
-const RfStatus & RfSystem::getStatus() const {
+const RfStatus &RfSystem::getStatus() const {
   return this->systemStatus;
 }
 
@@ -351,27 +351,18 @@ void RfSystem::dataPackageSend(const char *buffer, const unsigned char size) {
 int RfSystem::packageRecv(char *buf) {
   int len;
 
-  unsigned char rx_rssi = 0;
-
   registerWrite(0x51, 0x80);
   len = registerRead(0x52 | 0x80);
   if (len == 0) {
     rx();
     return -3;
   } else {
-    rx_rssi = readRssi();
     readFifo((uint8_t *) buf, len);
     rx();
     return len;
   }
 }
 
-
-/**
-  * \brief RF芯片配置
-  * \param None
-  * \retval None
-  */
 void RfSystem::begin() {
   gpioConfigure();
 
@@ -441,11 +432,11 @@ uint8_t RfSystem::version() {
   return tmp & 0b11;
 };
 
-bool RfSystem::rx_flag() const {
+bool RfSystem::rxFlag() const {
   return _rx_flag;
 }
 
-void RfSystem::reset_rx_flag() {
+void RfSystem::resetRxFlag() {
   _rx_flag = false;
 }
 
@@ -464,3 +455,12 @@ void RF::printStatus(const RfStatus &status) {
          status.vco_cal,
          status.wor);
 };
+
+bool RfSystem::pollIrqPin() {
+  if (RF_IRQ_INPUT() == HIGH) {
+    this->_rx_flag = true;
+    return true;
+  } else {
+    return false;
+  }
+}
