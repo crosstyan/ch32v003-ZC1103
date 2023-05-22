@@ -12,7 +12,7 @@
 #define SYSTICK_CTLR_STRE (1<<3)
 #define SYSTICK_CTLR_SWIE (1<<31)
 
-volatile uint32_t systick_cnt;
+volatile uint64_t systick_cnt;
 
 /*
  * Start up the SysTick IRQ
@@ -50,6 +50,6 @@ void SysTick_Handler() {
   systick_cnt++;
 }
 
-uint32_t millis() {
+uint64_t millis() {
   return systick_cnt;
 }

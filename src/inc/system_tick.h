@@ -18,6 +18,6 @@ extern "C" void SysTick_init();
  */
 extern "C" void SysTick_Handler() __attribute__((interrupt));
 
-uint32_t millis();
+uint64_t millis();
 
 #endif //SIMPLE_SYSTEM_TICK_H
