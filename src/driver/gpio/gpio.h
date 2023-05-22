@@ -8,8 +8,6 @@
 #ifndef SIMPLE_GPIO_H
 #define SIMPLE_GPIO_H
 
-//#include "ch32v00x.h"
-//#include "ch32v00x_gpio.h"
 #include "ch32v003fun.h"
 
 // defined in ch32v003fun.h

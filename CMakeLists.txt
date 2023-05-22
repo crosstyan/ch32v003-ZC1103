@@ -6,23 +6,10 @@ enable_language(ASM)
 enable_language(C)
 enable_language(CXX)
 
-#set(VENDOR_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor)
-#file(GLOB VENDOR_CORE_SRC       ${VENDOR_DIRECTORY}/Core/*.c)
-#file(GLOB VENDOR_DEBUG_SRC      ${VENDOR_DIRECTORY}/Debug/*.c)
-#file(GLOB VENDOR_PERIPHERAL_SRC ${VENDOR_DIRECTORY}/Peripheral/src/*.c)
-#set(VENDOR_STARTUP_SRC ${VENDOR_DIRECTORY}/Startup/startup_ch32v00x.S)
-#set(VENDOR_SRC  ${VENDOR_STARTUP_SRC} ${VENDOR_CORE_SRC} ${VENDOR_DEBUG_SRC} ${VENDOR_PERIPHERAL_SRC})
-#include_directories(${VENDOR_DIRECTORY}/Core)
-#include_directories(${VENDOR_DIRECTORY}/Debug)
-#include_directories(${VENDOR_DIRECTORY}/Peripheral/inc)
-
 set(FUN_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/fun)
 file(GLOB FUN_SRC ${FUN_DIRECTORY}/ch32v003fun/*.c)
 include_directories(${FUN_DIRECTORY}/ch32v003fun)
 include_directories(${FUN_DIRECTORY}/extralibs)
-
-#file(GLOB SYSTEM_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/system/*.c)
-#include_directories(src/system)
 
 set(LIB_PRINTF_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/printf)
 set(LIB_PRINTF_SRC ${LIB_PRINTF_DIRECTORY}/src/printf/printf.c)
@@ -33,7 +20,7 @@ set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
 set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
 include_directories(${ZC1103_DIRECTORY}/inc)
 
-set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp src/inc/clock.h)
+set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp src/inc/clock.h src/inc/spi.h src/system_tick.cpp src/inc/system_tick.h)
 include_directories(src/inc src/driver/gpio)
 
 add_executable(${CMAKE_PROJECT_NAME}.elf
@@ -43,7 +30,10 @@ add_executable(${CMAKE_PROJECT_NAME}.elf
         ${APP_SRC}
         ${LIB_PRINTF_SRC}
         ${ZC1103_SRC})
-add_compile_definitions(PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1)
+add_compile_definitions(
+        PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1
+        STDOUT_UART=1
+)
 
 # Generate the binary file
 add_custom_target(
