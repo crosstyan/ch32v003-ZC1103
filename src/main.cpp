@@ -23,21 +23,12 @@ int main() {
   auto instant = Instant();
   auto d = std::chrono::duration<uint64_t, std::milli>(500);
 
-// Don't have enough memory to run this
-//  while (true) {
-//    instant.try_run<void(void)>([&]() {
-//      digitalWrite(LED_pin, boolToStatus(i));
-//      i = !i;
-//      printf("delayed %d ms; count: %d;\n", d.count(), instant.count());
-//    }, d);
-//  }
-
   while (true) {
     if (instant.elapsed() > d) {
       digitalWrite(LED_pin, boolToStatus(i));
       i = !i;
       printf("delayed=%dms;\n", d.count());
-      printf("count=%dms;\n", instant.count());
+      printf("millis=%dms;\n", instant.count());
       instant.reset();
     }
   }
