@@ -56,7 +56,7 @@ void pinMode(pin_size_t pin, PinMode mode) {
       pinConfig = GPIO_CNF_IN_FLOATING;
       break;
     case OUTPUT:
-      pinConfig = GPIO_Speed_50MHz | GPIO_CNF_OUT_PP;
+      pinConfig = GPIO_Speed_10MHz | GPIO_CNF_OUT_PP;
       break;
     case INPUT_PULLUP:
       pinConfig = GPIO_CNF_IN_PUPD;

@@ -10,13 +10,13 @@
 #include "clock.h"
 #include "ch32v003fun.h"
 
-void SysTick_init();
+extern "C" void SysTick_init();
 
 /*
  * SysTick ISR just counts ticks
  * note - the __attribute__((interrupt)) syntax is crucial!
  */
-void SysTick_Handler() __attribute__((interrupt));
+extern "C" void SysTick_Handler() __attribute__((interrupt));
 
 uint32_t millis();
 
