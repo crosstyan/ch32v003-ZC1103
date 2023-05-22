@@ -24,15 +24,16 @@ inline void RfSystem::CS_LOW() {
   digitalWrite(this->CS_PIN, LOW);
 }
 
-void RfSystem::gpioConfigure() {
+inline void RfSystem::gpioConfigure() {
   pinMode(this->RST_PIN, OUTPUT);
   pinMode(this->SDN_PIN, OUTPUT);
   pinMode(this->CS_PIN, OUTPUT);
   pinMode(this->IRQ_PIN, INPUT);
 }
 
-void RfSystem::spiConfigure() {
+inline void RfSystem::spiConfigure() {
   SPI_init();
+  SPI_begin_8();
 }
 
 inline int RfSystem::RF_IRQ_INPUT() {
@@ -57,7 +58,7 @@ void RfSystem::reset() {
   }
 }
 
-uint8_t RfSystem::sendByte(unsigned char byte) {
+inline uint8_t RfSystem::sendByte(unsigned char byte) {
   auto data = SPI_transfer_8(byte);
   return data;
 }
@@ -78,9 +79,6 @@ unsigned char RfSystem::registerRead(const unsigned char addr) {
 }
 
 void RfSystem::registerInit() {
-  unsigned int i = 0;
-  unsigned int loopCount = 0;
-
   registerWrite(0x09, 0x08);/*Debug*/
   registerWrite(0x0c, 0x03);
   registerWrite(0x0e, 0xA1);
@@ -155,10 +153,6 @@ void RfSystem::registerInit() {
 
   registerWrite(0x06, 0x3a);//0x3a /*syncwordlen = 2bytes,length = 1byte,CRC,SCramble_on*/   bit[3] share fifo
   registerWrite(0x04, 0x50);/*preamble length 80 bytes*/
-
-  for (i = 10; i > 0; i--) {
-    for (loopCount = 0xffff; loopCount != 0; loopCount--);
-  }
 }
 
 void RfSystem::setRefFreq(const double freq) {
@@ -287,13 +281,27 @@ unsigned char RfSystem::readRssi() {
   return r_reg / 2;
 }
 
-void RfSystem::writeFifo(const unsigned char *SrcBuf, unsigned char len) {
-  unsigned char i = 0;
-
+void RfSystem::writeFifo(const char *src, uint8_t len) {
   CS_LOW();
   sendByte(0x55 & 0x7F);
-  for (i = 0; i < len; i++) {
-    sendByte(*(SrcBuf++));
+  for (auto i = 0; i < len; i++) {
+    sendByte(static_cast<uint8_t>(*(src++)));
+  }
+  CS_HIGH();
+}
+void RfSystem::writeFifo(char src) {
+  CS_LOW();
+  sendByte(0x55 & 0x7F);
+  sendByte(static_cast<uint8_t>(src));
+  CS_HIGH();
+}
+
+void RfSystem::writeFifoWithSize(const char *src, uint8_t len) {
+  CS_LOW();
+  sendByte(0x55 & 0x7F);
+  sendByte(len);
+  for (auto i = 0; i < len; i++) {
+    sendByte(static_cast<uint8_t>(*(src++)));
   }
   CS_HIGH();
 }
@@ -322,35 +330,20 @@ RfStatus RfSystem::getSystemStatus() const {
   * \brief  使能IDLE 模式
   */
 void RfSystem::idle() {
-  int i = 0;
   registerWrite(0x60, 0xff);
-  while (registerRead(0x46) != 0x80) {
-    if (i++ > 256) {
-      systemStatus = ERROR;
-      return;
-    }
-  }
   systemStatus = IDLE;
 }
 
 void RfSystem::rx() {
-  int i = 0;
   registerWrite(0x51, 0x80);
   idle();
   registerWrite(0x66, 0xff);
-  while (registerRead(0x46) != 0x20) {
-    if (i++ > 256) {
-      systemStatus = ERROR;
-      return;
-    }
-  }
   systemStatus = RX;
 }
 
 void RfSystem::tx() {
   idle();
   registerWrite(0x65, 0xff);
-  while (registerRead(0x46) != 0x40);
   systemStatus = TX;
 }
 
@@ -373,20 +366,14 @@ void RfSystem::txCW() {
   tx();
 }
 
-void RfSystem::dataPackageSend(const unsigned char *buffer, const unsigned char size) {
+void RfSystem::dataPackageSend(const char *buffer, const unsigned char size) {
 
   /*Fix SPI concurrency conflicts, disable irq */
   if (size > 0) {
-    unsigned char buf[264] = {0};
-
-
-    buf[0] = size;
-    memcpy(buf + 1, buffer, size);
     idle();
     clrTxFifoWrPtr();
-    writeFifo(&buf[0], size + 1);
+    writeFifoWithSize(buffer, size);
     tx();
-
   }
 
 }
@@ -405,12 +392,6 @@ int RfSystem::packageRecv(char *buf) {
     rx_rssi = readRssi();
     readFifo((uint8_t *) buf, len);
     rx();
-    #if 0
-    printf("rece data len = %d  rssi = -%bd dB\r\n", len,rx_rssi);
-    for(i=0; i<len; i++){
-        printf("0x%bx\t",buf[i] );
-    }
-    #endif
     return len;
   }
 }
@@ -422,8 +403,6 @@ int RfSystem::packageRecv(char *buf) {
   * \retval None
   */
 void RfSystem::begin() {
-  unsigned int i = 0;
-
   gpioConfigure();
 
   CS_HIGH();
@@ -450,13 +429,13 @@ void RfSystem::begin() {
   setPA(DBM20);
 
   rx();
-
-  //打印初始化参数
-  for (i = 0; i <= 0x7f; i++) {
-    printf("read  reg0x%02x = %2.2x \n", i, registerRead(i));
-  }
 }
 
+void RfSystem::printRegisters(){
+  for (auto i = 0; i <= 0x7f; i++) {
+    printf("reg(0x%02x) = 0x%02x \n", i, registerRead(i));
+  }
+}
 
 /**
  * \brief   rf 中断底半段
@@ -466,7 +445,7 @@ void RfSystem::begin() {
 void RfSystem::isr() {
   auto tmp = registerRead(0x40);
 
-  printf("%2.2x\r\n", tmp);
+//  printf("%2.2x\r\n", tmp);
 
   // 接收到正确的 preamble
   if (tmp & (1 << 6)) {
@@ -491,6 +470,7 @@ void RfSystem::isr() {
 
 }
 
+/// should be 0
 uint8_t RfSystem::version() {
   auto tmp = registerRead(0x04);
   // only need first two bit

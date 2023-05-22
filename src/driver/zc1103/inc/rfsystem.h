@@ -76,21 +76,6 @@ class RfSystem {
   void spiConfigure();
 
 /**
- * \brief  写RF寄存器
- * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
- * \param[IN] val  写入的值
- * \retval  None
- */
-  void registerWrite(const unsigned char addr, const unsigned char val);
-
-/**
- * \brief  读RF寄存器
- * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
- * \retval  读取寄存器的值
- */
-  unsigned char registerRead(const unsigned char addr);
-
-/**
   * \brief  读数据
   * \param [OUT] StoreBuf 保存数据地址
   * \param [IN] len 读取长度
@@ -176,7 +161,9 @@ class RfSystem {
   * \param [IN] len 待发送数据长度
   * \retval None
   */
-  void writeFifo(const unsigned char *SrcBuf, unsigned char len);
+  void writeFifo(const char *src, uint8_t len);
+  void writeFifo(char src);
+  void writeFifoWithSize(const char *src, uint8_t len);
 
 /**
  * \brief  初始化 rf 寄存器
@@ -197,7 +184,7 @@ public:
   * \param [IN] buffer 发送数据
   * \param [IN] size   发送数数据长度
   */
-  void dataPackageSend(const unsigned char *buffer, const unsigned char size);
+  void dataPackageSend(const char *buffer, const unsigned char size);
 
 /**
   * @brief  接收数据包
@@ -238,14 +225,33 @@ public:
 
   void isr();
 
+/**
+ * \brief  写RF寄存器
+ * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
+ * \param[IN] val  写入的值
+ * \retval  None
+ */
+  void registerWrite(const unsigned char addr, const unsigned char val);
+
+/**
+ * \brief  读RF寄存器
+ * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
+ * \retval  读取寄存器的值
+ */
+  unsigned char registerRead(const unsigned char addr);
+
   /// ch32v003 only has one SPI so there's no need to specify the SPI bus
   RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
+
+  // 打印初始化参数
+  void printRegisters();
 
   RfSystem(const RfSystem &) = delete;
   RfSystem &operator=(const RfSystem &) = delete;
   RfSystem(RfSystem &&) = delete;
   RfSystem &operator=(RfSystem &&) = delete;
-  ~RfSystem() = delete;
+
+
 };
 
 #endif
