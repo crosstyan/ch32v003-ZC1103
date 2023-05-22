@@ -32,9 +32,9 @@ int main() {
   printf("version=%d\n", version);
 
   auto instant = Instant();
-  auto d = std::chrono::duration<uint64_t, std::milli>(500);
-
   while (true) {
+    #ifdef TX
+    auto d = std::chrono::duration<uint64_t, std::milli>(500);
     if (instant.elapsed() >= d) {
       // construct a payload
       etl::string<32> payload = "hello world:";
@@ -48,5 +48,21 @@ int main() {
       RF::printStatus(status);
       instant.reset();
     }
+    #else
+    auto d = std::chrono::duration<uint64_t, std::milli>(1000);
+    if (instant.elapsed() > d) {
+      rf.refreshStatus();
+      auto status = rf.getStatus();
+      RF::printStatus(status);
+      instant.reset();
+    }
+    if (rf.pollIrqPin()) {
+      etl::string<256> buf;
+      auto size = rf.packageRecv(buf.data());
+      buf.resize(size);
+      printf("recv: %s\n", buf.c_str());
+      rf.resetRxFlag();
+    }
+    #endif
   }
 }

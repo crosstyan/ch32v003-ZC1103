@@ -98,7 +98,8 @@ void RfSystem::registerInit() {
   registerWrite(0x39, 0x74); /*enable demode reset */
   registerWrite(0x3A, 0x61);
   registerWrite(0x4a, 0x60);
-  registerWrite(0x4d, 0x0b);
+  // should be 0x0b and no need to write it
+  // registerWrite(0x4d, 0x0b);
   registerWrite(0x4e, 0x7c);/*ber optimize 0x6c->0x7c by 20211126 juner*/
   registerWrite(0x4f, 0xc5);
   ////10kps
@@ -400,8 +401,6 @@ void RfSystem::printRegisters() {
 
 /**
  * \brief   rf 中断底半段
- * \param   None
- * \retval  None
  */
 void RfSystem::isr() {
   auto tmp = registerRead(0x40);
@@ -411,9 +410,6 @@ void RfSystem::isr() {
     // 接收到正确的 sync word
     if (!(tmp & (1 << 7))) {
       preamble_timeout = 200;
-      // Crc 错误指示
-    } else if (!(tmp & (1 << 5))) {
-      preamble_timeout = 0;
     } else {
       preamble_timeout = 0;
     }
