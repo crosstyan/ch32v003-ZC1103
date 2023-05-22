@@ -4,3 +4,6 @@
 [submodule "libs/printf"]
 	path = libs/printf
 	url = https://github.com/eyalroz/printf
+[submodule "fun"]
+	path = fun
+	url = https://github.com/crosstyan/ch32v003fun

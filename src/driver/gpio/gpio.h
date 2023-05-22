@@ -8,8 +8,9 @@
 #ifndef SIMPLE_GPIO_H
 #define SIMPLE_GPIO_H
 
-#include "ch32v00x.h"
-#include "ch32v00x_gpio.h"
+//#include "ch32v00x.h"
+//#include "ch32v00x_gpio.h"
+#include "ch32v003fun.h"
 
 // defined in ch32v003fun.h
 // https://github.com/cnlohr/ch32v003fun/blob/2698222cf674c546cac75e4a1db99c4b97473f08/ch32v003fun/ch32v003fun.h#L3239

@@ -32,18 +32,7 @@ void RfSystem::gpioConfigure() {
 }
 
 void RfSystem::spiConfigure() {
-  auto spi_config = SPI_InitTypeDef{
-      .SPI_Direction = SPI_Direction_2Lines_FullDuplex,
-      .SPI_Mode = SPI_Mode_Master,
-      .SPI_DataSize = SPI_DataSize_16b,
-      .SPI_CPOL = SPI_CPOL_Low,
-      .SPI_CPHA = SPI_CPHA_1Edge,
-      .SPI_NSS = SPI_NSS_Soft,
-      .SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2,
-      .SPI_FirstBit = SPI_FirstBit_MSB,
-      .SPI_CRCPolynomial = 7,
-  };
-  SPI_Init(this->SPI, &spi_config);
+  SPI_init();
 }
 
 inline int RfSystem::RF_IRQ_INPUT() {
@@ -68,13 +57,12 @@ void RfSystem::reset() {
   }
 }
 
-unsigned char RfSystem::sendByte(unsigned char byte) {
-  SPI_I2S_SendData(this->SPI, byte);
-  auto data = SPI_I2S_ReceiveData(this->SPI);
+uint8_t RfSystem::sendByte(unsigned char byte) {
+  auto data = SPI_transfer_8(byte);
   return data;
 }
 
-void RfSystem::registerWrite(const unsigned char addr, const unsigned char val) {
+void RfSystem::registerWrite(const uint8_t addr, const uint8_t val) {
   CS_LOW();
   sendByte(addr & 0x7f);
   sendByte(val);

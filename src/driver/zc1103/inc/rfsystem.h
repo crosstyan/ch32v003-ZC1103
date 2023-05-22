@@ -2,12 +2,21 @@
 #ifndef _BSP_RFSYSTEM_H
 #define _BSP_RFSYSTEM_H
 
+#define CH32V003_SPI_SPEED_HZ 1000000
+#define CH32V003_SPI_DIRECTION_2LINE_TXRX
+#define CH32V003_SPI_CLK_MODE_POL0_PHA0
+#define CH32V003_SPI_NSS_SOFTWARE_ANY_MANUAL
+#define CH32V003_SPI_IMPLEMENTATION
+
 #include <cmath>
 #include <cstring>
 #include <cstdint>
 #include "printf.h"
-#include "ch32v00x.h"
-#include "ch32v00x_spi.h"
+//#include "ch32v00x.h"
+//#include "ch32v00x_spi.h"
+#include "clock.h"
+#include "ch32v003fun.h"
+#include "ch32v003_SPI.h"
 #include "gpio.h"
 
 #define RF_RSSI_THRESHOLD                   65
@@ -153,7 +162,7 @@ class RfSystem {
  * \param  [IN] byte 发送的字节
  * \retval  接收的字节
  */
-  unsigned char sendByte(unsigned char byte);
+  uint8_t sendByte(unsigned char byte);
 
 /**
   * \brief  使能接收到同步字后锁定rssi
