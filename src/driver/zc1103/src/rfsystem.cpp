@@ -254,7 +254,8 @@ void RfSystem::freqSet(const double f0, const unsigned char N, const double step
 }
 
 void RfSystem::clrTxFifoWrPtr() {
-  write(0x53, 0x80);      /*Reset FIFO write Pointer*/
+    // 0x80 = 0b1000_0000
+    write(0x53, 0x80);      /*Reset FIFO write Pointer*/
 }
 
 unsigned char RfSystem::readRssi() {
@@ -317,15 +318,18 @@ RfStatus RfSystem::pollStatus() {
 inline void RfSystem::idle() {
   write(0x60, 0xff);
 }
+inline void RfSystem::fs(){
+  write(0x64, 0xff);
+}
 
 inline void RfSystem::rx() {
   write(0x51, 0x80);
-  idle();
+  fs();
   write(0x66, 0xff);
 }
 
 inline void RfSystem::tx() {
-  idle();
+  fs();
   write(0x65, 0xff);
 }
 
@@ -340,7 +344,7 @@ inline void RfSystem::standBy() {
 }
 
 void RfSystem::txCW() {
-  idle();
+  fs();
   write(0x24, (read(0x24) | 0x80));
   write(0x06, (read(0x06) & 0xFC));
   tx();
@@ -348,7 +352,7 @@ void RfSystem::txCW() {
 
 void RfSystem::send(const char *buffer, const unsigned char size) {
   if (size > 0) {
-    idle();
+    fs();
     clrTxFifoWrPtr();
     writeFifoWithSize(buffer, size);
     tx();
@@ -394,7 +398,7 @@ void RfSystem::begin() {
 
   //设置发射功率
   setPA(DBM20);
-
+  fs();
   rx();
   _is_initialized = true;
 }
@@ -453,16 +457,23 @@ void RF::printState(const RfState &state) {
          state.rx_pkt_state);
 }
 
+/// Pkt_flag 分为 4 个功能:前导匹配、同步字匹配、接收或发送包完成。
+/// 在 pkt_length_en=1(payload 第 1 个字节为包长度)的情况下，pkt_flag 可设为
+/// 同步字匹配或包完成状态，默认为包完成。在 pkt_length_en=0 时，
+/// pkt_flag 表示前导匹配或同步字匹配。在发送状态下表示包完成。
+///
+/// Fifo_flag 表示 FIFO full 或 empty，在发送模块时表示 fifo empty，
+/// 在接收模式时表示 fifo full。
 struct RfState RfSystem::pollState() {
-  auto status = read(0x40);
-  uint8_t rx_pkg_st = status & 0b111;
-  auto s = RfState{
-    .sync_word_rev = shift_equal(status, 7),
-    .preamble_rev = shift_equal(status, 6),
-    .crc_error = shift_equal(status, 5),
-    .pkt_flag = shift_equal(status, 4),
-    .fifo_flag = shift_equal(status, 3),
+  auto s = read(0x40);
+  uint8_t rx_pkg_st = s & 0b111;
+  auto state = RfState{
+    .sync_word_rev = shift_equal(s, 7),
+    .preamble_rev = shift_equal(s, 6),
+    .crc_error = shift_equal(s, 5),
+    .pkt_flag = shift_equal(s, 4),
+    .fifo_flag = shift_equal(s, 3),
     .rx_pkt_state = rx_pkg_st,
   };
-  return s;
+  return state;
 }

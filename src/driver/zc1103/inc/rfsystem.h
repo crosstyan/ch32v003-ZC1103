@@ -310,6 +310,11 @@ protected:
   /// ch32v003 only has one SPI so there's no need to specify the SPI bus
   /// Have to set to default constructor or the linker will complain
   RfSystem() = default;
+
+  /// frequency synthesizer 频率合成器/频综
+  ///
+  /// 让频综打开后保持在这个状态，在频综保持状态当收到 TX/RX 会马上进入 TX/RX 状态。
+  void fs();
 };
 
 namespace RF {

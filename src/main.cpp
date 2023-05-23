@@ -57,11 +57,14 @@ int main() {
       auto r = utils::rand_range(0, 100);
       etl::to_string(r, payload, true);
       payload.append("\n");
-
       rf.send(payload.c_str(), payload.length());
-      rf.refreshStatus();
-      auto status = rf.getStatus();
+      digitalWrite(GPIO::D6, HIGH);
+      Delay_Ms(10);
+      digitalWrite(GPIO::D6, LOW);
+      auto status = rf.pollStatus();
+      auto state = rf.pollState();
       RF::printStatus(status);
+      RF::printState(state);
       instant.reset();
     }
     #else // RX
