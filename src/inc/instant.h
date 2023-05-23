@@ -40,7 +40,6 @@ public:
     return duration;
   }
 
-  /// for some reason this function always returns 0
   [[nodiscard]] uint64_t count() const {
     return this->time;
   }

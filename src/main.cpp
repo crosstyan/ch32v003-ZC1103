@@ -48,7 +48,7 @@ int main() {
       RF::printStatus(status);
       instant.reset();
     }
-    #else
+    #else // RX
     auto d = std::chrono::duration<uint64_t, std::milli>(1000);
     if (instant.elapsed() > d) {
       rf.refreshStatus();

@@ -89,7 +89,7 @@ class RfSystem {
   * \param [IN] len 读取长度
   * \retval None
   */
-  void readFifo(unsigned char *dst, unsigned char Len);
+  void readFifo(unsigned char *dst, unsigned char len);
 
 /**
   * \brief  读取Rssi值
@@ -146,18 +146,23 @@ class RfSystem {
  * \param  [IN] byte 发送的字节
  * \retval  接收的字节
  */
-  uint8_t sendByte(unsigned char byte);
+  uint8_t sendByte(uint8_t byte);
+
+  /// when you want to send a bunch of bytes and don't care about the return value
+  void sendBytes(const uint8_t *bytes, size_t len);
+  void sendBytes(const char *bytes, size_t len);
+
 
 /**
   * \brief  使能接收到同步字后锁定rssi
   * \param  None
   * \retval  None
   */
-  void setSyncLockRssi(void);
+  void setSyncLockRssi();
 
-  void setVcoFreq(const double freq);
+  void setVcoFreq(double freq);
 
-  void setFreq(const unsigned char N);
+  void setFreq(uint8_t N);
 
   void setFreqStep(double step);
 
@@ -207,7 +212,7 @@ public:
   * \param [IN] buffer 发送数据
   * \param [IN] size   发送数数据长度
   */
-  void dataPackageSend(const char *buffer, const unsigned char size);
+  void dataPackageSend(const char *buffer, unsigned char size);
 
 /**
   * @brief  接收数据包
@@ -221,7 +226,7 @@ public:
  * \brief  设置频率
  * \param [IN]  freq 频率值
  */
-  void setRefFreq(const double freq);
+  void setRefFreq(double freq);
 
 /**
   * \brief  外部检查是否有中断发生
@@ -257,14 +262,14 @@ public:
  * \param[IN] val  写入的值
  * \retval  None
  */
-  void registerWrite(const unsigned char addr, const unsigned char val);
+  void write(const uint8_t addr, const uint8_t val);
 
 /**
  * \brief  读RF寄存器
  * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
  * \retval  读取寄存器的值
  */
-  unsigned char registerRead(const unsigned char addr);
+  unsigned char read(unsigned char addr);
 
   /// ch32v003 only has one SPI so there's no need to specify the SPI bus
   RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
