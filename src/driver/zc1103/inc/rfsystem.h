@@ -45,6 +45,7 @@ enum PA_LEVEL {
   DBM_6,
 };
 
+/// 0x46 (8'h46)
 struct RfStatus {
   bool idle = false;
   bool tx = false;
@@ -56,18 +57,18 @@ struct RfStatus {
   bool wor = false;
 };
 
+/// 0x40 (8'h40)
+struct RfState {
+  bool sync_word_rev = false;
+  bool preamble_rev = false;
+  bool crc_error = false;
+  bool pkt_flag = false;
+  bool fifo_flag = false;
+  uint8_t rx_pkt_state = 0;
+};
+
 class RfSystem {
   volatile uint32_t preamble_timeout = 0;
-  struct RfStatus systemStatus = {
-      .idle = true,
-      .tx = false,
-      .rx = false,
-      .fs = false,
-      .scan = false,
-      .rc_cal = false,
-      .vco_cal = false,
-      .wor = false
-  };
   volatile bool _rx_flag = false;
 
   bool _is_initialized = false;
@@ -235,11 +236,7 @@ public:
 
   void resetRxFlag();
 
-  /**
-   * @brief polling IRQ pin
-   * @effect `rxFlag` will be set to true if IRQ pin is high
-   */
-  bool pollIrqPin();
+  RfState pollState();
 
   uint8_t version();
 
@@ -286,11 +283,7 @@ public:
   RfSystem &operator=(const RfSystem &) = delete;
 
   // refresh status by 0x46 register
-  void refreshStatus();
-
-  // get status but not refresh
-  [[nodiscard]]
-  const RfStatus &getStatus() const;
+  RfStatus pollStatus();
 
   [[nodiscard]]
   bool isInitialized() const {
@@ -323,6 +316,7 @@ protected:
 
 namespace RF {
   void printStatus(const RfStatus &status);
+  void printState(const RfState &state);
 }
 
 #endif

@@ -1,5 +1,11 @@
 #include "rfsystem.h"
 
+/// a utility function to check if a bit is set at shift.
+/// note that shift is 0-indexed
+inline static bool shift_equal(uint8_t byte, uint8_t shift){
+  return (byte & (1 << shift)) == (1 << shift);
+}
+
 inline void RfSystem::RST_LOW() {
   digitalWrite(this->RST_PIN, LOW);
 }
@@ -289,23 +295,20 @@ void RfSystem::readFifo(unsigned char *dst, unsigned char len) {
   CS_HIGH();
 }
 
-void RfSystem::refreshStatus() {
+RfStatus RfSystem::pollStatus() {
   auto s = read(0x46);
+  // idle is bit 7
   auto status = RfStatus{
-      .idle = (s & 0x01) == 0x01,
-      .tx = (s & 0x02) == 0x02,
-      .rx = (s & 0x04) == 0x04,
-      .fs = (s & 0x08) == 0x08,
-      .scan = (s & 0x10) == 0x10,
-      .rc_cal = (s & 0x20) == 0x20,
-      .vco_cal = (s & 0x40) == 0x40,
-      .wor = (s & 0x80) == 0x80,
+      .idle = shift_equal(s, 7),
+      .tx = shift_equal(s, 6),
+      .rx = shift_equal(s, 5),
+      .fs = shift_equal(s, 4),
+      .scan = shift_equal(s, 3),
+      .rc_cal = shift_equal(s, 2),
+      .vco_cal = shift_equal(s, 1),
+      .wor = shift_equal(s, 0),
   };
-  this->systemStatus = status;
-}
-
-const RfStatus &RfSystem::getStatus() const {
-  return this->systemStatus;
+  return status;
 }
 
 /**
@@ -462,11 +465,26 @@ void RF::printStatus(const RfStatus &status) {
          status.wor);
 };
 
-bool RfSystem::pollIrqPin() {
-  if (RF_IRQ_INPUT() == HIGH) {
-    this->_rx_flag = true;
-    return true;
-  } else {
-    return false;
-  }
+void RF::printState(const RfState &state) {
+  printf("sync_word_rev=%d, preamble_rev=%d, crc_error=%d, pkt_flag=%d, fifo_flag=%d, rx_pkt_state=0x%02x\n",
+         state.sync_word_rev,
+         state.preamble_rev,
+         state.crc_error,
+         state.pkt_flag,
+         state.fifo_flag,
+         state.rx_pkt_state);
+}
+
+struct RfState RfSystem::pollState() {
+  auto status = read(0x40);
+  uint8_t rx_pkg_st = status & 0b111;
+  auto s = RfState{
+    .sync_word_rev = shift_equal(status, 7),
+    .preamble_rev = shift_equal(status, 6),
+    .crc_error = shift_equal(status, 5),
+    .pkt_flag = shift_equal(status, 4),
+    .fifo_flag = shift_equal(status, 3),
+    .rx_pkt_state = rx_pkg_st,
+  };
+  return s;
 }

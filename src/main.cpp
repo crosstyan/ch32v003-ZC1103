@@ -3,12 +3,22 @@
 #include "ch32v003fun.h"
 #include "system_tick.h"
 #include "gpio.h"
-#include "utils.h"
 #include "instant.h"
 #include <etl/string.h>
 #include <etl/to_string.h>
 #include "rfsystem.h"
 #include <printf.h>
+#include "utils.h"
+
+void printWithSize(const char *str, size_t size, bool hex = false) {
+  for (size_t i = 0; i < size; i++) {
+    if (hex) {
+      printf("%02x", str[i]);
+    } else {
+      printf("%c", str[i]);
+    }
+  }
+};
 
 static const pin_size_t IRQ_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN = GPIO::C2;
@@ -24,7 +34,7 @@ int main() {
   pin_size_t LED_pin = GPIO::D6;
   pinMode(LED_pin, OUTPUT);
 
-  auto& rf = RfSystem::get();
+  auto &rf = RfSystem::get();
   auto success = rf.setPins(RST_PIN, CS_PIN, IRQ_PIN, SDN_PIN);
   if (!success) {
     printf("[ERROR] failed to set pins\n");
@@ -57,21 +67,23 @@ int main() {
     #else // RX
     auto d = std::chrono::duration<uint64_t, std::milli>(1000);
     if (instant.elapsed() > d) {
-      rf.refreshStatus();
-      auto status = rf.getStatus();
+      auto status = rf.pollStatus();
+      auto s = rf.pollState();
       RF::printStatus(status);
+      RF::printState(s);
       instant.reset();
     }
-    etl::string<256> buf;
-    rf.refreshStatus();
-    auto status = rf.getStatus();
-    if (status.idle) {
-      if (auto maybe = rf.recv(buf.data())) {
-        buf.resize(maybe.value());
-        printf("len: %d\n", maybe.value());
-        rf.resetRxFlag();
-      }
-    }
+//    etl::string<256> buf;
+//    auto s = rf.pollState();
+//    if (s.fifo_flag) {
+//      if (auto maybe = rf.recv(buf.data())) {
+//        buf.resize(maybe.value());
+//        printf("len=%d\n", buf.length());
+//        printWithSize(buf.c_str(), buf.length(), true);
+//        printf("\n");
+//        rf.resetRxFlag();
+//      }
+//    }
     #endif
   }
 }
