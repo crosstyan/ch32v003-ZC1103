@@ -86,6 +86,9 @@ int main() {
       auto s = rf.pollState();
       auto rssi = rf.rssi();
       auto stateRegister = rf.read(0x41);
+      // 0b0001_0011
+      //   00        trivial
+      //     01_0011 state machine state
       printf("stateRegister=0x%02x\n", stateRegister);
       printf("rssi=%u\n", rssi);
       RF::printStatus(status);

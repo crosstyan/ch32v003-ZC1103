@@ -519,3 +519,7 @@ struct RfState RfSystem::pollState() {
 void RfSystem::scanR(){
   write(0x63, 0xff);
 }
+
+void RfSystem::wor(){
+  write(0x6a, 0xff);
+}
