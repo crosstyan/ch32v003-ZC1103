@@ -10,8 +10,8 @@
 #include "clock.h"
 #include "ch32v003fun.h"
 #include "ch32v003_SPI.h"
-#include <etl/optional.h>
 #include "gpio.h"
+#include <etl/optional.h>
 
 #define RF_RSSI_THRESHOLD                   65
 
@@ -106,13 +106,6 @@ class RfSystem {
   void readFifo(unsigned char *dst, unsigned char len);
 
 /**
-  * \brief  读取Rssi值
-  * \param  None
-  * \retval
-  */
-  unsigned char readRssi(void);
-
-/**
 * \brief  发送单音载波
   * \param  None
   * \retval None
@@ -120,13 +113,6 @@ class RfSystem {
   void txCW();
 
   void idle();
-
-/**
-* \brief  切换到发送状态
-  * \param  None
-  * \retval None
-  */
-  void tx();
 
 /**
  * \brief  设置PA增益
@@ -319,15 +305,36 @@ public:
     return instance;
   }
 
-protected:
-  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
-  /// Have to set to default constructor or the linker will complain
-  RfSystem() = default;
+  /**
+   * @brief enter SSCANR mode
+   */
+  void scanR();
 
   /// frequency synthesizer 频率合成器/频综
   ///
   /// 让频综打开后保持在这个状态，在频综保持状态当收到 TX/RX 会马上进入 TX/RX 状态。
   void fs();
+
+/**
+  * \brief  读取Rssi值
+  * \param  None
+  * \retval
+  */
+  unsigned char rssi();
+
+/**
+* \brief  切换到发送状态
+  * \param  None
+  * \retval None
+  */
+  void tx();
+
+  PinStatus pollIrqPin();
+
+protected:
+  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
+  /// Have to set to default constructor or the linker will complain
+  RfSystem() = default;
 };
 
 namespace RF {

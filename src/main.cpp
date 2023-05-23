@@ -29,7 +29,7 @@ int main() {
   SystemInit48HSI();
   SysTick_init();
   SetupDebugPrintf();
-  printf("restart\n");
+  printf("booting\n");
 
   pin_size_t LED_pin = GPIO::D6;
   pinMode(LED_pin, OUTPUT);
@@ -42,13 +42,13 @@ int main() {
   rf.begin();
 
   // expect 0x00
-  // if the value is 0x03 (0b11) then shit goes wrong
   auto version = rf.version();
   printf("version=%d\n", version);
 
   auto instant = Instant();
   auto rx_instant = Instant();
   rf.printRegisters();
+//  #define TX
   #ifdef TX
   printf("TX mode\n");
   #else
@@ -64,6 +64,10 @@ int main() {
       auto r = utils::rand_range(0, 100);
       etl::to_string(r, payload, true);
       payload.append("\n");
+      auto status = rf.pollStatus();
+      if (!status.tx) {
+        rf.tx();
+      }
       auto res = rf.send(payload.c_str(), payload.length());
       if (!res.has_value()){
         printf("TX timeout\n");
@@ -71,9 +75,7 @@ int main() {
       digitalWrite(GPIO::D6, HIGH);
       Delay_Ms(10);
       digitalWrite(GPIO::D6, LOW);
-      auto status = rf.pollStatus();
       auto state = rf.pollState();
-      RF::printStatus(status);
       RF::printState(state);
       instant.reset();
     }
@@ -82,16 +84,18 @@ int main() {
     if (instant.elapsed() > d) {
       auto status = rf.pollStatus();
       auto s = rf.pollState();
+      auto rssi = rf.rssi();
+      printf("rssi=%u\n", rssi);
       RF::printStatus(status);
       RF::printState(s);
       instant.reset();
     }
     // can't poll state too frequently
-    auto rx_d = std::chrono::duration<uint64_t, std::milli>(25);
+    auto rx_d = std::chrono::duration<uint64_t, std::milli>(50);
     if (rx_instant.elapsed() > rx_d) {
       etl::string<256> buf;
-      auto s = rf.pollState();
-      if (s.pkt_flag) {
+      auto state = rf.pollState();
+      if (state.pkt_flag) {
         if (auto maybe = rf.recv(buf.data())) {
           buf.resize(maybe.value());
           printf("len=%d\n", buf.length());

@@ -98,8 +98,18 @@ void RfSystem::registerInit() {
   write(0x09, 0x08);/*Debug*/
   // 0x03 = 0b00000011
   write(0x0c, 0x03);
-  write(0x0e, 0xA1);
-  write(0x0F, 0x0A);
+  // raw RSSI 最低 1bit 表示小数
+  write(0x0d, 0x70);
+  // 0xa1 = 0b10100001
+  //             00001 allowed error bit
+  //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
+  //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword 时产生中断信号
+  //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
+//  write(0x0e, 0b00100001);
+  write(0x0e, 0b00000001);
+  // 0x0a = 0b00001010
+  //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
+  write(0x0f, 0x0f);
   write(0x10, 0x54);
   write(0x1b, 0x25);
 
@@ -168,9 +178,18 @@ void RfSystem::registerInit() {
   write(0x18, 0x20);
   write(0x2a, 0x14);
   write(0x37, 0x99);
-
-  write(0x06, 0x3a);//0x3a /*syncwordlen = 2bytes,length = 1byte,CRC,SCramble_on*/   bit[3] share fifo
-  write(0x04, 0x50);/*preamble length 80 bytes*/
+  // 0x3a = 0b00111010
+  //                 0 HW_TERM_EN
+  //                1  PKT_LENGTH_EN
+  //               0   DIRECT_MODE
+  //              1    FIFO_SHARE_EN
+  //             1     SCRAMBLE_EN
+  //            1      CRC_EN
+  //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte, 1: 2 bytes)
+  //          0        SYNCWORD_LEN: 同步字长度设置
+  write(0x06, 0b00110010);
+  // preamble length 80 bytes
+  write(0x04, 0x50);
 }
 
 void RfSystem::setRefFreq(const double freq) {
@@ -269,7 +288,8 @@ void RfSystem::clrTxFifoWrPtr() {
   write(0x53, 0x80);      /*Reset FIFO write Pointer*/
 }
 
-unsigned char RfSystem::readRssi() {
+/// the bigger the number the more power
+unsigned char RfSystem::rssi() {
   unsigned char r_reg;
 
   r_reg = read(0x43);
@@ -333,12 +353,10 @@ inline void RfSystem::fs() {
 
 inline void RfSystem::rx() {
   write(0x51, 0x80);
-  fs();
   write(0x66, 0xff);
 }
 
 inline void RfSystem::tx() {
-  fs();
   write(0x65, 0xff);
 }
 
@@ -353,7 +371,6 @@ inline void RfSystem::standBy() {
 }
 
 void RfSystem::txCW() {
-  fs();
   write(0x24, (read(0x24) | 0x80));
   write(0x06, (read(0x06) & 0xFC));
   tx();
@@ -363,10 +380,10 @@ etl::optional<Unit>
 RfSystem::send(const char *buffer, const unsigned char size) {
   if (size > 0) {
     fs();
-    clrTxFifoWrPtr();
+    // clrTxFifoWrPtr();
     writeFifoWithSize(buffer, size);
     tx();
-    /// check if tx mode entered
+    // check if tx mode entered
     auto counter = 0;
     while (!this->pollStatus().tx) {
       if (counter > 31) {
@@ -374,17 +391,11 @@ RfSystem::send(const char *buffer, const unsigned char size) {
       }
       counter += 1;
     }
-    // 在发送状态下表示包完成。
-    counter = 0;
-    while (!this->pollState().pkt_flag){
-      if (counter > 31) {
-        return etl::nullopt;
-      }
-      counter += 1;
-    }
-    auto u = Unit{};
-    return etl::make_optional(u);
+    // don't check pkg_flag in register
+    // only works for GPIO pin output
   }
+  auto u = Unit{};
+  return etl::make_optional(u);
 }
 
 etl::optional<size_t>
@@ -426,7 +437,7 @@ void RfSystem::begin() {
 
   //设置发射功率
   setPA(DBM20);
-  rx();
+  fs();
   _is_initialized = true;
 }
 
@@ -503,4 +514,8 @@ struct RfState RfSystem::pollState() {
       .rx_pkt_state = rx_pkg_st,
   };
   return state;
+}
+
+void RfSystem::scanR(){
+  write(0x63, 0xff);
 }
