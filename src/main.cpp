@@ -68,7 +68,7 @@ int main() {
     if (status.idle) {
       if (auto maybe = rf.recv(buf.data())) {
         buf.resize(maybe.value());
-        printf("recv: %s\n", buf.c_str());
+        printf("len: %d\n", maybe.value());
         rf.resetRxFlag();
       }
     }
