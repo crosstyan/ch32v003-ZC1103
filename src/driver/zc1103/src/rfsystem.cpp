@@ -314,27 +314,27 @@ RfStatus RfSystem::pollStatus() {
 /**
   * \brief  使能IDLE 模式
   */
-void RfSystem::idle() {
+inline void RfSystem::idle() {
   write(0x60, 0xff);
 }
 
-void RfSystem::rx() {
+inline void RfSystem::rx() {
   write(0x51, 0x80);
   idle();
   write(0x66, 0xff);
 }
 
-void RfSystem::tx() {
+inline void RfSystem::tx() {
   idle();
   write(0x65, 0xff);
 }
 
-void RfSystem::sleep() {
+inline void RfSystem::sleep() {
   idle();
   write(0x67, 0xff);
 }
 
-void RfSystem::standBy() {
+inline void RfSystem::standBy() {
   idle();
   write(0x68, 0xff);
 }
@@ -403,28 +403,6 @@ void RfSystem::printRegisters() {
   for (auto i = 0; i <= 0x7f; i++) {
     printf("r(0x%02x)=0x%02x \n", i, read(i));
   }
-}
-
-/**
- * \brief   rf 中断底半段
- */
-void RfSystem::isr() {
-  auto tmp = read(0x40);
-
-  // 接收到正确的 preamble
-  if (tmp & (1 << 6)) {
-    // 接收到正确的 sync word
-    if (!(tmp & (1 << 7))) {
-      preamble_timeout = 200;
-    } else {
-      preamble_timeout = 0;
-    }
-    // 发送完成
-  } else {
-    preamble_timeout = 0;
-    idle();
-  }
-
 }
 
 /// should be 0

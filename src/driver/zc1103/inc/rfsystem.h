@@ -297,8 +297,6 @@ public:
    */
   bool setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
 
-  void isr();
-
   /**
    * @brief get the singleton instance
    * @return the singleton instance pointer
