@@ -41,7 +41,7 @@ int main() {
   }
   rf.begin();
 
-  // expect 0x00
+  // expect to be 0x03
   auto version = rf.version();
   printf("version=%d\n", version);
 
@@ -72,6 +72,8 @@ int main() {
       if (!res.has_value()){
         printf("TX timeout\n");
       }
+      auto tx_pkt_st = rf.pollTxPktSt();
+      printf("tx_pkt_st=0x%02x\n", tx_pkt_st);
       digitalWrite(GPIO::D6, HIGH);
       Delay_Ms(10);
       digitalWrite(GPIO::D6, LOW);

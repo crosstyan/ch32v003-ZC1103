@@ -449,7 +449,7 @@ void RfSystem::printRegisters() {
 
 /// should be 0
 uint8_t RfSystem::version() {
-  auto tmp = read(0x04);
+  auto tmp = read(0x47);
   // only need first two bit
   return tmp & 0b11;
 };
@@ -514,6 +514,12 @@ struct RfState RfSystem::pollState() {
       .rx_pkt_state = rx_pkg_st,
   };
   return state;
+}
+
+uint8_t RfSystem::pollTxPktSt(){
+  auto s = read(0x47);
+  // 0b0011_1000
+  return (s & 0b00111000) >> 3;
 }
 
 void RfSystem::scanR(){
