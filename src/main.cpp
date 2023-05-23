@@ -23,7 +23,7 @@ void printWithSize(const char *str, size_t size, bool hex = false) {
 static const pin_size_t IRQ_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN = GPIO::C2;
 static const pin_size_t CS_PIN = GPIO::C4;
-static const pin_size_t RST_PIN = GPIO::C0;
+static const pin_size_t RST_PIN = GPIO::C1;
 
 int main() {
   SystemInit48HSI();
@@ -48,7 +48,7 @@ int main() {
   auto instant = Instant();
   auto rx_instant = Instant();
   rf.printRegisters();
-//  #define TX
+  #define TX
   #ifdef TX
   printf("TX mode\n");
   #else
