@@ -369,10 +369,18 @@ RfSystem::send(const char *buffer, const unsigned char size) {
     /// check if tx mode entered
     auto counter = 0;
     while (!this->pollStatus().tx) {
-      counter += 1;
       if (counter > 31) {
         return etl::nullopt;
       }
+      counter += 1;
+    }
+    // 在发送状态下表示包完成。
+    counter = 0;
+    while (!this->pollState().pkt_flag){
+      if (counter > 31) {
+        return etl::nullopt;
+      }
+      counter += 1;
     }
     auto u = Unit{};
     return etl::make_optional(u);
