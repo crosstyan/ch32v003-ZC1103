@@ -47,7 +47,14 @@ int main() {
   printf("version=%d\n", version);
 
   auto instant = Instant();
+  auto rx_instant = Instant();
   rf.printRegisters();
+  #ifdef TX
+  printf("TX mode\n");
+  #else
+  printf("RX mode\n");
+  #endif
+
   while (true) {
     #ifdef TX
     auto d = std::chrono::duration<uint64_t, std::milli>(500);
@@ -57,7 +64,10 @@ int main() {
       auto r = utils::rand_range(0, 100);
       etl::to_string(r, payload, true);
       payload.append("\n");
-      rf.send(payload.c_str(), payload.length());
+      auto res = rf.send(payload.c_str(), payload.length());
+      if (!res.has_value()){
+        printf("TX timeout\n");
+      }
       digitalWrite(GPIO::D6, HIGH);
       Delay_Ms(10);
       digitalWrite(GPIO::D6, LOW);
@@ -76,17 +86,22 @@ int main() {
       RF::printState(s);
       instant.reset();
     }
-//    etl::string<256> buf;
-//    auto s = rf.pollState();
-//    if (s.fifo_flag) {
-//      if (auto maybe = rf.recv(buf.data())) {
-//        buf.resize(maybe.value());
-//        printf("len=%d\n", buf.length());
-//        printWithSize(buf.c_str(), buf.length(), true);
-//        printf("\n");
-//        rf.resetRxFlag();
-//      }
-//    }
+    // can't poll state too frequently
+    auto rx_d = std::chrono::duration<uint64_t, std::milli>(25);
+    if (rx_instant.elapsed() > rx_d) {
+      etl::string<256> buf;
+      auto s = rf.pollState();
+      if (s.pkt_flag) {
+        if (auto maybe = rf.recv(buf.data())) {
+          buf.resize(maybe.value());
+          printf("len=%d\n", buf.length());
+          printWithSize(buf.c_str(), buf.length(), true);
+          printf("\n");
+          rf.resetRxFlag();
+        }
+      }
+      rx_instant.reset();
+    }
     #endif
   }
 }

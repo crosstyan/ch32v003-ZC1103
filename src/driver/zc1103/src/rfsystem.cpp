@@ -2,7 +2,7 @@
 
 /// a utility function to check if a bit is set at shift.
 /// note that shift is 0-indexed
-inline static bool shift_equal(uint8_t byte, uint8_t shift){
+inline static bool shift_equal(uint8_t byte, uint8_t shift) {
   return (byte & (1 << shift)) == (1 << shift);
 }
 
@@ -37,6 +37,10 @@ inline void RfSystem::gpioConfigure() {
   pinMode(this->IRQ_PIN, INPUT);
 }
 
+/// 芯片的所有控制都是通 SPI 接口操作，支持的模式是时钟极性为正，相位极性可选，
+/// 当 ckpha=1 时，为下降沿采样，ckpha=0 时，上升沿采样。
+///
+/// See also `src/inc/spi.h`
 inline void RfSystem::spiConfigure() {
   SPI_init();
   SPI_begin_8();
@@ -69,7 +73,11 @@ inline void RfSystem::sendBytes(char const *bytes, size_t len) {
   }
 };
 
+/// On this particular device, you transmit a 7-bit register address
+/// (with the high-bit set to 1=read, 0=write),
+/// then either read or write the value of the register from there.
 void RfSystem::write(const uint8_t addr, const uint8_t val) {
+  // 0x7f = 0b0111_1111 i.e. set the high bit to 0 to indicate write
   CS_LOW();
   sendByte(addr & 0x7f);
   sendByte(val);
@@ -77,15 +85,18 @@ void RfSystem::write(const uint8_t addr, const uint8_t val) {
 }
 
 unsigned char RfSystem::read(const unsigned char addr) {
+  // 0x80 = 0b1000_0000 i.e. set the high bit to 1 to indicate read
   CS_LOW();
   sendByte(addr | 0x80);
-  auto readData = sendByte(0xff);
+  auto data = sendByte(0xff);
   CS_HIGH();
-  return readData;
+  return data;
 }
 
 void RfSystem::registerInit() {
+  // 0x08 = 0b00001000
   write(0x09, 0x08);/*Debug*/
+  // 0x03 = 0b00000011
   write(0x0c, 0x03);
   write(0x0e, 0xA1);
   write(0x0F, 0x0A);
@@ -228,7 +239,7 @@ void RfSystem::setVcoFreq(const double freq) {
 
 // TODO: find documentation for this
 void RfSystem::setFreq(const unsigned char N) {
-  if (N > 0x7F){
+  if (N > 0x7F) {
     return;
   }
   write(0x00, (0x80 | N));
@@ -254,8 +265,8 @@ void RfSystem::freqSet(const double f0, const unsigned char N, const double step
 }
 
 void RfSystem::clrTxFifoWrPtr() {
-    // 0x80 = 0b1000_0000
-    write(0x53, 0x80);      /*Reset FIFO write Pointer*/
+  // 0x80 = 0b1000_0000
+  write(0x53, 0x80);      /*Reset FIFO write Pointer*/
 }
 
 unsigned char RfSystem::readRssi() {
@@ -312,13 +323,11 @@ RfStatus RfSystem::pollStatus() {
   return status;
 }
 
-/**
-  * \brief  使能IDLE 模式
-  */
 inline void RfSystem::idle() {
   write(0x60, 0xff);
 }
-inline void RfSystem::fs(){
+
+inline void RfSystem::fs() {
   write(0x64, 0xff);
 }
 
@@ -350,12 +359,23 @@ void RfSystem::txCW() {
   tx();
 }
 
-void RfSystem::send(const char *buffer, const unsigned char size) {
+etl::optional<Unit>
+RfSystem::send(const char *buffer, const unsigned char size) {
   if (size > 0) {
     fs();
     clrTxFifoWrPtr();
     writeFifoWithSize(buffer, size);
     tx();
+    /// check if tx mode entered
+    auto counter = 0;
+    while (!this->pollStatus().tx) {
+      counter += 1;
+      if (counter > 31) {
+        return etl::nullopt;
+      }
+    }
+    auto u = Unit{};
+    return etl::make_optional(u);
   }
 }
 
@@ -398,7 +418,6 @@ void RfSystem::begin() {
 
   //设置发射功率
   setPA(DBM20);
-  fs();
   rx();
   _is_initialized = true;
 }
@@ -424,7 +443,7 @@ void RfSystem::resetRxFlag() {
   _rx_flag = false;
 }
 
-bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin){
+bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin) {
   if (_is_initialized) {
     return false;
   }
@@ -468,12 +487,12 @@ struct RfState RfSystem::pollState() {
   auto s = read(0x40);
   uint8_t rx_pkg_st = s & 0b111;
   auto state = RfState{
-    .sync_word_rev = shift_equal(s, 7),
-    .preamble_rev = shift_equal(s, 6),
-    .crc_error = shift_equal(s, 5),
-    .pkt_flag = shift_equal(s, 4),
-    .fifo_flag = shift_equal(s, 3),
-    .rx_pkt_state = rx_pkg_st,
+      .sync_word_rev = shift_equal(s, 7),
+      .preamble_rev = shift_equal(s, 6),
+      .crc_error = shift_equal(s, 5),
+      .pkt_flag = shift_equal(s, 4),
+      .fifo_flag = shift_equal(s, 3),
+      .rx_pkt_state = rx_pkg_st,
   };
   return state;
 }

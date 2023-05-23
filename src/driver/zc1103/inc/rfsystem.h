@@ -15,6 +15,17 @@
 
 #define RF_RSSI_THRESHOLD                   65
 
+/// equivalent to Rust's `()`
+/// or Scala's `Unit`
+/// std::monostate should be used?
+struct Unit {};
+constexpr bool operator==(Unit, Unit) noexcept { return true; }
+constexpr bool operator!=(Unit, Unit) noexcept { return false; }
+constexpr bool operator<(Unit, Unit) noexcept { return false; }
+constexpr bool operator>(Unit, Unit) noexcept { return false; }
+constexpr bool operator<=(Unit, Unit) noexcept { return true; }
+constexpr bool operator>=(Unit, Unit) noexcept { return true; }
+
 enum PA_LEVEL {
   DBM20 = 0,
   DBM19,
@@ -211,8 +222,10 @@ public:
   * \brief  发送数据包
   * \param [IN] buffer 发送数据
   * \param [IN] size   发送数数据长度
+  * \retval optional<Unit> success or failure (timeout)
   */
-  void send(const char *buffer, unsigned char size);
+  etl::optional<Unit>
+  send(const char *buffer, unsigned char size);
 
 /**
   * @brief  接收数据包
