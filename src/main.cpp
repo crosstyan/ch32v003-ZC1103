@@ -24,14 +24,20 @@ int main() {
   pin_size_t LED_pin = GPIO::D6;
   pinMode(LED_pin, OUTPUT);
 
-  auto rf = RfSystem(RST_PIN, CS_PIN, IRQ_PIN, SDN_PIN);
+  auto& rf = RfSystem::get();
+  auto success = rf.setPins(RST_PIN, CS_PIN, IRQ_PIN, SDN_PIN);
+  if (!success) {
+    printf("[ERROR] failed to set pins\n");
+  }
   rf.begin();
 
   // expect 0x00
+  // if the value is 0x03 (0b11) then shit goes wrong
   auto version = rf.version();
   printf("version=%d\n", version);
 
   auto instant = Instant();
+  rf.printRegisters();
   while (true) {
     #ifdef TX
     auto d = std::chrono::duration<uint64_t, std::milli>(500);
@@ -42,7 +48,7 @@ int main() {
       etl::to_string(r, payload, true);
       payload.append("\n");
 
-      rf.dataPackageSend(payload.c_str(), payload.length());
+      rf.send(payload.c_str(), payload.length());
       rf.refreshStatus();
       auto status = rf.getStatus();
       RF::printStatus(status);
@@ -57,11 +63,14 @@ int main() {
       instant.reset();
     }
     etl::string<256> buf;
-    auto maybe = rf.packageRecv(buf.data());
-    if (maybe) {
-      buf.resize(maybe.value());
-      printf("recv: %s\n", buf.c_str());
-      rf.resetRxFlag();
+    rf.refreshStatus();
+    auto status = rf.getStatus();
+    if (status.idle) {
+      if (auto maybe = rf.recv(buf.data())) {
+        buf.resize(maybe.value());
+        printf("recv: %s\n", buf.c_str());
+        rf.resetRxFlag();
+      }
     }
     #endif
   }

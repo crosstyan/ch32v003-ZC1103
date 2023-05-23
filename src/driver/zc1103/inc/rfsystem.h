@@ -70,14 +70,16 @@ class RfSystem {
   };
   volatile bool _rx_flag = false;
 
+  bool _is_initialized = false;
+
   /// 芯片复位脚，低电平有效，复位后寄存器数值丢失，全部变为默认值。
-  pin_size_t RST_PIN;
+  pin_size_t RST_PIN = GPIO::C0;
   /// 使能信号，低有效，拉低可使芯片退出 sleep mode
-  pin_size_t CS_PIN;
+  pin_size_t CS_PIN = GPIO::C4;
   /// IRQ
-  pin_size_t IRQ_PIN;
+  pin_size_t IRQ_PIN = GPIO::C3;
   /// 芯片关断使能，高有效
-  pin_size_t SDN_PIN;
+  pin_size_t SDN_PIN = GPIO::C2;
 
   void gpioConfigure();
 
@@ -97,13 +99,6 @@ class RfSystem {
   * \retval
   */
   unsigned char readRssi(void);
-
-/**
-  * \brief  使能接收模式
-  * \param  None
-  * \retval None
-  */
-  void rx();
 
 /**
 * \brief  发送单音载波
@@ -150,8 +145,8 @@ class RfSystem {
 
   /// when you want to send a bunch of bytes and don't care about the return value
   void sendBytes(const uint8_t *bytes, size_t len);
-  void sendBytes(const char *bytes, size_t len);
 
+  void sendBytes(const char *bytes, size_t len);
 
 /**
   * \brief  使能接收到同步字后锁定rssi
@@ -203,6 +198,10 @@ class RfSystem {
   void freqSet(const double f0, const unsigned char N, const double step);
 
 public:
+  /**
+   * @effect: reset chip. set GPIO Pins register. set SPI register. Transfer register init data to chip and set the `_is_initialized` flag.
+   * @note: allow to call multiple times as long as the GPIO/SPI pins are not changed.
+   */
   void begin();
 
   void reset();
@@ -212,14 +211,14 @@ public:
   * \param [IN] buffer 发送数据
   * \param [IN] size   发送数数据长度
   */
-  void dataPackageSend(const char *buffer, unsigned char size);
+  void send(const char *buffer, unsigned char size);
 
 /**
   * @brief  接收数据包
   * @param [OUT] buf 接收数据
   * @return 接收数据长度
   */
-  etl::optional<int> packageRecv(char *buf);
+  etl::optional<size_t> recv(char *buf);
 
 
 /**
@@ -254,7 +253,13 @@ public:
   */
   void standBy();
 
-  void isr();
+/**
+  * \brief  使能接收模式
+  * \param  None
+  * \retval None
+  */
+  void rx();
+
 
 /**
  * \brief  写RF寄存器
@@ -271,9 +276,6 @@ public:
  */
   unsigned char read(unsigned char addr);
 
-  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
-  RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
-
   /**
    * @brief print all registers
    */
@@ -283,16 +285,40 @@ public:
 
   RfSystem &operator=(const RfSystem &) = delete;
 
-  RfSystem(RfSystem &&) = delete;
-
-  RfSystem &operator=(RfSystem &&) = delete;
-
   // refresh status by 0x46 register
   void refreshStatus();
 
   // get status but not refresh
   [[nodiscard]]
   const RfStatus &getStatus() const;
+
+  [[nodiscard]]
+  bool isInitialized() const {
+    return _is_initialized;
+  };
+
+  /**
+   * @brief set pins. BEFORE calling `begin()`!
+   * @return true if success. false if `begin()` has been called (initialized)
+   * @see begin()
+   */
+  bool setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
+
+  void isr();
+
+  /**
+   * @brief get the singleton instance
+   * @return the singleton instance pointer
+   */
+  static RfSystem &get() {
+    static RfSystem instance = RfSystem();
+    return instance;
+  }
+
+protected:
+  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
+  /// Have to set to default constructor or the linker will complain
+  RfSystem() = default;
 };
 
 namespace RF {

@@ -343,7 +343,7 @@ void RfSystem::txCW() {
   tx();
 }
 
-void RfSystem::dataPackageSend(const char *buffer, const unsigned char size) {
+void RfSystem::send(const char *buffer, const unsigned char size) {
   if (size > 0) {
     idle();
     clrTxFifoWrPtr();
@@ -352,11 +352,10 @@ void RfSystem::dataPackageSend(const char *buffer, const unsigned char size) {
   }
 }
 
-etl::optional<int>
-RfSystem::packageRecv(char *buf) {
-  int len;
+etl::optional<size_t>
+RfSystem::recv(char *buf) {
   write(0x51, 0x80);
-  len = read(0x52 | 0x80);
+  size_t len = read(0x52 | 0x80);
   if (len == 0) {
     rx();
     return etl::nullopt;
@@ -394,11 +393,12 @@ void RfSystem::begin() {
   setPA(DBM20);
 
   rx();
+  _is_initialized = true;
 }
 
 void RfSystem::printRegisters() {
   for (auto i = 0; i <= 0x7f; i++) {
-    printf("reg(0x%02x) = 0x%02x \n", i, read(i));
+    printf("r(0x%02x)=0x%02x \n", i, read(i));
   }
 }
 
@@ -439,9 +439,16 @@ void RfSystem::resetRxFlag() {
   _rx_flag = false;
 }
 
-RfSystem::RfSystem(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin) :
-    RST_PIN(rst_pin), CS_PIN(cs_pin), IRQ_PIN(irq_pin), SDN_PIN(sdn_pin) {}
-
+bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin){
+  if (_is_initialized) {
+    return false;
+  }
+  RST_PIN = rst_pin;
+  CS_PIN = cs_pin;
+  IRQ_PIN = irq_pin;
+  SDN_PIN = sdn_pin;
+  return true;
+}
 
 void RF::printStatus(const RfStatus &status) {
   printf("idle=%d, tx=%d, rx=%d, fs=%d, scan=%d, rc_cal=%d, vco_cal=%d, wor=%d\n",
