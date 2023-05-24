@@ -11,20 +11,10 @@
 #include "ch32v003fun.h"
 #include "ch32v003_SPI.h"
 #include "gpio.h"
+#include "unit.h"
 #include <etl/optional.h>
 
 #define RF_RSSI_THRESHOLD                   65
-
-/// equivalent to Rust's `()`
-/// or Scala's `Unit`
-/// std::monostate should be used?
-struct Unit {};
-constexpr bool operator==(Unit, Unit) noexcept { return true; }
-constexpr bool operator!=(Unit, Unit) noexcept { return false; }
-constexpr bool operator<(Unit, Unit) noexcept { return false; }
-constexpr bool operator>(Unit, Unit) noexcept { return false; }
-constexpr bool operator<=(Unit, Unit) noexcept { return true; }
-constexpr bool operator>=(Unit, Unit) noexcept { return true; }
 
 enum PA_LEVEL {
   DBM20 = 0,
@@ -159,10 +149,6 @@ class RfSystem {
 
   void setFreqStep(double step);
 
-/**
-  * \brief  清空发送区域
-  */
-  void clrTxFifoWrPtr();
 
 /**
   * \brief  发送数据 (without size written in the first byte)
@@ -189,11 +175,15 @@ class RfSystem {
 /**
  * \brief  初始化 rf 寄存器
  */
-  void registerInit();
+  void registersInit();
 
-  int RF_IRQ_INPUT();
 
-  void freqSet(const double f0, const unsigned char N, const double step);
+  void setFreq(double f0, unsigned char N, double step);
+
+protected:
+  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
+  /// Have to set to default constructor or the linker will complain
+  RfSystem() = default;
 
 public:
   /**
@@ -220,17 +210,13 @@ public:
   */
   etl::optional<size_t> recv(char *buf);
 
-
 /**
  * \brief  设置频率
  * \param [IN]  freq 频率值
  */
   void setRefFreq(double freq);
 
-/**
-  * \brief  外部检查是否有中断发生
-  * \retval  0 没有 RF 中断; 1 有 RF 中断;
-  */
+  [[nodiscard]]
   bool rxFlag() const;
 
   void resetRxFlag();
@@ -238,6 +224,18 @@ public:
   RfState pollState();
 
   uint8_t version();
+
+  /// frequency synthesizer 频率合成器/频综
+  ///
+  /// 让频综打开后保持在这个状态，在频综保持状态当收到 TX/RX 会马上进入 TX/RX 状态。
+  void fs();
+
+/**
+* \brief  切换到发送状态
+  */
+  void tx();
+
+  void wor();
 
 /**
   * \brief  切换到睡眠状态
@@ -251,24 +249,20 @@ public:
 
 /**
   * \brief  使能接收模式
-  * \param  None
-  * \retval None
   */
   void rx();
 
 
 /**
- * \brief  写RF寄存器
+ * \brief  写 RF 寄存器
  * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
  * \param[IN] val  写入的值
- * \retval  None
  */
-  void write(const uint8_t addr, const uint8_t val);
+  void write(uint8_t addr, uint8_t val);
 
 /**
- * \brief  读RF寄存器
+ * \brief  读 RF 寄存器
  * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
- * \retval  读取寄存器的值
  */
   unsigned char read(unsigned char addr);
 
@@ -298,7 +292,7 @@ public:
 
   /**
    * @brief get the singleton instance
-   * @return the singleton instance pointer
+   * @return the singleton instance reference. User should use `auto &` to get the reference.
    */
   static RfSystem &get() {
     static RfSystem instance = RfSystem();
@@ -310,33 +304,17 @@ public:
    */
   void scanR();
 
-  /// frequency synthesizer 频率合成器/频综
-  ///
-  /// 让频综打开后保持在这个状态，在频综保持状态当收到 TX/RX 会马上进入 TX/RX 状态。
-  void fs();
-
-/**
-  * \brief  读取Rssi值
-  * \param  None
-  * \retval
-  */
+  /// read RSSI
   unsigned char rssi();
-
-/**
-* \brief  切换到发送状态
-  * \param  None
-  * \retval None
-  */
-  void tx();
 
   uint8_t pollTxPktSt();
 
-protected:
-  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
-  /// Have to set to default constructor or the linker will complain
-  RfSystem() = default;
+/**
+  * @brief  clear tx fifo write pointer
+  */
+  void clrTxFifoWrPtr();
 
-  void wor();
+  PinStatus pollIrqPin();
 
 };
 

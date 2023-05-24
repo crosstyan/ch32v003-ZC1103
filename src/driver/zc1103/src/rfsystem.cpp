@@ -1,7 +1,7 @@
 #include "rfsystem.h"
 
 /// a utility function to check if a bit is set at shift.
-/// note that shift is 0-indexed
+/// note that shift is 0-indexed.
 inline static bool shift_equal(uint8_t byte, uint8_t shift) {
   return (byte & (1 << shift)) == (1 << shift);
 }
@@ -46,7 +46,7 @@ inline void RfSystem::spiConfigure() {
   SPI_begin_8();
 }
 
-inline int RfSystem::RF_IRQ_INPUT() {
+inline PinStatus RfSystem::pollIrqPin() {
   return digitalRead(this->IRQ_PIN);
 }
 
@@ -93,7 +93,7 @@ unsigned char RfSystem::read(const unsigned char addr) {
   return data;
 }
 
-void RfSystem::registerInit() {
+void RfSystem::registersInit() {
   // 0x08 = 0b00001000
   write(0x09, 0x08);/*Debug*/
   // 0x03 = 0b00000011
@@ -105,7 +105,7 @@ void RfSystem::registerInit() {
   //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
   //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword 时产生中断信号
   //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
-//  write(0x0e, 0b00100001);
+  // write(0x0e, 0b00100001);
   write(0x0e, 0b00000001);
   // 0x0a = 0b00001010
   //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
@@ -138,7 +138,7 @@ void RfSystem::registerInit() {
   // registerWrite(0x4d, 0x0b);
   write(0x4e, 0x7c);/*ber optimize 0x6c->0x7c by 20211126 juner*/
   write(0x4f, 0xc5);
-  ////10kps
+  //10kps
   write(0x74, 0x9d);/*bit[7-6] ADC clock select*/
   write(0x08, 0x01);/*方法1设置频偏25k   */
   write(0x24, 0x19);/*中频设置[7-0]      */
@@ -257,7 +257,7 @@ void RfSystem::setVcoFreq(const double freq) {
 }
 
 // TODO: find documentation for this
-void RfSystem::setFreq(const unsigned char N) {
+void RfSystem::setFreq(uint8_t N) {
   if (N > 0x7F) {
     return;
   }
@@ -266,18 +266,16 @@ void RfSystem::setFreq(const unsigned char N) {
 
 
 void RfSystem::setFreqStep(double step) {
-  unsigned int fre = 0;
-  unsigned char reg1 = 0, reg2 = 0, reg3 = 0;
-  fre = (unsigned int) (step * pow(2.0, 20.0));
-  reg3 = (unsigned char) (fre & 0xFF);
-  reg2 = (unsigned char) ((fre >> 8) & 0xFF);
-  reg1 = (unsigned char) ((fre >> 16) & 0x7F);
+  auto fre = static_cast<uint8_t>(step * pow(2.0, 20.0));
+  auto reg3 = fre & 0xFF;
+  auto reg2 = (fre >> 8) & 0xFF;
+  auto reg1 = (fre >> 16) & 0x7F;
   write(0x03, reg3);
   write(0x02, reg2);
   write(0x01, reg1);
 }
 
-void RfSystem::freqSet(const double f0, const unsigned char N, const double step) {
+void RfSystem::setFreq(const double f0, const unsigned char N, const double step) {
   setVcoFreq(f0);
   setFreq(N);
   setFreqStep(step);
@@ -379,8 +377,6 @@ void RfSystem::txCW() {
 etl::optional<Unit>
 RfSystem::send(const char *buffer, const unsigned char size) {
   if (size > 0) {
-    fs();
-    // clrTxFifoWrPtr();
     writeFifoWithSize(buffer, size);
     tx();
     // check if tx mode entered
@@ -421,7 +417,7 @@ void RfSystem::begin() {
   Delay_Ms(200);
   reset();
 
-  registerInit();
+  registersInit();
 
   //设置参考频率
   write(0x70, 0x12);
@@ -433,7 +429,7 @@ void RfSystem::begin() {
   setSyncLockRssi();
 
   //设置中心频点
-  freqSet(476.0, 0, 0);
+  setFreq(476.0, 0, 0);
 
   //设置发射功率
   setPA(DBM20);
@@ -516,16 +512,16 @@ struct RfState RfSystem::pollState() {
   return state;
 }
 
-uint8_t RfSystem::pollTxPktSt(){
+uint8_t RfSystem::pollTxPktSt() {
   auto s = read(0x47);
   // 0b0011_1000
   return (s & 0b00111000) >> 3;
 }
 
-void RfSystem::scanR(){
+void RfSystem::scanR() {
   write(0x63, 0xff);
 }
 
-void RfSystem::wor(){
+void RfSystem::wor() {
   write(0x6a, 0xff);
 }
