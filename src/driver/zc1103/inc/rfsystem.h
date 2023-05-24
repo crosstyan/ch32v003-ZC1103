@@ -201,7 +201,7 @@ public:
   * \retval optional<Unit> success or failure (timeout)
   */
   etl::optional<Unit>
-  send(const char *buffer, unsigned char size);
+  send(const char *buffer, unsigned char size, bool check_tx = false);
 
 /**
   * @brief  接收数据包

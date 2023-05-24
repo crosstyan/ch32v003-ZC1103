@@ -72,13 +72,13 @@ int main() {
       if (!res.has_value()){
         printf("TX timeout\n");
       }
-      auto tx_pkt_st = rf.pollTxPktSt();
-      printf("tx_pkt_st=0x%02x\n", tx_pkt_st);
+//      auto tx_pkt_st = rf.pollTxPktSt();
+//      printf("tx_pkt_st=0x%02x\n", tx_pkt_st);
       digitalWrite(GPIO::D6, HIGH);
       Delay_Ms(10);
       digitalWrite(GPIO::D6, LOW);
-      auto state = rf.pollState();
-      RF::printState(state);
+//      auto state = rf.pollState();
+//      RF::printState(state);
       instant.reset();
     }
     #else // RX
@@ -87,11 +87,9 @@ int main() {
       auto status = rf.pollStatus();
       auto s = rf.pollState();
       auto rssi = rf.rssi();
-      auto stateRegister = rf.read(0x41);
-      // 0b0001_0011
-      //   00        trivial
-      //     01_0011 state machine state
-      printf("stateRegister=0x%02x\n", stateRegister);
+      if (!status.rx) {
+        rf.rx();
+      }
       printf("rssi=%u\n", rssi);
       RF::printStatus(status);
       RF::printState(s);

@@ -105,8 +105,8 @@ void RfSystem::registersInit() {
   //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
   //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword 时产生中断信号
   //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
-  // write(0x0e, 0b00100001);
-  write(0x0e, 0b00000001);
+  write(0x0e, 0x21);
+//  write(0x0e, 0b00000001);
   // 0x0a = 0b00001010
   //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
   write(0x0f, 0x0f);
@@ -187,7 +187,7 @@ void RfSystem::registersInit() {
   //            1      CRC_EN
   //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte, 1: 2 bytes)
   //          0        SYNCWORD_LEN: 同步字长度设置
-  write(0x06, 0b00110010);
+  write(0x06, 0b00100010);
   // preamble length 80 bytes
   write(0x04, 0x50);
 }
@@ -375,20 +375,22 @@ void RfSystem::txCW() {
 }
 
 etl::optional<Unit>
-RfSystem::send(const char *buffer, const unsigned char size) {
+RfSystem::send(const char *buffer, const unsigned char size, bool check_tx) {
   if (size > 0) {
     writeFifoWithSize(buffer, size);
     tx();
     // check if tx mode entered
     auto counter = 0;
-    while (!this->pollStatus().tx) {
-      if (counter > 31) {
-        return etl::nullopt;
+    if (check_tx) {
+      while (!this->pollStatus().tx) {
+        if (counter > 31) {
+          return etl::nullopt;
+        }
+        counter += 1;
       }
-      counter += 1;
     }
     // don't check pkg_flag in register
-    // only works for GPIO pin output
+    // since that flag only works for GPIO pin output
   }
   auto u = Unit{};
   return etl::make_optional(u);
@@ -416,6 +418,8 @@ void RfSystem::begin() {
   spiConfigure();
   Delay_Ms(200);
   reset();
+  // a delay is needed after reset
+  Delay_Ms(30);
 
   registersInit();
 
