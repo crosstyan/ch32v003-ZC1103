@@ -20,7 +20,7 @@ void printWithSize(const char *str, size_t size, bool hex = false) {
   }
 };
 
-static const pin_size_t IRQ_PIN = GPIO::C3;
+static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN = GPIO::C2;
 static const pin_size_t CS_PIN = GPIO::C4;
 static const pin_size_t RST_PIN = GPIO::C1;
@@ -35,7 +35,7 @@ int main() {
   pinMode(LED_pin, OUTPUT);
 
   auto &rf = RfSystem::get();
-  auto success = rf.setPins(RST_PIN, CS_PIN, IRQ_PIN, SDN_PIN);
+  auto success = rf.setPins(RST_PIN, CS_PIN, PKT_FLAG_PIN, SDN_PIN);
   if (!success) {
     printf("[ERROR] failed to set pins\n");
   }
@@ -85,12 +85,12 @@ int main() {
     auto d = std::chrono::duration<uint64_t, std::milli>(1000);
     if (instant.elapsed() > d) {
       auto status = rf.pollStatus();
-      auto s = rf.pollState();
-      auto rssi = rf.rssi();
-      printf("rssi=%u\n", rssi);
       if (!status.rx) {
         rf.rx();
       }
+      auto s = rf.pollState();
+      auto rssi = rf.rssi();
+      printf("rssi=%u\n", rssi);
       RF::printStatus(status);
       RF::printState(s);
       instant.reset();
@@ -109,6 +109,7 @@ int main() {
           printf("len=%d\n", buf.length());
           printWithSize(buf.c_str(), buf.length(), true);
           printf("\n");
+          rf.clrRxFifo();
           rf.resetRxFlag();
         }
       }

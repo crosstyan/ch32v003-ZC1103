@@ -34,7 +34,7 @@ inline void RfSystem::gpioConfigure() {
   pinMode(this->RST_PIN, OUTPUT);
   pinMode(this->SDN_PIN, OUTPUT);
   pinMode(this->CS_PIN, OUTPUT);
-  pinMode(this->IRQ_PIN, INPUT);
+  pinMode(this->PKT_FLAG_PIN, INPUT);
 }
 
 /// 芯片的所有控制都是通 SPI 接口操作，支持的模式是时钟极性为正，相位极性可选，
@@ -46,8 +46,8 @@ inline void RfSystem::spiConfigure() {
   SPI_begin_8();
 }
 
-inline PinStatus RfSystem::pollIrqPin() {
-  return digitalRead(this->IRQ_PIN);
+inline PinStatus RfSystem::pollPktFlagPin() {
+  return digitalRead(this->PKT_FLAG_PIN);
 }
 
 void RfSystem::reset() {
@@ -447,13 +447,13 @@ void RfSystem::resetRxFlag() {
   _rx_flag = false;
 }
 
-bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin) {
+bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t flag_pin, pin_size_t sdn_pin) {
   if (_is_initialized) {
     return false;
   }
   RST_PIN = rst_pin;
   CS_PIN = cs_pin;
-  IRQ_PIN = irq_pin;
+  PKT_FLAG_PIN = flag_pin;
   SDN_PIN = sdn_pin;
   return true;
 }
@@ -755,3 +755,13 @@ void RfSystem::setWorRxTimer(uint16_t t) {
 inline void RfSystem::clrRxFifoRdPtr() {
   write(0x51, 0x80);
 }
+
+inline void RfSystem::clrRxFifoWrPtr() {
+  write(0x50, 0x80);
+}
+
+void RfSystem::clrRxFifo() {
+  write(0x51, 0x80);
+  write(0x50, 0x80);
+}
+

@@ -92,7 +92,7 @@ class RfSystem {
   /// 使能信号，低有效，拉低可使芯片退出 sleep mode
   pin_size_t CS_PIN = GPIO::C4;
   /// IRQ
-  pin_size_t IRQ_PIN = GPIO::C3;
+  pin_size_t PKT_FLAG_PIN = GPIO::C3;
   /// 芯片关断使能，高有效
   pin_size_t SDN_PIN = GPIO::C2;
 
@@ -309,7 +309,7 @@ public:
    * @return true if success. false if `begin()` has been called (initialized)
    * @see begin()
    */
-  bool setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t irq_pin, pin_size_t sdn_pin);
+  bool setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t flag_pin, pin_size_t sdn_pin);
 
   /**
    * @brief get the singleton instance
@@ -335,9 +335,11 @@ public:
   */
   void clrTxFifoWrPtr();
 
+  void clrRxFifoWrPtr();
   void clrRxFifoRdPtr();
+  void clrRxFifo();
 
-  PinStatus pollIrqPin();
+  PinStatus pollPktFlagPin();
 };
 
 
