@@ -14,9 +14,44 @@
 #include "unit.h"
 #include <etl/optional.h>
 
-#define RF_RSSI_THRESHOLD                   65
+/// 0x46 (8'h46)
+struct RfStatus {
+  bool idle = false;
+  bool tx = false;
+  bool rx = false;
+  bool fs = false;
+  bool scan = false;
+  bool rc_cal = false;
+  bool vco_cal = false;
+  bool wor = false;
+};
 
-enum PA_LEVEL {
+/// 0x40 (8'h40)
+struct RfState {
+  bool sync_word_rev = false;
+  bool preamble_rev = false;
+  bool crc_error = false;
+  bool pkt_flag = false;
+  bool fifo_flag = false;
+  uint8_t rx_pkt_state = 0;
+};
+
+namespace RF {
+  enum class DataRate{
+    K2_4,
+    K5,
+    K9_6,
+    K10,
+    K19_2,
+    K100,
+    K200,
+    K250,
+  };
+  void printStatus(const RfStatus &status);
+  void printState(const RfState &state);
+}
+
+enum class PowerAmpGain {
   DBM20 = 0,
   DBM19,
   DBM18,
@@ -46,28 +81,6 @@ enum PA_LEVEL {
   DBM_6,
 };
 
-/// 0x46 (8'h46)
-struct RfStatus {
-  bool idle = false;
-  bool tx = false;
-  bool rx = false;
-  bool fs = false;
-  bool scan = false;
-  bool rc_cal = false;
-  bool vco_cal = false;
-  bool wor = false;
-};
-
-/// 0x40 (8'h40)
-struct RfState {
-  bool sync_word_rev = false;
-  bool preamble_rev = false;
-  bool crc_error = false;
-  bool pkt_flag = false;
-  bool fifo_flag = false;
-  uint8_t rx_pkt_state = 0;
-};
-
 class RfSystem {
   volatile uint32_t preamble_timeout = 0;
   volatile bool _rx_flag = false;
@@ -87,13 +100,15 @@ class RfSystem {
 
   void spiConfigure();
 
+  void setDR(RF::DataRate data_rate);
+
 /**
   * \brief  读数据
   * \param [OUT] dst 保存数据地址
   * \param [IN] len 读取长度
   * \retval None
   */
-  void readFifo(unsigned char *dst, unsigned char len);
+  void readFifo(uint8_t *dst, uint8_t len);
 
 /**
 * \brief  发送单音载波
@@ -109,7 +124,7 @@ class RfSystem {
  * \param [IN]  x_dBm 增益
  * \retval  None
  */
-  void setPA(PA_LEVEL x_dBm);
+  void setPA(PowerAmpGain x_dBm);
 
   void RST_LOW();
 
@@ -175,10 +190,12 @@ class RfSystem {
 /**
  * \brief  初始化 rf 寄存器
  */
-  void registersInit();
+  void registerConfigure();
 
 
-  void setFreq(double f0, unsigned char N, double step);
+  void setFreq(double f0, uint8_t N, double step);
+
+  void setSync(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4);
 
 protected:
   /// ch32v003 only has one SPI so there's no need to specify the SPI bus
@@ -187,8 +204,8 @@ protected:
 
 public:
   /**
-   * @effect: reset chip. set GPIO Pins register. set SPI register. Transfer register init data to chip and set the `_is_initialized` flag.
-   * @note: allow to call multiple times as long as the GPIO/SPI pins are not changed.
+   * @effect reset chip. set GPIO Pins register. set SPI register. Transfer register init data to chip and set the `_is_initialized` flag.
+   * @note allowed to call multiple times as long as the GPIO/SPI pins are not changed.
    */
   void begin();
 
@@ -201,7 +218,7 @@ public:
   * \retval optional<Unit> success or failure (timeout)
   */
   etl::optional<Unit>
-  send(const char *buffer, unsigned char size, bool check_tx = false);
+  send(const char *buffer, uint8_t size, bool check_tx = false);
 
 /**
   * @brief  接收数据包
@@ -264,7 +281,7 @@ public:
  * \brief  读 RF 寄存器
  * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
  */
-  unsigned char read(unsigned char addr);
+  uint8_t read(uint8_t addr);
 
   /**
    * @brief print all registers
@@ -305,7 +322,7 @@ public:
   void scanR();
 
   /// read RSSI
-  unsigned char rssi();
+  uint8_t rssi();
 
   uint8_t pollTxPktSt();
 
@@ -315,13 +332,8 @@ public:
   void clrTxFifoWrPtr();
 
   PinStatus pollIrqPin();
-
 };
 
-namespace RF {
-  void printStatus(const RfStatus &status);
-  void printState(const RfState &state);
-}
 
 #endif
 

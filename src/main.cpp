@@ -48,7 +48,7 @@ int main() {
   auto instant = Instant();
   auto rx_instant = Instant();
   rf.printRegisters();
-  #define TX
+//  #define TX
   #ifdef TX
   printf("TX mode\n");
   #else
@@ -57,13 +57,13 @@ int main() {
 
   while (true) {
     #ifdef TX
-    auto d = std::chrono::duration<uint64_t, std::milli>(500);
+    auto d = std::chrono::duration<uint64_t, std::milli>(1000);
     if (instant.elapsed() >= d) {
       // construct a payload
       etl::string<32> payload = "hello world:";
-      auto r = utils::rand_range(0, 100);
+      auto r = utils::rand_range(0, 65535);
       etl::to_string(r, payload, true);
-      payload.append("\n");
+      payload.append("\r\n");
       auto status = rf.pollStatus();
       if (!status.tx) {
         rf.tx();
@@ -99,15 +99,13 @@ int main() {
     auto rx_d = std::chrono::duration<uint64_t, std::milli>(50);
     if (rx_instant.elapsed() > rx_d) {
       etl::string<256> buf;
-      auto state = rf.pollState();
-      if (state.pkt_flag) {
-        if (auto maybe = rf.recv(buf.data())) {
-          buf.resize(maybe.value());
-          printf("len=%d\n", buf.length());
-          printWithSize(buf.c_str(), buf.length(), true);
-          printf("\n");
-          rf.resetRxFlag();
-        }
+//      auto state = rf.pollState();
+      if (auto maybe = rf.recv(buf.data())) {
+        buf.resize(maybe.value());
+        printf("len=%d\n", buf.length());
+        printWithSize(buf.c_str(), buf.length(), true);
+        printf("\n");
+        rf.resetRxFlag();
       }
       rx_instant.reset();
     }
