@@ -102,7 +102,8 @@ void RfSystem::registerConfigure() {
   //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
   //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword 时产生中断信号
   //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
-  write(0x0e, 0xa1);
+  //  write(0x0e, 0xa1);
+  write(0x0e, 0b00100001);
   // r(0x0f)
   // 0x0a = 0b00001010
   //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
@@ -122,6 +123,7 @@ void RfSystem::registerConfigure() {
   write(0x20, 0xa4);
   write(0x21, 0x37);
   write(0x22, 0x3a);         /*VCO Config  3a*/  //3a -> 0azhangjun 20200612
+  // 0x36 = 0b00110110
   write(0x23, 0x36);         /*SYN Config   bit[7]enable wideband */
   write(0x2F, 0xe0);         // rx rssi threshold
   write(0x2E, 0x00);
@@ -143,11 +145,23 @@ void RfSystem::registerConfigure() {
   //              -      rest trivial
   write(0x39, 0x74); //enable demode reset
   write(0x3A, 0x61);
+  // r(0x4a)=0x60
+  // r(0x4b)=0x45
+  // r(0x4c)=0x67
+  // uint32_t GPIO_SEL = 0x60 & 0b00001111 << 16 | 0x45 << 8 | 0x67 = 0b0000_0100_0101_0110_0111;
+  // pkg_flag_pin =  (GPIO_SEL & (0b1111 << 16)) >> 16;
+  // fifo_flag_pin = (GPIO_SEL & (0b1111 << 12)) >> 12;
+  // brclk_pin =     (GPIO_SEL & (0b1111 <<  8)) >>  8;
+  // test1_pin =     (GPIO_SEL & (0b1111 <<  4)) >>  4;
+  // test2_pin =     (GPIO_SEL & (0b1111 <<  0)) >>  0;
+  //
+  // so the output of pkg_flag_pin by default is
+  // pkt_int | preamble_in | sync_int
+  // see also r(0x0e)
   write(0x4a, 0x60);
   write(0x4d, 0x0b);
   write(0x4e, 0x7c); //ber optimize 0x6c->0x7c by 20211126 juner
   write(0x4f, 0xc5);
-
 
   write(0x15, 0x21);
   write(0x07, 0x5d);
@@ -265,10 +279,8 @@ inline void RfSystem::clrTxFifoWrPtr() {
 
 /// the bigger the number the more power
 uint8_t RfSystem::rssi() {
-  uint8_t r_reg;
-
-  r_reg = read(0x43);
-  return r_reg / 2;
+  auto raw = read(0x43);
+  return raw / 2;
 }
 
 void RfSystem::writeFifo(const char *src, uint8_t len) {
@@ -434,7 +446,7 @@ void RfSystem::printRegisters() {
   }
 }
 
-uint8_t RfSystem::version() {
+inline uint8_t RfSystem::version() {
   auto tmp = read(0x47);
   return tmp & 0x07;
 };
