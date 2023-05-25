@@ -153,8 +153,6 @@ class RfSystem {
 
 /**
   * \brief  使能接收到同步字后锁定rssi
-  * \param  None
-  * \retval  None
   */
   void setSyncLockRssi();
 
@@ -169,14 +167,12 @@ class RfSystem {
   * \brief  发送数据 (without size written in the first byte)
   * \param [IN] src
   * \param [IN] len
-  * \retval None
   */
   void writeFifo(const char *src, uint8_t len);
 
 /**
   * \brief  发送数据
   * \param [IN] src 待发送数据 (单字节)
-  * \retval None
   */
   void writeFifo(char src);
 
@@ -195,6 +191,15 @@ class RfSystem {
   void setFreq(double f0, uint8_t N, double step);
 
   void setSync(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4);
+
+  // 芯片包含一个集成唤醒定时器，可用来定期从 standby 状态唤醒芯片。
+  // 计数器可配置一个最大值 wortimer_set 和一个中间值 wor_rxtimer_set，
+  // 这样可以方便的产生一个类似 PWM 信号输出。
+  // 当接收到一个有效的数据包后，芯片会退出自动唤醒状态，同时给出 PKT_FLAG 标志通知 MCU 处理数据。
+  // Wortimer_set 设置的整个的一个周期时间，
+  void setWorTimer(uint16_t t);
+  // wor_rxtimer_set 设置唤醒后接收的时间。
+  void setWorRxTimer(uint16_t t);
 
 protected:
   /// ch32v003 only has one SPI so there's no need to specify the SPI bus

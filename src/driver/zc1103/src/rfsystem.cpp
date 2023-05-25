@@ -108,8 +108,15 @@ void RfSystem::registerConfigure() {
   //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
   write(0x0F, 0x0A);
   write(0x10, 0x54);
-  write(0x1b, 0x25);
-
+  // r(0x1b) WOR
+  // 0x25 = 0b00100101
+  //          0          Reserved
+  //           0         自动唤醒后执行的命令 (0: RX, 1: TX)
+  //            1        内部低频 RC 振荡时钟校准使能
+  //             0       自动唤醒功能使能
+  //              0101   WOR 功能计数器时钟选择 (32KHz/2^n)
+  //                     0b0101 = 5 = 32KHz/2^5 = 1KHz i.e. 1ms per tick
+  write(0x1b, 0b00110101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
@@ -209,16 +216,14 @@ void RfSystem::setSyncLockRssi() {
 }
 
 void RfSystem::setVcoFreq(const double freq) {
-  unsigned int Fre = 0;
-  uint8_t reg77 = 0, reg76 = 0, reg75 = 0, reg74 = 0, temp = 0;
-  Fre = (unsigned int) (freq * pow(2.0, 20.0));
+  auto f = static_cast<uint8_t>(freq * pow(2.0, 20.0));
 
-  reg77 = (unsigned char) (Fre & 0xFF);
-  reg76 = (unsigned char) ((Fre >> 8) & 0xFF);
-  reg75 = (unsigned char) ((Fre >> 16) & 0xFF);
-  reg74 = (unsigned char) (((Fre >> 24) & 0xFF) | (read(0x74) & 0xc0));
+  uint8_t reg77 = f & 0xFF;
+  uint8_t reg76 = (f >> 8) & 0xFF;
+  uint8_t reg75 = (f >> 16) & 0xFF;
+  uint8_t reg74 = ((f >> 24) & 0xFF) | (read(0x74) & 0xc0);
 
-  temp = read(0x00);
+  auto temp = read(0x00);
   write(0x00, (0x80 | temp));
 
   write(0x77, reg77);
@@ -252,7 +257,7 @@ void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
   setFreqStep(step);
 }
 
-void RfSystem::clrTxFifoWrPtr() {
+inline void RfSystem::clrTxFifoWrPtr() {
   // 0x80 = 0b1000_0000
   write(0x53, 0x80);      /*Reset FIFO write Pointer*/
 }
@@ -320,6 +325,10 @@ inline void RfSystem::fs() {
   write(0x64, 0xff);
 }
 
+// 收到接收数据命令后，芯片先打开 PLL 及 VCO，进行校准，等待至 PLL 达到要求接收的频率，
+// 启用接收器电路(LNA，混频器、及 ADC)，再启用数字解调器的接收模式。
+// 直到收到接收到一包数据完成的指示信号或者是 SWOR 功能超时信号，
+// 如果是 SWOR 功能超时信号状态，则直接进入 STANDBY 模式;
 inline void RfSystem::rx() {
   write(0x51, 0x80);
   write(0x66, 0xff);
@@ -397,6 +406,9 @@ void RfSystem::begin() {
   Delay_Ms(30);
 
   registerConfigure();
+
+  setWorTimer(500);
+  setWorRxTimer(250);
 
   setDR(RF::DataRate::K9_6);
   setSync(0x41, 0x53, 0x41, 0x53);
@@ -727,4 +739,18 @@ void RfSystem::setDR(RF::DataRate data_rate) {
       // unreachable
       break;
   }
+}
+
+void RfSystem::setWorTimer(uint16_t t) {
+  auto h = static_cast<uint8_t>(t >> 8);
+  auto l = static_cast<uint8_t>(t & 0xff);
+  write(0x1c, h);
+  write(0x1d, l);
+}
+
+void RfSystem::setWorRxTimer(uint16_t t) {
+  auto h = static_cast<uint8_t>(t >> 8);
+  auto l = static_cast<uint8_t>(t & 0xff);
+  write(0x1e, h);
+  write(0x1f, l);
 }

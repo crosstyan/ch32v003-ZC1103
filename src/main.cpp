@@ -53,6 +53,7 @@ int main() {
   printf("TX mode\n");
   #else
   printf("RX mode\n");
+  rf.wor();
   #endif
 
   while (true) {
@@ -87,10 +88,10 @@ int main() {
       auto status = rf.pollStatus();
       auto s = rf.pollState();
       auto rssi = rf.rssi();
+      printf("rssi=%u\n", rssi);
       if (!status.rx) {
         rf.rx();
       }
-      printf("rssi=%u\n", rssi);
       RF::printStatus(status);
       RF::printState(s);
       instant.reset();
@@ -99,13 +100,19 @@ int main() {
     auto rx_d = std::chrono::duration<uint64_t, std::milli>(50);
     if (rx_instant.elapsed() > rx_d) {
       etl::string<256> buf;
-//      auto state = rf.pollState();
-      if (auto maybe = rf.recv(buf.data())) {
-        buf.resize(maybe.value());
-        printf("len=%d\n", buf.length());
-        printWithSize(buf.c_str(), buf.length(), true);
-        printf("\n");
-        rf.resetRxFlag();
+      auto state = rf.pollState();
+      // magic number 0x03 means no packet received
+      // when a valid packet is received the state will be 0xc0
+      // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
+      if (state.rx_pkt_state != 0x03) {
+        if (auto maybe = rf.recv(buf.data())) {
+          buf.resize(maybe.value());
+          printf("len=%d\n", buf.length());
+          printWithSize(buf.c_str(), buf.length(), true);
+          printf("\n");
+          rf.resetRxFlag();
+        }
+        rf.wor();
       }
       rx_instant.reset();
     }
