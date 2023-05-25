@@ -94,108 +94,18 @@ uint8_t RfSystem::read(const uint8_t addr) {
 }
 
 void RfSystem::registerConfigure() {
-//  // 0x08 = 0b00001000
-//  write(0x09, 0x08);/*Debug*/
-//  // 0x03 = 0b00000011
-//  write(0x0c, 0x03);
-//  // raw RSSI 最低 1bit 表示小数
-//  write(0x0d, 0x70);
-//  // 0xa1 = 0b10100001
-//  //             00001 allowed error bit
-//  //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
-//  //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword 时产生中断信号
-//  //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
-//  write(0x0e, 0x21);
-////  write(0x0e, 0b00000001);
-//  // 0x0a = 0b00001010
-//  //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
-//  write(0x0f, 0x0f);
-//  write(0x10, 0x54);
-//  write(0x1b, 0x25);
-//
-//
-//  write(0x20, 0xa4);
-//  write(0x21, 0x37);
-//  write(0x22, 0x3a);         /*VCO Config  3a*/  //3a -> 0azhangjun 20200612
-//  write(0x23, 0x36);         /*SYN Config   bit[7]enable wideband */
-//  /*registerWrite(0x23, ((RfRegisterRead(0x23)&0x8F)|0x50));  //bit[6-4] Vco ldo output voltage */
-//  write(0x2F, 0xe0);         /*rx rssi threshold*/
-//  write(0x2E, 0x00);
-//
-//  write(0x30, 0x00);         /*ber optimize 0x40->0x00 by 20211126 juner*/
-//  write(0x31, 0x00);
-//  write(0x32, 0x00);
-//  write(0x33, 0x00);
-//  write(0x34, 0x00);
-//  write(0x35, 0x00);
-//  write(0x36, 0x00);
-//
-//
-//  write(0x39, 0x74); /*enable demode reset */
-//  write(0x3A, 0x61);
-//  write(0x4a, 0x60);
-//  // should be 0x0b and no need to write it
-//  // registerWrite(0x4d, 0x0b);
-//  write(0x4e, 0x7c);/*ber optimize 0x6c->0x7c by 20211126 juner*/
-//  write(0x4f, 0xc5);
-//  //10kps
-//  write(0x74, 0x9d);/*bit[7-6] ADC clock select*/
-//  write(0x08, 0x01);/*方法1设置频偏25k   */
-//  write(0x24, 0x19);/*中频设置[7-0]      */
-//  write(0x3D, 0x53);/*中频设置[7-0]      */
-//
-//  write(0x38, 0x56);
-//  write(0x3C, 0xD1);
-//  write(0x3E, 0x83);
-//  write(0x3F, 0x08);
-//
-//  write(0x58, 0x00);
-//  write(0x59, 0x07);
-//  write(0x5A, 0x08);
-//  write(0x5B, 0x09);
-//  write(0x5C, 0x03);
-//  write(0x5D, 0x71);
-//  write(0x5e, 0x00);
-//  write(0x5f, 0xDF);
-//
-//
-//  //25k->20k   0x40->0xC0
-//  //25k->20k   0x66->0x51
-//  //25k->20k   0x66->0xEC
-//
-//  write(0x78, 0xC0);  //方法2设置频偏10k --未使用 25->20K
-//  write(0x79, 0x51);  //25->20K
-//  write(0x7a, 0xEC);  //25->20K
-//
-//  write(0x7b, 0x5A);
-//  write(0x7c, 0x7C);
-//  write(0x7d, 0x01);
-//  write(0x7e, 0x00);
-//  write(0x7f, 0x70);
-//
-//  write(0x15, 0x21);
-//  write(0x07, 0x5d);
-//  write(0x18, 0x20);
-//  write(0x2a, 0x14);
-//  write(0x37, 0x99);
-//  // 0x3a = 0b00111010
-//  //                 0 HW_TERM_EN
-//  //                1  PKT_LENGTH_EN
-//  //               0   DIRECT_MODE
-//  //              1    FIFO_SHARE_EN
-//  //             1     SCRAMBLE_EN
-//  //            1      CRC_EN
-//  //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte, 1: 2 bytes)
-//  //          0        SYNCWORD_LEN: 同步字长度设置
-//  write(0x06, 0b00100010);
-//  // preamble length 80 bytes
-//  write(0x04, 0x50);
-
-  // TODO: diff compare
-  /*Debug*/
   write(0x09, 0x08);
   write(0x0c, 0x03);
+  // r(0x0e)
+  // 0xa1 = 0b10100001
+  //             00001 allowed error bit
+  //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
+  //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword 时产生中断信号
+  //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
   write(0x0e, 0xa1);
+  // r(0x0f)
+  // 0x0a = 0b00001010
+  //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
   write(0x0F, 0x0A);
   write(0x10, 0x54);
   write(0x1b, 0x25);
@@ -205,11 +115,10 @@ void RfSystem::registerConfigure() {
   write(0x21, 0x37);
   write(0x22, 0x3a);         /*VCO Config  3a*/  //3a -> 0azhangjun 20200612
   write(0x23, 0x36);         /*SYN Config   bit[7]enable wideband */
-  //write(0x23, ((RfRegisterRead(0x23)&0x8F)|0x50));  //bit[6-4] Vco ldo output voltage
-  write(0x2F, 0xe0);         //rx rssi threshold
+  write(0x2F, 0xe0);         // rx rssi threshold
   write(0x2E, 0x00);
 
-  write(0x30, 0x00);         //ber optimize 0x40->0x00 by 20211126 juner
+  write(0x30, 0x00);         // ber optimize 0x40->0x00 by 20211126 juner
   write(0x31, 0x00);
   write(0x32, 0x00);
   write(0x33, 0x00);
@@ -217,12 +126,18 @@ void RfSystem::registerConfigure() {
   write(0x35, 0x00);
   write(0x36, 0x00);
 
-
-  write(0x39, 0x74);    //enable demode reset
+  // r(0x39)
+  // 0x74 = 0b01110100
+  //          0          Preamble Threshold
+  //           1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
+  //            1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
+  //             1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
+  //              -      rest trivial
+  write(0x39, 0x74); //enable demode reset
   write(0x3A, 0x61);
   write(0x4a, 0x60);
   write(0x4d, 0x0b);
-  write(0x4e, 0x7c);      //ber optimize 0x6c->0x7c by 20211126 juner
+  write(0x4e, 0x7c); //ber optimize 0x6c->0x7c by 20211126 juner
   write(0x4f, 0xc5);
 
 
@@ -232,9 +147,19 @@ void RfSystem::registerConfigure() {
   write(0x2a, 0x14);
   write(0x37, 0x99);
 
-  write(0x06, 0x3a);//数据包设置
-  write(0x04, 0x0A);//前导码长度
-  write(0x3B, 0x04);//前导码门限
+  // r(0x06)
+  // 0x3a = 0b00111010
+  //                 0 HW_TERM_EN
+  //                1  PKT_LENGTH_EN
+  //               0   DIRECT_MODE
+  //              1    FIFO_SHARE_EN
+  //             1     SCRAMBLE_EN
+  //            1      CRC_EN
+  //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte, 1: 2 bytes)
+  //          0        SYNCWORD_LEN: 同步字长度设置
+  write(0x06, 0x3a); //数据包设置
+  write(0x04, 0x0A); //前导码长度
+  write(0x3B, 0x04); //前导码门限
 }
 
 void RfSystem::setRefFreq(const double freq) {
@@ -268,13 +193,14 @@ void RfSystem::setPA(PowerAmpGain x_dBm) {
   const uint8_t vReg26Tbl_h31[] = {0x83, 0x81, 0xaf, 0x82, 0x8f, 0x85, 0x95, 0xbf, 0x81, 0xab, \
                                     0x81, 0x68, 0x6b, 0x5c, 0x75, 0x72, 0x7b, 0x79, 0x7a, 0x68, \
                                     0x6f, 0x7c, 0x6a, 0x7f, 0x6e, 0x62, 0x58};
-  auto r_reg = read(0x47);
-  if ((r_reg & 0x07) == 0x04) {
-    write(0x25, vReg25Tbl_h4[x_dBm]);
-    write(0x26, vReg26Tbl_h4[x_dBm]);
+  auto v = version();
+  auto idx = static_cast<size_t>(x_dBm);
+  if (v == 0x04) {
+    write(0x25, vReg25Tbl_h4[idx]);
+    write(0x26, vReg26Tbl_h4[idx]);
   } else {
-    write(0x25, vReg25Tbl_h31[x_dBm]);
-    write(0x26, vReg26Tbl_h31[x_dBm]);
+    write(0x25, vReg25Tbl_h31[idx]);
+    write(0x26, vReg26Tbl_h31[idx]);
   }
 }
 
@@ -501,7 +427,7 @@ void RfSystem::printRegisters() {
 
 uint8_t RfSystem::version() {
   auto tmp = read(0x47);
-  return tmp & 0b11;
+  return tmp & 0x07;
 };
 
 bool RfSystem::rxFlag() const {

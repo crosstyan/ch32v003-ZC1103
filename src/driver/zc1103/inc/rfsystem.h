@@ -192,7 +192,6 @@ class RfSystem {
  */
   void registerConfigure();
 
-
   void setFreq(double f0, uint8_t N, double step);
 
   void setSync(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4);
