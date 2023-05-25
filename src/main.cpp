@@ -53,7 +53,6 @@ int main() {
   printf("TX mode\n");
   #else
   printf("RX mode\n");
-  rf.wor();
   #endif
 
   while (true) {
@@ -112,7 +111,6 @@ int main() {
           printf("\n");
           rf.resetRxFlag();
         }
-        rf.wor();
       }
       rx_instant.reset();
     }

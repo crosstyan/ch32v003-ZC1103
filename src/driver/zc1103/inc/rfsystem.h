@@ -335,6 +335,8 @@ public:
   */
   void clrTxFifoWrPtr();
 
+  void clrRxFifoRdPtr();
+
   PinStatus pollIrqPin();
 };
 

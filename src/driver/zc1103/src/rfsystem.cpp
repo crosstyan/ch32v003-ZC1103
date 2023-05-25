@@ -116,7 +116,8 @@ void RfSystem::registerConfigure() {
   //             0       自动唤醒功能使能
   //              0101   WOR 功能计数器时钟选择 (32KHz/2^n)
   //                     0b0101 = 5 = 32KHz/2^5 = 1KHz i.e. 1ms per tick
-  write(0x1b, 0b00110101);
+  //  write(0x1b, 0b00110101);
+  write(0x1b, 0b00100101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
@@ -330,7 +331,6 @@ inline void RfSystem::fs() {
 // 直到收到接收到一包数据完成的指示信号或者是 SWOR 功能超时信号，
 // 如果是 SWOR 功能超时信号状态，则直接进入 STANDBY 模式;
 inline void RfSystem::rx() {
-  write(0x51, 0x80);
   write(0x66, 0xff);
 }
 
@@ -381,7 +381,7 @@ RfSystem::send(const char *buffer, const uint8_t size, bool check_tx) {
 etl::optional<size_t>
 RfSystem::recv(char *buf) {
   //清接收FIFO读指针
-  write(0x51, 0x80);
+  clrRxFifoRdPtr();
   //读取接收FIFO的寄存器映射地址，此为接收到的数据长度
   size_t len = read(0x52 | 0x80);
   if (len == 0) {
@@ -406,9 +406,6 @@ void RfSystem::begin() {
   Delay_Ms(30);
 
   registerConfigure();
-
-  setWorTimer(500);
-  setWorRxTimer(250);
 
   setDR(RF::DataRate::K9_6);
   setSync(0x41, 0x53, 0x41, 0x53);
@@ -753,4 +750,8 @@ void RfSystem::setWorRxTimer(uint16_t t) {
   auto l = static_cast<uint8_t>(t & 0xff);
   write(0x1e, h);
   write(0x1f, l);
+}
+
+inline void RfSystem::clrRxFifoRdPtr() {
+  write(0x51, 0x80);
 }
