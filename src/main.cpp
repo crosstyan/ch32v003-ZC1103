@@ -49,6 +49,8 @@ int main() {
       "csrrw x0, 0x804, t1\n"
       : : :  "t1" );
 
+  // Enable GPIOs
+  // I/O auxiliary function module clock enable bit.
   RCC->APB2PCENR = RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO;
   // GPIO C3 for input pin change.
   constexpr uint8_t CNF_WIDTH = 4;
@@ -63,7 +65,7 @@ int main() {
   // 11: xth pin of the PD pin.
   //PORTD.3 (3 out front says PORTD, 3 in back says 3)
   constexpr uint8_t EXTIx_WIDTH = 2;
-  AFIO->EXTICR = 0b10<<(3*EXTIx_WIDTH);
+  AFIO->EXTICR = 0b10<<(EXTIx_WIDTH * 3);
   EXTI->INTENR = 1<<3; // Enable EXT3
   EXTI->RTENR = 1<<3;  // Rising edge trigger
 
@@ -122,6 +124,9 @@ int main() {
 
     if (RF::rxFlag()) {
       auto state = rf.pollState();
+      if (state.crc_error) {
+        printf("[ERROR] CRC error\n");
+      }
       etl::vector<char, 256> buf;
       // magic number 0x03 means no packet received
       // when a valid packet is received the state will be 0xc0
