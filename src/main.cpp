@@ -10,12 +10,12 @@
 #include <printf.h>
 #include "utils.h"
 
-void printWithSize(const char *str, size_t size, bool hex = false) {
+void static printWithSize(const char *str, size_t size, bool hex = false) {
   for (size_t i = 0; i < size; i++) {
     if (hex) {
       printf("%02x", str[i]);
     } else {
-      printf("%c", str[i]);
+      putchar(str[i]);
     }
   }
 };
@@ -29,7 +29,7 @@ int main() {
   SystemInit48HSI();
   SysTick_init();
   SetupDebugPrintf();
-  printf("booting\n");
+  printf("[INFO] booting\n");
 
   pin_size_t LED_pin = GPIO::D6;
   pinMode(LED_pin, OUTPUT);
@@ -43,14 +43,14 @@ int main() {
 
   // expect to be 0x03
   auto version = rf.version();
-  printf("version=%d\n", version);
+  printf("[INFO] version=%d\n", version);
 
   auto instant = Instant();
   auto rx_instant = Instant();
   rf.printRegisters();
   #define TX
   #ifdef TX
-  printf("TX mode\n");
+  printf("[INFO] TX mode\n");
   #else
   printf("RX mode\n");
   #endif
@@ -70,7 +70,7 @@ int main() {
       }
       auto res = rf.send(payload.c_str(), payload.length());
       if (!res.has_value()){
-        printf("TX timeout\n");
+        printf("[ERROR] TX timeout\n");
       }
       printWithSize(payload.c_str(), payload.length());
       digitalWrite(GPIO::D6, HIGH);
