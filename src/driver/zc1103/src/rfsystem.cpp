@@ -2,13 +2,9 @@
 
 volatile bool rx_flag = false;
 
-void RF::setRxFlag(bool flag) {
-  rx_flag = flag;
-}
+void RF::setRxFlag(bool flag) { rx_flag = flag; }
 
-bool RF::rxFlag() {
-  return rx_flag;
-}
+bool RF::rxFlag() { return rx_flag; }
 
 /// a utility function to check if a bit is set at shift.
 /// note that shift is 0-indexed.
@@ -16,29 +12,17 @@ inline static bool shift_equal(uint8_t byte, uint8_t shift) {
   return (byte & (1 << shift)) == (1 << shift);
 }
 
-inline void RfSystem::RST_LOW() {
-  digitalWrite(this->RST_PIN, LOW);
-}
+inline void RfSystem::RST_LOW() { digitalWrite(this->RST_PIN, LOW); }
 
-inline void RfSystem::RST_HIGH() {
-  digitalWrite(this->RST_PIN, HIGH);
-}
+inline void RfSystem::RST_HIGH() { digitalWrite(this->RST_PIN, HIGH); }
 
-inline void RfSystem::SDN_LOW() {
-  digitalWrite(this->SDN_PIN, LOW);
-}
+inline void RfSystem::SDN_LOW() { digitalWrite(this->SDN_PIN, LOW); }
 
-inline void RfSystem::SDN_HIGH() {
-  digitalWrite(this->SDN_PIN, HIGH);
-}
+inline void RfSystem::SDN_HIGH() { digitalWrite(this->SDN_PIN, HIGH); }
 
-inline void RfSystem::CS_HIGH() {
-  digitalWrite(this->CS_PIN, HIGH);
-}
+inline void RfSystem::CS_HIGH() { digitalWrite(this->CS_PIN, HIGH); }
 
-inline void RfSystem::CS_LOW() {
-  digitalWrite(this->CS_PIN, LOW);
-}
+inline void RfSystem::CS_LOW() { digitalWrite(this->CS_PIN, LOW); }
 
 inline void RfSystem::gpioConfigure() {
   pinMode(this->RST_PIN, OUTPUT);
@@ -67,9 +51,7 @@ void RfSystem::reset() {
   SDN_LOW();
 }
 
-inline uint8_t RfSystem::sendByte(uint8_t byte) {
-  return SPI_transfer_8(byte);
-}
+inline uint8_t RfSystem::sendByte(uint8_t byte) { return SPI_transfer_8(byte); }
 
 inline void RfSystem::sendBytes(uint8_t const *bytes, size_t len) {
   for (size_t i = 0; i < len; i++) {
@@ -109,14 +91,18 @@ void RfSystem::registerConfigure() {
   // r(0x0e)
   // 0xa1 = 0b10100001
   //             00001 allowed error bit
-  //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
-  //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword 时产生中断信号
-  //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
+  //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低,
+  //            脉冲宽度大约 1us
+  //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword
+  //           时产生中断信号
+  //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble
+  //          时产生中断信号
   //  write(0x0e, 0xa1);
   write(0x0e, 0b00100001);
   // r(0x0f)
   // 0x0a = 0b00001010
-  //             00000 发送 FIFO 空门限，发送 FIFO 还剩余字节数低于门限值时会产生 fifo_flag 标志
+  //             00000 发送 FIFO 空门限，发送 FIFO
+  //             还剩余字节数低于门限值时会产生 fifo_flag 标志
   write(0x0F, 0x0A);
   write(0x10, 0x54);
   // r(0x1b) WOR
@@ -132,13 +118,13 @@ void RfSystem::registerConfigure() {
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
-  write(0x22, 0x3a);         /*VCO Config  3a*/  //3a -> 0azhangjun 20200612
+  write(0x22, 0x3a); /*VCO Config  3a*/ // 3a -> 0azhangjun 20200612
   // 0x36 = 0b00110110
-  write(0x23, 0x36);         /*SYN Config   bit[7]enable wideband */
-  write(0x2F, 0xe0);         // rx rssi threshold
+  write(0x23, 0x36); /*SYN Config   bit[7]enable wideband */
+  write(0x2F, 0xe0); // rx rssi threshold
   write(0x2E, 0x00);
 
-  write(0x30, 0x00);         // ber optimize 0x40->0x00 by 20211126 juner
+  write(0x30, 0x00); // ber optimize 0x40->0x00 by 20211126 juner
   write(0x31, 0x00);
   write(0x32, 0x00);
   write(0x33, 0x00);
@@ -149,28 +135,29 @@ void RfSystem::registerConfigure() {
   // r(0x39)
   // 0x74 = 0b0111_0100
   //          0          Preamble Threshold
-  //           1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
+  //           1
+  //           该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
   //            1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
-  //             1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
+  //             1       找到谱线后一定周期内没有收到有效的 preamble
+  //             则进行接收机复位
   //                -    rest trivial
   write(0x39, 0x74);
   write(0x3A, 0x61);
   // r(0x4a)=0x60
   // r(0x4b)=0x45
   // r(0x4c)=0x67
-  // uint32_t GPIO_SEL = 0x60 & 0b00001111 << 16 | 0x45 << 8 | 0x67 = 0b0000_0100_0101_0110_0111;
-  // pkg_flag_pin =  (GPIO_SEL & (0b1111 << 16)) >> 16;
-  // fifo_flag_pin = (GPIO_SEL & (0b1111 << 12)) >> 12;
-  // brclk_pin =     (GPIO_SEL & (0b1111 <<  8)) >>  8;
-  // test1_pin =     (GPIO_SEL & (0b1111 <<  4)) >>  4;
-  // test2_pin =     (GPIO_SEL & (0b1111 <<  0)) >>  0;
+  // uint32_t GPIO_SEL = 0x60 & 0b00001111 << 16 | 0x45 << 8 | 0x67 =
+  // 0b0000_0100_0101_0110_0111; pkg_flag_pin =  (GPIO_SEL & (0b1111 << 16)) >>
+  // 16; fifo_flag_pin = (GPIO_SEL & (0b1111 << 12)) >> 12; brclk_pin =
+  // (GPIO_SEL & (0b1111 <<  8)) >>  8; test1_pin =     (GPIO_SEL & (0b1111 <<
+  // 4)) >>  4; test2_pin =     (GPIO_SEL & (0b1111 <<  0)) >>  0;
   //
   // so the output of pkg_flag_pin by default is
   // pkt_int | preamble_in | sync_int
   // see also r(0x0e)
   write(0x4a, 0x60);
   write(0x4d, 0x0b);
-  write(0x4e, 0x7c); //ber optimize 0x6c->0x7c by 20211126 juner
+  write(0x4e, 0x7c); // ber optimize 0x6c->0x7c by 20211126 juner
   write(0x4f, 0xc5);
 
   write(0x15, 0x21);
@@ -180,8 +167,8 @@ void RfSystem::registerConfigure() {
   write(0x37, 0x99);
 
   // Real data often contain long sequences of zeros and ones.
-  // In these cases, performance can be improved by whitening the data before transmitting,
-  // and de-whitening the data in the receiver.
+  // In these cases, performance can be improved by whitening the data before
+  // transmitting, and de-whitening the data in the receiver.
   //
   // r(0x06) Packet Control
   // 0x3a = 0b00111010
@@ -191,8 +178,10 @@ void RfSystem::registerConfigure() {
   //              1    FIFO_SHARE_EN
   //             1     SCRAMBLE_EN i.e. Whitening
   //            1      CRC_EN
-  //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte, 1: 2 bytes)
-  //          0        SYNC_WORD_LEN: 同步字长度设置 0:2bytes {r(0x11), r(0x12)}, 1:4bytes {r(0x11), r(0x12), r(0x13), r(0x14)}
+  //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte,
+  //           1: 2 bytes)
+  //          0        SYNC_WORD_LEN: 同步字长度设置 0:2bytes {r(0x11),
+  //          r(0x12)}, 1:4bytes {r(0x11), r(0x12), r(0x13), r(0x14)}
   write(0x06, 0x3a);
   // r(0x04) Preamble Length
   // should be same across all nodes
@@ -203,7 +192,8 @@ void RfSystem::registerConfigure() {
   //           0         Preamble Format (0: 1010, 1: 0101)
   //            1        Sync Word Enable
   //             1       Preamble Enable
-  //              00     Packet Encoding Scheme (00: NRZ, 11: Interleave, else: Reserved)
+  //              00     Packet Encoding Scheme (00: NRZ, 11: Interleave, else:
+  //              Reserved)
   //                00   FEC (01: 1/3, 10: 2/3, else: None)
   write(0x05, 0x30);
   // r(0x3b) Preamble Threshold
@@ -220,12 +210,12 @@ void RfSystem::registerConfigure() {
 }
 
 void RfSystem::setRefFreq(const double freq) {
-  auto f = static_cast<uint8_t>(freq * pow(2.0, 24.0));
+  auto f = static_cast<size_t>(freq * pow(2.0, 24.0));
 
-  uint8_t reg73 = f & 0xFF;
-  uint8_t reg72 = (f >> 8) & 0xFF;
-  uint8_t reg71 = (f >> 16) & 0xFF;
-  uint8_t reg70 = (f >> 24) & 0xFF;
+  auto reg73 = static_cast<uint8_t>(f & 0xFF);
+  auto reg72 = static_cast<uint8_t>((f >> 8) & 0xFF);
+  auto reg71 = static_cast<uint8_t>((f >> 16) & 0xFF);
+  auto reg70 = static_cast<uint8_t>((f >> 24) & 0xFF);
 
   write(0x73, reg73);
   write(0x72, reg72);
@@ -234,22 +224,25 @@ void RfSystem::setRefFreq(const double freq) {
 }
 
 void RfSystem::setPA(PowerAmpGain gain) {
-  const uint8_t vReg25Tbl_h4[] = {0x3f, 0x38, 0x25, 0x1a, 0x0f, 0x0d, 0x0b, 0x0a, 0x09, 0x08, 0x04, 0x03, 0x86,
-                                  0x82, 0x01, 0x01, 0x02, 0x02, 0x00, 0x00, 0x24, 0x20, 0x16, 0x14, 0x11, 0x0d,
-                                  0x0d};
+  const uint8_t vReg25Tbl_h4[] = {0x3f, 0x38, 0x25, 0x1a, 0x0f, 0x0d, 0x0b,
+                                  0x0a, 0x09, 0x08, 0x04, 0x03, 0x86, 0x82,
+                                  0x01, 0x01, 0x02, 0x02, 0x00, 0x00, 0x24,
+                                  0x20, 0x16, 0x14, 0x11, 0x0d, 0x0d};
 
-  const uint8_t vReg26Tbl_h4[] = {0xb0, 0xb0, 0xbf, 0xbf, 0xbf, 0xbf, 0xbf, 0xbf, 0x9f, 0x9f, 0xbf, 0x8f, 0x80,
-                                  0xbf, 0x9f, 0x84, 0x81, 0x80, 0xad, 0x88, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x72,
-                                  0x62};
+  const uint8_t vReg26Tbl_h4[] = {0xb0, 0xb0, 0xbf, 0xbf, 0xbf, 0xbf, 0xbf,
+                                  0xbf, 0x9f, 0x9f, 0xbf, 0x8f, 0x80, 0xbf,
+                                  0x9f, 0x84, 0x81, 0x80, 0xad, 0x88, 0x7f,
+                                  0x7f, 0x7f, 0x7f, 0x7f, 0x72, 0x62};
 
+  const uint8_t vReg25Tbl_h31[] = {0xbf, 0xff, 0x1d, 0x1c, 0x0f, 0x0e, 0x07,
+                                   0x06, 0x05, 0x04, 0x03, 0x3f, 0x2f, 0x2f,
+                                   0x1d, 0x17, 0x13, 0x11, 0x10, 0x10, 0x07,
+                                   0x05, 0x05, 0x03, 0x03, 0x03, 0x03};
 
-  const uint8_t vReg25Tbl_h31[] = {0xbf, 0xff, 0x1d, 0x1c, 0x0f, 0x0e, 0x07, 0x06, 0x05, 0x04, \
-                                    0x03, 0x3f, 0x2f, 0x2f, 0x1d, 0x17, 0x13, 0x11, 0x10, 0x10, \
-                                    0x07, 0x05, 0x05, 0x03, 0x03, 0x03, 0x03};
-
-  const uint8_t vReg26Tbl_h31[] = {0x83, 0x81, 0xaf, 0x82, 0x8f, 0x85, 0x95, 0xbf, 0x81, 0xab, \
-                                    0x81, 0x68, 0x6b, 0x5c, 0x75, 0x72, 0x7b, 0x79, 0x7a, 0x68, \
-                                    0x6f, 0x7c, 0x6a, 0x7f, 0x6e, 0x62, 0x58};
+  const uint8_t vReg26Tbl_h31[] = {0x83, 0x81, 0xaf, 0x82, 0x8f, 0x85, 0x95,
+                                   0xbf, 0x81, 0xab, 0x81, 0x68, 0x6b, 0x5c,
+                                   0x75, 0x72, 0x7b, 0x79, 0x7a, 0x68, 0x6f,
+                                   0x7c, 0x6a, 0x7f, 0x6e, 0x62, 0x58};
   auto v = version();
   auto idx = static_cast<size_t>(gain);
   if (v == 0x04) {
@@ -261,28 +254,24 @@ void RfSystem::setPA(PowerAmpGain gain) {
   }
 }
 
-void RfSystem::setSyncLockRssi() {
-  write(0x3e, read(0x3e) | 0x40);
-}
+void RfSystem::setSyncLockRssi() { write(0x3e, read(0x3e) | 0x40); }
 
 // TODO: find out why fucking cast would mess up the thing?
 void RfSystem::setVcoFreq(const double freq) {
-  unsigned int Fre = 0;
-  unsigned char reg77 = 0,reg76 = 0,reg75 = 0,reg74 = 0,temp = 0;
-  Fre = (unsigned int)(freq * pow(2.0,20.0));
+  auto f = static_cast<size_t>(freq * pow(2.0, 20.0));
 
-  reg77 =(unsigned char)(Fre & 0xFF);
-  reg76 =(unsigned char)((Fre >> 8) & 0xFF);
-  reg75 =(unsigned char)((Fre >> 16) & 0xFF);
-  reg74 =(unsigned char)(((Fre >> 24) & 0xFF)| (read(0x74)&0xc0));
+  auto reg77 = static_cast<uint8_t>(f & 0xFF);
+  auto reg76 = static_cast<uint8_t>((f >> 8) & 0xFF);
+  auto reg75 = static_cast<uint8_t>((f >> 16) & 0xFF);
+  auto reg74 = static_cast<uint8_t>(((f >> 24) & 0xFF) | (read(0x74) & 0xc0));
 
-  temp = read(0x00);
-  write(0x00,(0x80 | temp));
+  auto temp = read(0x00);
+  write(0x00, (0x80 | temp));
 
-  write(0x77,reg77);
-  write(0x76,reg76);
-  write(0x75,reg75);
-  write(0x74,reg74);
+  write(0x77, reg77);
+  write(0x76, reg76);
+  write(0x75, reg75);
+  write(0x74, reg74);
 }
 
 // TODO: find documentation for this
@@ -293,17 +282,14 @@ void RfSystem::setFreq(uint8_t N) {
   write(0x00, (0x80 | N));
 }
 
-
 void RfSystem::setFreqStep(double step) {
-  unsigned int fre = 0;
-  unsigned char reg1 = 0,reg2 = 0,reg3 = 0;
-  fre = (unsigned int)(step * pow(2.0,20.0));
-  reg3 = (unsigned char)(fre & 0xFF);
-  reg2 = (unsigned char)((fre >> 8)  & 0xFF);
-  reg1 = (unsigned char)((fre >> 16) & 0x7F);
-  write(0x03,reg3);
-  write(0x02,reg2);
-  write(0x01,reg1);;
+  auto fre = static_cast<size_t>(step * pow(2.0, 20.0));
+  auto reg3 = static_cast<uint8_t>(fre & 0xFF);
+  auto reg2 = static_cast<uint8_t>((fre >> 8) & 0xFF);
+  auto reg1 = static_cast<uint8_t>((fre >> 16) & 0x7F);
+  write(0x03, reg3);
+  write(0x02, reg2);
+  write(0x01, reg1);
 }
 
 void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
@@ -314,7 +300,7 @@ void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
 
 inline void RfSystem::clrTxFifoWrPtr() {
   // 0x80 = 0b1000_0000
-  write(0x53, 0x80);      /*Reset FIFO write Pointer*/
+  write(0x53, 0x80);
 }
 
 /// the bigger the number the more power
@@ -370,13 +356,9 @@ RfStatus RfSystem::pollStatus() {
   return status;
 }
 
-inline void RfSystem::idle() {
-  write(0x60, 0xff);
-}
+inline void RfSystem::idle() { write(0x60, 0xff); }
 
-inline void RfSystem::fs() {
-  write(0x64, 0xff);
-}
+inline void RfSystem::fs() { write(0x64, 0xff); }
 
 // WHY IDLE?
 inline void RfSystem::rx() {
@@ -406,8 +388,8 @@ void RfSystem::txCW() {
   tx();
 }
 
-etl::optional<Unit>
-RfSystem::send(const char *buffer, const uint8_t size, bool check_tx) {
+etl::optional<Unit> RfSystem::send(const char *buffer, const uint8_t size,
+                                   bool check_tx) {
   if (size > 0) {
     // must clear tx fifo write pointer before writing to fifo
     clrTxFifoWrPtr();
@@ -430,11 +412,10 @@ RfSystem::send(const char *buffer, const uint8_t size, bool check_tx) {
   return etl::make_optional(u);
 }
 
-etl::optional<size_t>
-RfSystem::recv(char *buf) {
-  //清接收FIFO读指针
+etl::optional<size_t> RfSystem::recv(char *buf) {
+  // 清接收FIFO读指针
   clrRxFifoRdPtr();
-  //读取接收FIFO的寄存器映射地址，此为接收到的数据长度
+  // 读取接收FIFO的寄存器映射地址，此为接收到的数据长度
   size_t len = read(0x52 | 0x80);
   if (len == 0) {
     rx();
@@ -446,8 +427,8 @@ RfSystem::recv(char *buf) {
   }
 }
 
-etl::optional<size_t>
-RfSystem::recv(char* buf, etl::delegate<void(size_t)> resize) {
+etl::optional<size_t> RfSystem::recv(char *buf,
+                                     etl::delegate<void(size_t)> resize) {
   clrRxFifoRdPtr();
   size_t len = read(0x52 | 0x80);
   if (len == 0) {
@@ -460,7 +441,6 @@ RfSystem::recv(char* buf, etl::delegate<void(size_t)> resize) {
     return etl::make_optional(len);
   }
 }
-
 
 void RfSystem::begin() {
   gpioConfigure();
@@ -478,22 +458,22 @@ void RfSystem::begin() {
   setDR(RF::DataRate::K9_6);
   setSync(0x41, 0x53);
 
-  //设置参考频率
+  // 设置参考频率
   write(0x70, 0x12);
   write(0x71, 0x14);
   write(0x72, 0x7A); // 6D 48    A1  7A 18.08
   write(0x73, 0xE1); // 32 00    84  E1
 
-  //设置锁频
+  // 设置锁频
   setSyncLockRssi();
 
-  //设置中心频点
+  // 设置中心频点
   setFreq(476.0, 0, 0);
 
   setWorTimer(500);
   setWorRxTimer(250);
 
-  //设置发射功率
+  // 设置发射功率
   setPA(PowerAmpGain::DBM20);
   fs();
   _is_initialized = true;
@@ -510,7 +490,8 @@ inline uint8_t RfSystem::version() {
   return tmp & 0x07;
 };
 
-bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t flag_pin, pin_size_t sdn_pin) {
+bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin,
+                       pin_size_t flag_pin, pin_size_t sdn_pin) {
   if (_is_initialized) {
     return false;
   }
@@ -522,25 +503,17 @@ bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t flag_pi
 }
 
 void RF::printStatus(const RfStatus &status) {
-  printf("idle=%d, tx=%d, rx=%d, fs=%d, scan=%d, rc_cal=%d, vco_cal=%d, wor=%d\n",
-         status.idle,
-         status.tx,
-         status.rx,
-         status.fs,
-         status.scan,
-         status.rc_cal,
-         status.vco_cal,
-         status.wor);
+  printf(
+      "idle=%d, tx=%d, rx=%d, fs=%d, scan=%d, rc_cal=%d, vco_cal=%d, wor=%d\n",
+      status.idle, status.tx, status.rx, status.fs, status.scan, status.rc_cal,
+      status.vco_cal, status.wor);
 };
 
 void RF::printState(const RfState &state) {
-  printf("sync_word_rev=%d, preamble_rev=%d, crc_error=%d, pkt_flag=%d, fifo_flag=%d, rx_pkt_state=0x%02x\n",
-         state.sync_word_rev,
-         state.preamble_rev,
-         state.crc_error,
-         state.pkt_flag,
-         state.fifo_flag,
-         state.rx_pkt_state);
+  printf("sync_word_rev=%d, preamble_rev=%d, crc_error=%d, pkt_flag=%d, "
+         "fifo_flag=%d, rx_pkt_state=0x%02x\n",
+         state.sync_word_rev, state.preamble_rev, state.crc_error,
+         state.pkt_flag, state.fifo_flag, state.rx_pkt_state);
 }
 
 /// Pkt_flag 分为 4 个功能:前导匹配、同步字匹配、接收或发送包完成。
@@ -570,13 +543,9 @@ uint8_t RfSystem::pollTxPktSt() {
   return (s & 0b00111000) >> 3;
 }
 
-void RfSystem::scanR() {
-  write(0x63, 0xff);
-}
+void RfSystem::scanR() { write(0x63, 0xff); }
 
-void RfSystem::wor() {
-  write(0x6a, 0xff);
-}
+void RfSystem::wor() { write(0x6a, 0xff); }
 
 inline void RfSystem::setSync(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4) {
   write(0x11, s1);
@@ -588,216 +557,216 @@ inline void RfSystem::setSync(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4) {
 // hope the compiler can optimize this
 void RfSystem::setDR(RF::DataRate data_rate) {
   switch (data_rate) {
-    case RF::DataRate::K2_4:
-      write(0x08, 0x81);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xb6);
-      write(0x3C, 0x91);
-      write(0x3E, 0x13);
-      write(0x3F, 0x20);
-      write(0x58, 0x00);
-      write(0x59, 0x11);
-      write(0x5A, 0x00);
-      write(0x5B, 0x0B);
-      write(0x5C, 0x01);
-      write(0x5D, 0x60);
-      write(0x5e, 0x00);
-      write(0x5f, 0x9F);
-      write(0x78, 0xC0);
-      write(0x79, 0x51);
-      write(0x7a, 0xC3);
-      write(0x7b, 0x5D);
-      write(0x7c, 0xF8);
-      write(0x7d, 0x03);
-      write(0x7e, 0x04);
-      write(0x7f, 0x67);
-      write(0x74, 0x9D);
-      break;
-    case RF::DataRate::K5:
-      write(0x08, 0x71);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xA8);
-      write(0x3C, 0x91);
-      write(0x3E, 0x03);
-      write(0x3F, 0x2C);
-      write(0x58, 0x00);
-      write(0x59, 0x3F);
-      write(0x5A, 0x00);
-      write(0x5B, 0x14);
-      write(0x5C, 0x01);
-      write(0x5D, 0x32);
-      write(0x5E, 0x00);
-      write(0x5F, 0x4F);
-      write(0x78, 0xC0);
-      write(0x79, 0x3D);
-      write(0x7A, 0x71);
-      write(0x7B, 0x5D);
-      write(0x7C, 0x68);
-      write(0x7D, 0x01);
-      write(0x7E, 0x00);
-      write(0x7F, 0xE1);
-      write(0x74, 0x9D);
-      break;
-    case RF::DataRate::K9_6:
-      write(0x08, 0x01);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xA8);
-      write(0x3C, 0x91);
-      write(0x3E, 0x03);
-      write(0x3F, 0x2C);
-      write(0x58, 0x00);
-      write(0x59, 0x11);
-      write(0x5A, 0x00);
-      write(0x5B, 0x0B);
-      write(0x5C, 0x01);
-      write(0x5D, 0x60);
-      write(0x5E, 0x00);
-      write(0x5F, 0x4F);
-      write(0x78, 0xC0);
-      write(0x79, 0x99);
-      write(0x7A, 0x4D);
-      write(0x7B, 0x5A);
-      write(0x7C, 0xF8);
-      write(0x7D, 0x06);
-      write(0x7E, 0x02);
-      write(0x7F, 0x2F);
-      write(0x74, 0x9D);
-      break;
-    case RF::DataRate::K10:
-      write(0x08, 0x01);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xC6);
-      write(0x3C, 0x91);
-      write(0x3E, 0x03);
-      write(0x3F, 0x08);
-      write(0x58, 0x00);
-      write(0x59, 0x07);
-      write(0x5A, 0x08);
-      write(0x5B, 0x09);
-      write(0x5C, 0x03);
-      write(0x5D, 0x71);
-      write(0x5e, 0x00);
-      write(0x5f, 0xDF);
-      write(0x78, 0x40);
-      write(0x79, 0x66);
-      write(0x7a, 0x66);
-      write(0x7b, 0x5A);
-      write(0x7c, 0x78);
-      write(0x7d, 0x01);
-      write(0x7e, 0x00);
-      write(0x7f, 0x70);
-      write(0x74, 0x9D);
-      break;
-    case RF::DataRate::K19_2:
-      write(0x08, 0x51);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xA8);
-      write(0x3C, 0xC1);
-      write(0x3E, 0x03);
-      write(0x3F, 0x2C);
-      write(0x58, 0x00);
-      write(0x59, 0x4F);
-      write(0x5A, 0x08);
-      write(0x5B, 0x05);
-      write(0x5C, 0x0C);
-      write(0x5D, 0x71);
-      write(0x5E, 0x02);
-      write(0x5F, 0x29);
-      write(0x78, 0xC0);
-      write(0x79, 0x99);
-      write(0x7A, 0x4D);
-      write(0x7B, 0x5A);
-      write(0x7C, 0xF8);
-      write(0x7D, 0x0C);
-      write(0x7E, 0x02);
-      write(0x7F, 0x29);
-      write(0x74, 0x9D);
-      break;
-    case RF::DataRate::K100:
-      write(0x08, 0x23);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xA8);
-      write(0x3C, 0x81);
-      write(0x3E, 0x03);
-      write(0x3F, 0x2C);
-      write(0x58, 0x02);
-      write(0x59, 0x95);
-      write(0x5A, 0x08);
-      write(0x5B, 0x01);
-      write(0x5C, 0x59);
-      write(0x5D, 0x53);
-      write(0x5E, 0x00);
-      write(0x5F, 0xC9);
-      write(0x78, 0x40);
-      write(0x79, 0x66);
-      write(0x7A, 0x66);
-      write(0x7B, 0x5B);
-      write(0x7C, 0x48);
-      write(0x7D, 0x0A);
-      write(0x7E, 0x00);
-      write(0x7F, 0x67);
-      write(0x74, 0x9D);
-      break;
-    case RF::DataRate::K200:
-      write(0x08, 0x36);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xA8);
-      write(0x3C, 0xC1);
-      write(0x3E, 0x03);
-      write(0x3F, 0x2C);
-      write(0x58, 0x02);
-      write(0x59, 0x95);
-      write(0x5A, 0x08);
-      write(0x5B, 0x01);
-      write(0x5C, 0x59);
-      write(0x5D, 0x53);
-      write(0x5E, 0x00);
-      write(0x5F, 0xC9);
-      write(0x78, 0x40);
-      write(0x79, 0x66);
-      write(0x7A, 0x66);
-      write(0x7B, 0x5B);
-      write(0x7C, 0x48);
-      write(0x7D, 0x0A);
-      write(0x7E, 0x00);
-      write(0x7F, 0x67);
-      write(0x74, 0x9D);
-      break;
-    case RF::DataRate::K250:
-      write(0x08, 0x47);
-      write(0x24, 0x19);
-      write(0x3D, 0x53);
-      write(0x38, 0xA8);
-      write(0x3C, 0xC1);
-      write(0x3E, 0x03);
-      write(0x3F, 0x2C);
-      write(0x58, 0x02);
-      write(0x59, 0x95);
-      write(0x5A, 0x08);
-      write(0x5B, 0x01);
-      write(0x5C, 0x59);
-      write(0x5D, 0x53);
-      write(0x5E, 0x00);
-      write(0x5F, 0xC9);
-      write(0x78, 0x40);
-      write(0x79, 0x66);
-      write(0x7A, 0x66);
-      write(0x7B, 0x5B);
-      write(0x7C, 0x48);
-      write(0x7D, 0x0A);
-      write(0x7E, 0x00);
-      write(0x7F, 0x67);
-      write(0x74, 0x9D);
-    default:
-      // unreachable
-      break;
+  case RF::DataRate::K2_4:
+    write(0x08, 0x81);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xb6);
+    write(0x3C, 0x91);
+    write(0x3E, 0x13);
+    write(0x3F, 0x20);
+    write(0x58, 0x00);
+    write(0x59, 0x11);
+    write(0x5A, 0x00);
+    write(0x5B, 0x0B);
+    write(0x5C, 0x01);
+    write(0x5D, 0x60);
+    write(0x5e, 0x00);
+    write(0x5f, 0x9F);
+    write(0x78, 0xC0);
+    write(0x79, 0x51);
+    write(0x7a, 0xC3);
+    write(0x7b, 0x5D);
+    write(0x7c, 0xF8);
+    write(0x7d, 0x03);
+    write(0x7e, 0x04);
+    write(0x7f, 0x67);
+    write(0x74, 0x9D);
+    break;
+  case RF::DataRate::K5:
+    write(0x08, 0x71);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xA8);
+    write(0x3C, 0x91);
+    write(0x3E, 0x03);
+    write(0x3F, 0x2C);
+    write(0x58, 0x00);
+    write(0x59, 0x3F);
+    write(0x5A, 0x00);
+    write(0x5B, 0x14);
+    write(0x5C, 0x01);
+    write(0x5D, 0x32);
+    write(0x5E, 0x00);
+    write(0x5F, 0x4F);
+    write(0x78, 0xC0);
+    write(0x79, 0x3D);
+    write(0x7A, 0x71);
+    write(0x7B, 0x5D);
+    write(0x7C, 0x68);
+    write(0x7D, 0x01);
+    write(0x7E, 0x00);
+    write(0x7F, 0xE1);
+    write(0x74, 0x9D);
+    break;
+  case RF::DataRate::K9_6:
+    write(0x08, 0x01);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xA8);
+    write(0x3C, 0x91);
+    write(0x3E, 0x03);
+    write(0x3F, 0x2C);
+    write(0x58, 0x00);
+    write(0x59, 0x11);
+    write(0x5A, 0x00);
+    write(0x5B, 0x0B);
+    write(0x5C, 0x01);
+    write(0x5D, 0x60);
+    write(0x5E, 0x00);
+    write(0x5F, 0x4F);
+    write(0x78, 0xC0);
+    write(0x79, 0x99);
+    write(0x7A, 0x4D);
+    write(0x7B, 0x5A);
+    write(0x7C, 0xF8);
+    write(0x7D, 0x06);
+    write(0x7E, 0x02);
+    write(0x7F, 0x2F);
+    write(0x74, 0x9D);
+    break;
+  case RF::DataRate::K10:
+    write(0x08, 0x01);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xC6);
+    write(0x3C, 0x91);
+    write(0x3E, 0x03);
+    write(0x3F, 0x08);
+    write(0x58, 0x00);
+    write(0x59, 0x07);
+    write(0x5A, 0x08);
+    write(0x5B, 0x09);
+    write(0x5C, 0x03);
+    write(0x5D, 0x71);
+    write(0x5e, 0x00);
+    write(0x5f, 0xDF);
+    write(0x78, 0x40);
+    write(0x79, 0x66);
+    write(0x7a, 0x66);
+    write(0x7b, 0x5A);
+    write(0x7c, 0x78);
+    write(0x7d, 0x01);
+    write(0x7e, 0x00);
+    write(0x7f, 0x70);
+    write(0x74, 0x9D);
+    break;
+  case RF::DataRate::K19_2:
+    write(0x08, 0x51);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xA8);
+    write(0x3C, 0xC1);
+    write(0x3E, 0x03);
+    write(0x3F, 0x2C);
+    write(0x58, 0x00);
+    write(0x59, 0x4F);
+    write(0x5A, 0x08);
+    write(0x5B, 0x05);
+    write(0x5C, 0x0C);
+    write(0x5D, 0x71);
+    write(0x5E, 0x02);
+    write(0x5F, 0x29);
+    write(0x78, 0xC0);
+    write(0x79, 0x99);
+    write(0x7A, 0x4D);
+    write(0x7B, 0x5A);
+    write(0x7C, 0xF8);
+    write(0x7D, 0x0C);
+    write(0x7E, 0x02);
+    write(0x7F, 0x29);
+    write(0x74, 0x9D);
+    break;
+  case RF::DataRate::K100:
+    write(0x08, 0x23);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xA8);
+    write(0x3C, 0x81);
+    write(0x3E, 0x03);
+    write(0x3F, 0x2C);
+    write(0x58, 0x02);
+    write(0x59, 0x95);
+    write(0x5A, 0x08);
+    write(0x5B, 0x01);
+    write(0x5C, 0x59);
+    write(0x5D, 0x53);
+    write(0x5E, 0x00);
+    write(0x5F, 0xC9);
+    write(0x78, 0x40);
+    write(0x79, 0x66);
+    write(0x7A, 0x66);
+    write(0x7B, 0x5B);
+    write(0x7C, 0x48);
+    write(0x7D, 0x0A);
+    write(0x7E, 0x00);
+    write(0x7F, 0x67);
+    write(0x74, 0x9D);
+    break;
+  case RF::DataRate::K200:
+    write(0x08, 0x36);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xA8);
+    write(0x3C, 0xC1);
+    write(0x3E, 0x03);
+    write(0x3F, 0x2C);
+    write(0x58, 0x02);
+    write(0x59, 0x95);
+    write(0x5A, 0x08);
+    write(0x5B, 0x01);
+    write(0x5C, 0x59);
+    write(0x5D, 0x53);
+    write(0x5E, 0x00);
+    write(0x5F, 0xC9);
+    write(0x78, 0x40);
+    write(0x79, 0x66);
+    write(0x7A, 0x66);
+    write(0x7B, 0x5B);
+    write(0x7C, 0x48);
+    write(0x7D, 0x0A);
+    write(0x7E, 0x00);
+    write(0x7F, 0x67);
+    write(0x74, 0x9D);
+    break;
+  case RF::DataRate::K250:
+    write(0x08, 0x47);
+    write(0x24, 0x19);
+    write(0x3D, 0x53);
+    write(0x38, 0xA8);
+    write(0x3C, 0xC1);
+    write(0x3E, 0x03);
+    write(0x3F, 0x2C);
+    write(0x58, 0x02);
+    write(0x59, 0x95);
+    write(0x5A, 0x08);
+    write(0x5B, 0x01);
+    write(0x5C, 0x59);
+    write(0x5D, 0x53);
+    write(0x5E, 0x00);
+    write(0x5F, 0xC9);
+    write(0x78, 0x40);
+    write(0x79, 0x66);
+    write(0x7A, 0x66);
+    write(0x7B, 0x5B);
+    write(0x7C, 0x48);
+    write(0x7D, 0x0A);
+    write(0x7E, 0x00);
+    write(0x7F, 0x67);
+    write(0x74, 0x9D);
+  default:
+    // unreachable
+    break;
   }
 }
 
@@ -815,13 +784,9 @@ void RfSystem::setWorRxTimer(uint16_t t) {
   write(0x1f, l);
 }
 
-inline void RfSystem::clrRxFifoRdPtr() {
-  write(0x51, 0x80);
-}
+inline void RfSystem::clrRxFifoRdPtr() { write(0x51, 0x80); }
 
-inline void RfSystem::clrRxFifoWrPtr() {
-  write(0x50, 0x80);
-}
+inline void RfSystem::clrRxFifoWrPtr() { write(0x50, 0x80); }
 
 void RfSystem::clrRxFifo() {
   write(0x51, 0x80);
@@ -832,4 +797,3 @@ void RfSystem::setSync(uint8_t s1, uint8_t s2) {
   write(0x11, s1);
   write(0x12, s2);
 }
-
