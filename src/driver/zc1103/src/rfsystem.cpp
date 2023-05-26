@@ -1,5 +1,16 @@
 #include "rfsystem.h"
 
+volatile bool rx_flag = false;
+
+void RF::setRxFlag(bool flag) {
+  rx_flag = flag;
+}
+
+bool RF::rxFlag() {
+  return rx_flag;
+}
+
+
 /// a utility function to check if a bit is set at shift.
 /// note that shift is 0-indexed.
 inline static bool shift_equal(uint8_t byte, uint8_t shift) {
@@ -34,7 +45,8 @@ inline void RfSystem::gpioConfigure() {
   pinMode(this->RST_PIN, OUTPUT);
   pinMode(this->SDN_PIN, OUTPUT);
   pinMode(this->CS_PIN, OUTPUT);
-  pinMode(this->PKT_FLAG_PIN, INPUT);
+  // interrupt configuration elsewhere (checkout main.cpp)
+  //  pinMode(this->PKT_FLAG_PIN, INPUT);
 }
 
 /// 芯片的所有控制都是通 SPI 接口操作，支持的模式是时钟极性为正，相位极性可选，
@@ -499,14 +511,6 @@ inline uint8_t RfSystem::version() {
   auto tmp = read(0x47);
   return tmp & 0x07;
 };
-
-bool RfSystem::rxFlag() const {
-  return _rx_flag;
-}
-
-void RfSystem::resetRxFlag() {
-  _rx_flag = false;
-}
 
 bool RfSystem::setPins(pin_size_t rst_pin, pin_size_t cs_pin, pin_size_t flag_pin, pin_size_t sdn_pin) {
   if (_is_initialized) {

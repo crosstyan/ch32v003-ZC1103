@@ -41,6 +41,35 @@ int main() {
   pin_size_t LED_pin = GPIO::D6;
   pinMode(LED_pin, OUTPUT);
 
+  asm volatile(
+#if __GNUC__ > 10
+      ".option arch, +zicsr\n"
+      #endif
+      "addi t1, x0, 3\n"
+      "csrrw x0, 0x804, t1\n"
+      : : :  "t1" );
+
+  RCC->APB2PCENR = RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO;
+  // GPIO C3 for input pin change.
+  constexpr uint8_t CNF_WIDTH = 4;
+  GPIOC->CFGLR |= (GPIO_SPEED_IN | GPIO_CNF_IN_PUPD)<<(CNF_WIDTH * 3);
+  GPIOC->CFGLR |= (GPIO_CNF_IN_PUPD)<<(CNF_WIDTH * 1);  // Keep SWIO enabled.
+  // GPIO and Alternate function
+  // Configure the IO as an interrupt.
+  // (x=0-7), external interrupt input pin configuration bit.
+  // Used to determine to which port pins the external interrupt pins are mapped.
+  // 00: xth pin of the PA pin.
+  // 10: xth pin of the PC pin.
+  // 11: xth pin of the PD pin.
+  //PORTD.3 (3 out front says PORTD, 3 in back says 3)
+  constexpr uint8_t EXTIx_WIDTH = 2;
+  AFIO->EXTICR = 0b10<<(3*EXTIx_WIDTH);
+  EXTI->INTENR = 1<<3; // Enable EXT3
+  EXTI->RTENR = 1<<3;  // Rising edge trigger
+
+  // enable interrupt
+  NVIC_EnableIRQ( EXTI7_0_IRQn );
+
   auto &rf = RfSystem::get();
   auto success = rf.setPins(RST_PIN, CS_PIN, PKT_FLAG_PIN, SDN_PIN);
   if (!success) {
@@ -61,6 +90,7 @@ int main() {
   #else
   printf("RX mode\n");
   rf.wor();
+  rf.rx();
   #endif
 
   while (true) {
@@ -89,8 +119,8 @@ int main() {
       instant.reset();
     }
     #else // RX
-    auto d = std::chrono::duration<uint32_t, std::milli>(800);
-    if (instant.elapsed() > d) {
+
+    if (RF::rxFlag()) {
       auto state = rf.pollState();
       etl::vector<char, 256> buf;
       // magic number 0x03 means no packet received
@@ -105,12 +135,17 @@ int main() {
             printf("\n");
           }
           rf.clrRxFifo();
-          rf.resetRxFlag();
+          RF::setRxFlag(false);
           rf.wor();
         }
       }
-      instant.reset();
     }
+//
+//
+//    auto d = std::chrono::duration<uint32_t, std::milli>(900);
+//    if (instant.elapsed() > d) {
+//      instant.reset();
+//    }
     #endif
   }
 }

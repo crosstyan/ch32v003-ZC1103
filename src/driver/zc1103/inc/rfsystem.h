@@ -48,6 +48,10 @@ struct RfState {
 
 namespace RF {
   const uint8_t NO_PACKET_RECEIVED = 0x03;
+  // set the global rx flag
+  void setRxFlag(bool flag);
+  // get the global rx flag
+  bool rxFlag();
   enum class DataRate{
     K2_4,
     K5,
@@ -94,8 +98,6 @@ enum class PowerAmpGain {
 
 class RfSystem {
   volatile uint32_t preamble_timeout = 0;
-  volatile bool _rx_flag = false;
-
   bool _is_initialized = false;
 
   /// 芯片复位脚，低电平有效，复位后寄存器数值丢失，全部变为默认值。
@@ -265,11 +267,6 @@ public:
  * \param [IN]  freq 频率值
  */
   void setRefFreq(double freq);
-
-  [[nodiscard]]
-  bool rxFlag() const;
-
-  void resetRxFlag();
 
   RfState pollState();
 
