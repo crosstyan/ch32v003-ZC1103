@@ -88,43 +88,45 @@ uint8_t RfSystem::read(const uint8_t addr) {
 void RfSystem::registerConfigure() {
   write(0x09, 0x08);
   write(0x0c, 0x03);
-  // r(0x0e)
-  // 0xa1 = 0b10100001
-  //             00001 allowed error bit
-  //            1 该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低,
-  //            脉冲宽度大约 1us
-  //           0  syncword 中断使能，当接收端收到有效的 同步字 syncword
-  //           时产生中断信号
-  //          1   preamble 中断使能，当接收端收到有效 的前导码 preamble
-  //          时产生中断信号
-  //  write(0x0e, 0xa1);
+  /* r(0x0e)
+   0xa1 = 0b10100001
+            1        preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
+             0       sync word 中断使能，当接收端收到有效的 同步字 sync word 时产生中断信号
+              1      该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
+               00001 allowed error bit
+  */
+  // write(0x0e, 0xa1);
   write(0x0e, 0b00100001);
-  // r(0x0f)
-  // 0x0a = 0b00001010
-  //             00000 发送 FIFO 空门限，发送 FIFO
-  //             还剩余字节数低于门限值时会产生 fifo_flag 标志
+  /*
+   r(0x0f)
+   0x0a = 0b00001010
+               00000 发送 FIFO 空门限，发送 FIFO
+                     还剩余字节数低于门限值时会产生 fifo_flag 标志
+  */
   write(0x0F, 0x0A);
   write(0x10, 0x54);
-  // r(0x1b) WOR
-  // 0x25 = 0b00100101
-  //          0          Reserved
-  //           0         自动唤醒后执行的命令 (0: RX, 1: TX)
-  //            1        内部低频 RC 振荡时钟校准使能
-  //             0       WOR (Wake On Radio) 使能
-  //              0101   WOR 功能计数器时钟选择 (32KHz/2^n)
-  //                     0b0101 = 5 = 32KHz/2^5 = 1KHz i.e. 1ms per tick
-  //  write(0x1b, 0b00110101);
+  /*
+   r(0x1b) WOR
+   0x25 = 0b00100101
+            0          Reserved
+             0         自动唤醒后执行的命令 (0: RX, 1: TX)
+              1        内部低频 RC 振荡时钟校准使能
+               0       WOR (Wake On Radio) 使能
+                0101   WOR 功能计数器时钟选择 (32KHz/2^n)
+                       0b0101 = 5 = 32KHz/2^5 = 1KHz 
+                       i.e. 1ms per tick
+    write(0x1b, 0b00110101);
+  */
   write(0x1b, 0b00110101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
-  write(0x22, 0x3a); /*VCO Config  3a*/ // 3a -> 0azhangjun 20200612
-  // 0x36 = 0b00110110
-  write(0x23, 0x36); /*SYN Config   bit[7]enable wideband */
-  write(0x2F, 0xe0); // rx rssi threshold
+  write(0x22, 0x3a); 
+  write(0x23, 0x36); 
+  write(0x2F, 0xe0); 
   write(0x2E, 0x00);
 
-  write(0x30, 0x00); // ber optimize 0x40->0x00 by 20211126 juner
+  write(0x30, 0x00); 
   write(0x31, 0x00);
   write(0x32, 0x00);
   write(0x33, 0x00);
@@ -132,32 +134,34 @@ void RfSystem::registerConfigure() {
   write(0x35, 0x00);
   write(0x36, 0x00);
 
-  // r(0x39)
-  // 0x74 = 0b0111_0100
-  //          0          Preamble Threshold
-  //           1
-  //           该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
-  //            1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
-  //             1       找到谱线后一定周期内没有收到有效的 preamble
-  //             则进行接收机复位
-  //                -    rest trivial
+  /* r(0x39)
+   0x74 = 0b0111_0100
+            0          Preamble Threshold
+             1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
+              1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
+               1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
+                  -    rest trivial
+  */
   write(0x39, 0x74);
   write(0x3A, 0x61);
-  // r(0x4a)=0x60
-  // r(0x4b)=0x45
-  // r(0x4c)=0x67
-  // uint32_t GPIO_SEL = 0x60 & 0b00001111 << 16 | 0x45 << 8 | 0x67 =
-  // 0b0000_0100_0101_0110_0111; pkg_flag_pin =  (GPIO_SEL & (0b1111 << 16)) >>
-  // 16; fifo_flag_pin = (GPIO_SEL & (0b1111 << 12)) >> 12; brclk_pin =
-  // (GPIO_SEL & (0b1111 <<  8)) >>  8; test1_pin =     (GPIO_SEL & (0b1111 <<
-  // 4)) >>  4; test2_pin =     (GPIO_SEL & (0b1111 <<  0)) >>  0;
-  //
-  // so the output of pkg_flag_pin by default is
-  // pkt_int | preamble_in | sync_int
-  // see also r(0x0e)
+  /* 
+   r(0x4a)=0x60
+   r(0x4b)=0x45
+   r(0x4c)=0x67
+   uint32_t GPIO_SEL = 0x60 & 0b00001111 << 16 | 0x45 << 8 | 0x67 = 0b0000_0100_0101_0110_0111;
+   pkg_flag_pin =  (GPIO_SEL & (0b1111 << 16)) >> 16;
+   fifo_flag_pin = (GPIO_SEL & (0b1111 << 12)) >> 12;
+   brclk_pin =     (GPIO_SEL & (0b1111 <<  8)) >>  8;
+   test1_pin =     (GPIO_SEL & (0b1111 <<  4)) >>  4;
+   test2_pin =     (GPIO_SEL & (0b1111 <<  0)) >>  0;
+  
+   so the output of pkg_flag_pin by default is
+   pkt_int | preamble_in | sync_int
+   see also r(0x0e)
+ */
   write(0x4a, 0x60);
   write(0x4d, 0x0b);
-  write(0x4e, 0x7c); // ber optimize 0x6c->0x7c by 20211126 juner
+  write(0x4e, 0x7c); 
   write(0x4f, 0xc5);
 
   write(0x15, 0x21);
@@ -166,44 +170,49 @@ void RfSystem::registerConfigure() {
   write(0x2a, 0x14);
   write(0x37, 0x99);
 
-  // Real data often contain long sequences of zeros and ones.
-  // In these cases, performance can be improved by whitening the data before
-  // transmitting, and de-whitening the data in the receiver.
-  //
-  // r(0x06) Packet Control
-  // 0x3a = 0b00111010
-  //                 0 HW_TERM_EN
-  //                1  PKT_LENGTH_EN
-  //               0   DIRECT_MODE
-  //              1    FIFO_SHARE_EN
-  //             1     SCRAMBLE_EN i.e. Whitening
-  //            1      CRC_EN
-  //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte,
-  //           1: 2 bytes)
-  //          0        SYNC_WORD_LEN: 同步字长度设置 0:2bytes {r(0x11),
-  //          r(0x12)}, 1:4bytes {r(0x11), r(0x12), r(0x13), r(0x14)}
+  /*
+  Real data often contain long sequences of zeros and ones.
+  In these cases, performance can be improved by whitening the data before
+  transmitting, and de-whitening the data in the receiver.
+
+   r(0x06) Packet Control
+   0x3a = 0b00111010
+            0        SYNC_WORD_LEN: 同步字长度设置 
+             0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 
+                     (0: 1 byte,1: 2 bytes)
+                     0:2bytes {r(0x11),r(0x12)}
+                     1:4bytes {r(0x11), r(0x12), r(0x13), r(0x14)}
+              1      CRC_EN
+               1     SCRAMBLE_EN i.e. Whitening
+                1    FIFO_SHARE_EN
+                 0   DIRECT_MODE
+                  1  PKT_LENGTH_EN
+                   0 HW_TERM_EN
+  */
   write(0x06, 0x3a);
   // r(0x04) Preamble Length
   // should be same across all nodes
   write(0x04, 0x0a);
-  // r(0x05) Packet Setting
-  // 0x30 = 0b00110000
-  //          0          Reserved
-  //           0         Preamble Format (0: 1010, 1: 0101)
-  //            1        Sync Word Enable
-  //             1       Preamble Enable
-  //              00     Packet Encoding Scheme (00: NRZ, 11: Interleave, else:
-  //              Reserved)
-  //                00   FEC (01: 1/3, 10: 2/3, else: None)
+  /* r(0x05) Packet Setting
+   0x30 = 0b00110000
+            0          Reserved
+             0         Preamble Format (0: 1010, 1: 0101)
+              1        Sync Word Enable
+               1       Preamble Enable
+                00     Packet Encoding Scheme 
+                       (00: NRZ, 11: Interleave, else:Reserved)
+                  00   FEC (01: 1/3, 10: 2/3, else: None)
+  */                
   write(0x05, 0x30);
   // r(0x3b) Preamble Threshold
   write(0x3B, 0x04);
-  // r(0x3c) Demod Config
-  // 0x03 = 0b00000011
-  //          0         Find Spec New En
-  //           0        RSSI Sel
-  //            0       RSSI Clr: Write 1 to clear RSSI lock value
-  //             -      trivial: don't modify
+  /* r(0x3c) Demod Config
+   0x03 = 0b00000011
+            0         Find Spec New En
+             0        RSSI Sel
+              0       RSSI Clr: Write 1 to clear RSSI lock value
+               -      trivial: don't modify
+  */
   write(0x3e, 0x83);
   // required by r(0x3e)::FindSpecNewEn
   write(0x38, 0x56);
