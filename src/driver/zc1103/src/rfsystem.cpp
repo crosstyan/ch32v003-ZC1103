@@ -45,8 +45,7 @@ inline void RfSystem::gpioConfigure() {
   pinMode(this->RST_PIN, OUTPUT);
   pinMode(this->SDN_PIN, OUTPUT);
   pinMode(this->CS_PIN, OUTPUT);
-  // interrupt configuration elsewhere (checkout main.cpp)
-  //  pinMode(this->PKT_FLAG_PIN, INPUT);
+  // PKT_FLAG_PIN is configured elsewhere (checkout main.cpp)
 }
 
 /// 芯片的所有控制都是通 SPI 接口操作，支持的模式是时钟极性为正，相位极性可选，
