@@ -256,20 +256,22 @@ void RfSystem::setSyncLockRssi() {
 }
 
 void RfSystem::setVcoFreq(const double freq) {
-  auto f = static_cast<uint8_t>(freq * pow(2.0, 20.0));
+  unsigned int Fre = 0;
+  unsigned char reg77 = 0,reg76 = 0,reg75 = 0,reg74 = 0,temp = 0;
+  Fre = (unsigned int)(freq * pow(2.0,20.0));
 
-  uint8_t reg77 = f & 0xFF;
-  uint8_t reg76 = (f >> 8) & 0xFF;
-  uint8_t reg75 = (f >> 16) & 0xFF;
-  uint8_t reg74 = ((f >> 24) & 0xFF) | (read(0x74) & 0xc0);
+  reg77 =(unsigned char)(Fre & 0xFF);
+  reg76 =(unsigned char)((Fre >> 8) & 0xFF);
+  reg75 =(unsigned char)((Fre >> 16) & 0xFF);
+  reg74 =(unsigned char)(((Fre >> 24) & 0xFF)| (read(0x74)&0xc0));
 
-  auto temp = read(0x00);
-  write(0x00, (0x80 | temp));
+  temp = read(0x00);
+  write(0x00,(0x80 | temp));
 
-  write(0x77, reg77);
-  write(0x76, reg76);
-  write(0x75, reg75);
-  write(0x74, reg74);
+  write(0x77,reg77);
+  write(0x76,reg76);
+  write(0x75,reg75);
+  write(0x74,reg74);
 }
 
 // TODO: find documentation for this
@@ -282,13 +284,15 @@ void RfSystem::setFreq(uint8_t N) {
 
 
 void RfSystem::setFreqStep(double step) {
-  auto fre = static_cast<uint8_t>(step * pow(2.0, 20.0));
-  auto reg3 = fre & 0xFF;
-  auto reg2 = (fre >> 8) & 0xFF;
-  auto reg1 = (fre >> 16) & 0x7F;
-  write(0x03, reg3);
-  write(0x02, reg2);
-  write(0x01, reg1);
+  unsigned int fre = 0;
+  unsigned char reg1 = 0,reg2 = 0,reg3 = 0;
+  fre = (unsigned int)(step * pow(2.0,20.0));
+  reg3 = (unsigned char)(fre & 0xFF);
+  reg2 = (unsigned char)((fre >> 8)  & 0xFF);
+  reg1 = (unsigned char)((fre >> 16) & 0x7F);
+  write(0x03,reg3);
+  write(0x02,reg2);
+  write(0x01,reg1);;
 }
 
 void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
