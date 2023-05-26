@@ -255,6 +255,7 @@ void RfSystem::setSyncLockRssi() {
   write(0x3e, read(0x3e) | 0x40);
 }
 
+// TODO: find out why fucking cast would mess up the thing?
 void RfSystem::setVcoFreq(const double freq) {
   unsigned int Fre = 0;
   unsigned char reg77 = 0,reg76 = 0,reg75 = 0,reg74 = 0,temp = 0;
@@ -338,7 +339,7 @@ void RfSystem::readFifo(uint8_t *dst, uint8_t len) {
   CS_LOW();
   sendByte(0x52 | 0x80);
   for (auto i = 0; i < len; i++) {
-    *(dst + i) = sendByte(0xFF);
+    dst[i] = sendByte(0xFF);
   }
   CS_HIGH();
 }
@@ -372,10 +373,12 @@ inline void RfSystem::fs() {
 // 直到收到接收到一包数据完成的指示信号或者是 SWOR 功能超时信号，
 // 如果是 SWOR 功能超时信号状态，则直接进入 STANDBY 模式;
 inline void RfSystem::rx() {
+  idle();
   write(0x66, 0xff);
 }
 
 inline void RfSystem::tx() {
+  idle();
   write(0x65, 0xff);
 }
 
