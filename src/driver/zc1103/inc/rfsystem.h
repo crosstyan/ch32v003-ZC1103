@@ -227,6 +227,7 @@ protected:
   /// ch32v003 only has one SPI so there's no need to specify the SPI bus
   /// Have to set to default constructor or the linker will complain
   RfSystem() = default;
+  ~RfSystem() = default;
 
 public:
   /**

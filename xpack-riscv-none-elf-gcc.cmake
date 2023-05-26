@@ -81,7 +81,7 @@ set(CMAKE_ASM_FLAGS "${OBJECT_GEN_FLAGS} -x assembler-with-cpp -MMD -MP" CACHE I
 #
 # linker script is set here
 # to link symbols (--just-symbols) you just need to append the symbols file to linker
-set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/vendor/Ld/Link.ld -nostartfiles -Xlinker --gc-sections -Wl,-Map,\"${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map\" --specs=nano.specs --specs=nosys.specs" CACHE INTERNAL "Linker options")
+set(CMAKE_EXE_LINKER_FLAGS "-nostartfiles -Xlinker --gc-sections -Wl,-Map,\"${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map\" --specs=nano.specs --specs=nosys.specs" CACHE INTERNAL "Linker options")
 
 #---------------------------------------------------------------------------------------
 # Set debug/release build configuration Options

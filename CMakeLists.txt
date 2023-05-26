@@ -36,8 +36,13 @@ add_executable(${CMAKE_PROJECT_NAME}.elf
         ${ZC1103_SRC})
 add_compile_definitions(
         PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1
-#        STDOUT_UART=1
 )
+
+set_target_properties(${CMAKE_PROJECT_NAME}.elf PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/vendor/Ld/Link.ld
+        LINK_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/vendor/Ld/Link.ld")
 
 target_link_libraries(${CMAKE_PROJECT_NAME}.elf
         PRIVATE
