@@ -137,13 +137,13 @@ void RfSystem::registerConfigure() {
   write(0x36, 0x00);
 
   // r(0x39)
-  // 0x74 = 0b01110100
+  // 0x74 = 0b0111_0100
   //          0          Preamble Threshold
   //           1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
   //            1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
   //             1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
-  //              -      rest trivial
-  write(0x39, 0x74); //enable demode reset
+  //                -    rest trivial
+  write(0x39, 0x74);
   write(0x3A, 0x61);
   // r(0x4a)=0x60
   // r(0x4b)=0x45
@@ -169,19 +169,44 @@ void RfSystem::registerConfigure() {
   write(0x2a, 0x14);
   write(0x37, 0x99);
 
-  // r(0x06)
+  // Real data often contain long sequences of zeros and ones.
+  // In these cases, performance can be improved by whitening the data before transmitting,
+  // and de-whitening the data in the receiver.
+  //
+  // r(0x06) Packet Control
   // 0x3a = 0b00111010
   //                 0 HW_TERM_EN
   //                1  PKT_LENGTH_EN
   //               0   DIRECT_MODE
   //              1    FIFO_SHARE_EN
-  //             1     SCRAMBLE_EN
+  //             1     SCRAMBLE_EN i.e. Whitening
   //            1      CRC_EN
   //           0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 (0: 1 byte, 1: 2 bytes)
-  //          0        SYNCWORD_LEN: 同步字长度设置
-  write(0x06, 0x3a); //数据包设置
-  write(0x04, 0x0A); //前导码长度
-  write(0x3B, 0x04); //前导码门限
+  //          0        SYNC_WORD_LEN: 同步字长度设置 0:2bytes {r(0x11), r(0x12)}, 1:4bytes {r(0x11), r(0x12), r(0x13), r(0x14)}
+  write(0x06, 0x3a);
+  // r(0x04) Preamble Length
+  // should be same across all nodes
+  write(0x04, 0x0a);
+  // r(0x05) Packet Setting
+  // 0x30 = 0b00110000
+  //          0          Reserved
+  //           0         Preamble Format (0: 1010, 1: 0101)
+  //            1        Sync Word Enable
+  //             1       Preamble Enable
+  //              00     Packet Encoding Scheme (00: NRZ, 11: Interleave, else: Reserved)
+  //                00   FEC (01: 1/3, 10: 2/3, else: None)
+  write(0x05, 0x30);
+  // r(0x3b) Preamble Threshold
+  write(0x3B, 0x04);
+  // r(0x3c) Demod Config
+  // 0x03 = 0b00000011
+  //          0         Find Spec New En
+  //           0        RSSI Sel
+  //            0       RSSI Clr: Write 1 to clear RSSI lock value
+  //             -      trivial: don't modify
+//  write(0x3e, 0x83);
+  // required by r(0x3e)::FindSpecNewEn
+//  write(0x38, 0x56);
 }
 
 void RfSystem::setRefFreq(const double freq) {
@@ -198,7 +223,7 @@ void RfSystem::setRefFreq(const double freq) {
   write(0x70, reg70);
 }
 
-void RfSystem::setPA(PowerAmpGain x_dBm) {
+void RfSystem::setPA(PowerAmpGain gain) {
   const uint8_t vReg25Tbl_h4[] = {0x3f, 0x38, 0x25, 0x1a, 0x0f, 0x0d, 0x0b, 0x0a, 0x09, 0x08, 0x04, 0x03, 0x86,
                                   0x82, 0x01, 0x01, 0x02, 0x02, 0x00, 0x00, 0x24, 0x20, 0x16, 0x14, 0x11, 0x0d,
                                   0x0d};
@@ -216,7 +241,7 @@ void RfSystem::setPA(PowerAmpGain x_dBm) {
                                     0x81, 0x68, 0x6b, 0x5c, 0x75, 0x72, 0x7b, 0x79, 0x7a, 0x68, \
                                     0x6f, 0x7c, 0x6a, 0x7f, 0x6e, 0x62, 0x58};
   auto v = version();
-  auto idx = static_cast<size_t>(x_dBm);
+  auto idx = static_cast<size_t>(gain);
   if (v == 0x04) {
     write(0x25, vReg25Tbl_h4[idx]);
     write(0x26, vReg26Tbl_h4[idx]);
@@ -420,7 +445,7 @@ void RfSystem::begin() {
   registerConfigure();
 
   setDR(RF::DataRate::K9_6);
-  setSync(0x41, 0x53, 0x41, 0x53);
+  setSync(0x41, 0x53);
 
   //设置参考频率
   write(0x70, 0x12);
@@ -530,8 +555,8 @@ void RfSystem::wor() {
 inline void RfSystem::setSync(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4) {
   write(0x11, s1);
   write(0x12, s2);
-  write(0x12, s3);
-  write(0x12, s4);
+  write(0x13, s3);
+  write(0x14, s4);
 }
 
 // hope the compiler can optimize this
@@ -775,5 +800,10 @@ inline void RfSystem::clrRxFifoWrPtr() {
 void RfSystem::clrRxFifo() {
   write(0x51, 0x80);
   write(0x50, 0x80);
+}
+
+void RfSystem::setSync(uint8_t s1, uint8_t s2) {
+  write(0x11, s1);
+  write(0x12, s2);
 }
 

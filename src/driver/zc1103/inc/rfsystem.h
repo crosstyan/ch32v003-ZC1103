@@ -36,6 +36,15 @@ struct RfState {
   uint8_t rx_pkt_state = 0;
 };
 
+/*
+ * +------------+-------------+
+ * |            |             |
+ * |  Preamble  |  Sync Word  |
+ * |            |             |
+ * +------------+-------------+
+ *   10101...10    16/32bit
+ */
+
 namespace RF {
   enum class DataRate{
     K2_4,
@@ -106,14 +115,11 @@ class RfSystem {
   * \brief  读数据
   * \param [OUT] dst 保存数据地址
   * \param [IN] len 读取长度
-  * \retval None
   */
   void readFifo(uint8_t *dst, uint8_t len);
 
 /**
 * \brief  发送单音载波
-  * \param  None
-  * \retval None
   */
   void txCW();
 
@@ -121,10 +127,10 @@ class RfSystem {
 
 /**
  * \brief  设置PA增益
- * \param [IN]  x_dBm 增益
+ * \param [IN]  gain 增益
  * \retval  None
  */
-  void setPA(PowerAmpGain x_dBm);
+  void setPA(PowerAmpGain gain);
 
   void RST_LOW();
 
@@ -190,7 +196,20 @@ class RfSystem {
 
   void setFreq(double f0, uint8_t N, double step);
 
+  /**
+   * @param s1 r(0x11)
+   * @param s2 r(0x12)
+   * @param s3 r(0x13)
+   * @param s4 r(0x14)
+   * @see r(0x06)
+   */
   void setSync(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4);
+  /**
+   * @param s1 r(0x11)
+   * @param s2 r(0x12)
+   * @see r(0x06)
+   */
+  void setSync(uint8_t s1, uint8_t s2);
 
   // 芯片包含一个集成唤醒定时器，可用来定期从 standby 状态唤醒芯片。
   // 计数器可配置一个最大值 wortimer_set 和一个中间值 wor_rxtimer_set，

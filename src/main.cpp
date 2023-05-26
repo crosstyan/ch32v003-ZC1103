@@ -48,7 +48,7 @@ int main() {
   auto instant = Instant();
   auto rx_instant = Instant();
   rf.printRegisters();
-//  #define TX
+  #define TX
   #ifdef TX
   printf("TX mode\n");
   #else
@@ -57,7 +57,7 @@ int main() {
 
   while (true) {
     #ifdef TX
-    auto d = std::chrono::duration<uint64_t, std::milli>(1000);
+    auto d = std::chrono::duration<uint16_t , std::milli>(1000);
     if (instant.elapsed() >= d) {
       // construct a payload
       etl::string<32> payload = "hello world:";
@@ -72,8 +72,7 @@ int main() {
       if (!res.has_value()){
         printf("TX timeout\n");
       }
-//      auto tx_pkt_st = rf.pollTxPktSt();
-//      printf("tx_pkt_st=0x%02x\n", tx_pkt_st);
+      printWithSize(payload.c_str(), payload.length());
       digitalWrite(GPIO::D6, HIGH);
       Delay_Ms(10);
       digitalWrite(GPIO::D6, LOW);
@@ -82,24 +81,19 @@ int main() {
       instant.reset();
     }
     #else // RX
-    auto d = std::chrono::duration<uint64_t, std::milli>(1000);
+    auto d = std::chrono::duration<uint32_t , std::milli>(3000);
     if (instant.elapsed() > d) {
       auto status = rf.pollStatus();
+      auto state = rf.pollState();
       if (!status.rx) {
         rf.rx();
       }
-      auto s = rf.pollState();
       auto rssi = rf.rssi();
       printf("rssi=%u\n", rssi);
       RF::printStatus(status);
-      RF::printState(s);
-      instant.reset();
-    }
-    // can't poll state too frequently
-    auto rx_d = std::chrono::duration<uint64_t, std::milli>(50);
-    if (rx_instant.elapsed() > rx_d) {
+      RF::printState(state);
+
       etl::string<256> buf;
-      auto state = rf.pollState();
       // magic number 0x03 means no packet received
       // when a valid packet is received the state will be 0xc0
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
@@ -113,7 +107,8 @@ int main() {
           rf.resetRxFlag();
         }
       }
-      rx_instant.reset();
+
+      instant.reset();
     }
     #endif
   }
