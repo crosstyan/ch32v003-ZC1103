@@ -13,6 +13,9 @@
  * @see https://github.com/cnlohr/ch32v003fun/blob/master/examples/exti_pin_change_isr/exti_pin_change_isr.c
  */
 void static configureEXTI(){
+  constexpr uint8_t CNF_AND_MODE_WIDTH = 4; // 4 bytes for each pin.
+  constexpr uint8_t EXTICR_EXTIx_WIDTH = 2;
+
   asm volatile(
 #if __GNUC__ > 10
       ".option arch, +zicsr\n"
@@ -24,7 +27,6 @@ void static configureEXTI(){
   // AFIOEN: I/O auxiliary function module clock enable bit.
   RCC->APB2PCENR = RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO;
   // GPIO C3 for input pin change.
-  constexpr uint8_t CNF_AND_MODE_WIDTH = 4; // 4 bytes for each pin.
   GPIOC->CFGLR |= (GPIO_SPEED_IN | GPIO_CNF_IN_PUPD)<<(CNF_AND_MODE_WIDTH * 3);
   GPIOC->CFGLR |= (GPIO_CNF_IN_PUPD)<<(CNF_AND_MODE_WIDTH * 1);  // Keep SWIO enabled.
   // GPIO and Alternate function (AFIO)
@@ -34,12 +36,10 @@ void static configureEXTI(){
   // 00: xth pin of the PA pin.
   // 10: xth pin of the PC pin.
   // 11: xth pin of the PD pin.
-  constexpr uint8_t EXTICR_EXTIx_WIDTH = 2;
   AFIO->EXTICR = 0b10<<(EXTICR_EXTIx_WIDTH * 3);
   EXTI->INTENR = 1<<3; // Enable EXT3
   EXTI->RTENR = 1<<3;  // Rising edge trigger
 
-  // enable interrupt
   NVIC_EnableIRQ( EXTI7_0_IRQn );
 }
 

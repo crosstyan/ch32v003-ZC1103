@@ -10,7 +10,6 @@ bool RF::rxFlag() {
   return rx_flag;
 }
 
-
 /// a utility function to check if a bit is set at shift.
 /// note that shift is 0-indexed.
 inline static bool shift_equal(uint8_t byte, uint8_t shift) {

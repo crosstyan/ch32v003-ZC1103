@@ -97,7 +97,6 @@ enum class PowerAmpGain {
 };
 
 class RfSystem {
-  volatile uint32_t preamble_timeout = 0;
   bool _is_initialized = false;
 
   /// 芯片复位脚，低电平有效，复位后寄存器数值丢失，全部变为默认值。
@@ -248,17 +247,17 @@ public:
   send(const char *buffer, uint8_t size, bool check_tx = false);
 
 /**
-  * @brief  接收数据包
-  * @param [OUT] buf 接收数据
-  * @return 接收数据长度
+  * @brief  retrieve data from FIFO. Works with C style pointer.
+  * @param [OUT]buf buffer pointer
+  * @return the length of the data received
   */
   etl::optional<size_t> recv(char *buf);
 
 /**
-  * @brief  接收数据包
-  * @param [OUT] buffer pointer
-  * @param a lambda to resize the buffer
-  * @return 接收数据长度
+  * @brief  retrieve data from FIFO. The resize function is useful for C++ STL like container.
+  * @param [OUT]buf C style pointer. could be `buf.data()` or `&buf[0]` or `buf.begin()`.
+  * @param resize  a lambda to resize the buffer. Capture the container by reference.
+  * @return the length of the data received
   */
   etl::optional<size_t> recv(char *buf, etl::delegate<void(size_t)> resize);
 
