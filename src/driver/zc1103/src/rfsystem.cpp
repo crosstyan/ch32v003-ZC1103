@@ -118,7 +118,7 @@ void RfSystem::registerConfigure() {
   //              0101   WOR 功能计数器时钟选择 (32KHz/2^n)
   //                     0b0101 = 5 = 32KHz/2^5 = 1KHz i.e. 1ms per tick
   //  write(0x1b, 0b00110101);
-  write(0x1b, 0b00100101);
+  write(0x1b, 0x25);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
