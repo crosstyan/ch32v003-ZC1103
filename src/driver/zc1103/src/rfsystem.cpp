@@ -114,11 +114,11 @@ void RfSystem::registerConfigure() {
   //          0          Reserved
   //           0         自动唤醒后执行的命令 (0: RX, 1: TX)
   //            1        内部低频 RC 振荡时钟校准使能
-  //             0       自动唤醒功能使能
+  //             0       WOR (Wake On Radio) 使能
   //              0101   WOR 功能计数器时钟选择 (32KHz/2^n)
   //                     0b0101 = 5 = 32KHz/2^5 = 1KHz i.e. 1ms per tick
   //  write(0x1b, 0b00110101);
-  write(0x1b, 0x25);
+  write(0x1b, 0b00110101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
@@ -204,9 +204,9 @@ void RfSystem::registerConfigure() {
   //           0        RSSI Sel
   //            0       RSSI Clr: Write 1 to clear RSSI lock value
   //             -      trivial: don't modify
-//  write(0x3e, 0x83);
+  write(0x3e, 0x83);
   // required by r(0x3e)::FindSpecNewEn
-//  write(0x38, 0x56);
+  write(0x38, 0x56);
 }
 
 void RfSystem::setRefFreq(const double freq) {
@@ -368,15 +368,13 @@ inline void RfSystem::fs() {
   write(0x64, 0xff);
 }
 
-// 收到接收数据命令后，芯片先打开 PLL 及 VCO，进行校准，等待至 PLL 达到要求接收的频率，
-// 启用接收器电路(LNA，混频器、及 ADC)，再启用数字解调器的接收模式。
-// 直到收到接收到一包数据完成的指示信号或者是 SWOR 功能超时信号，
-// 如果是 SWOR 功能超时信号状态，则直接进入 STANDBY 模式;
+// WHY IDLE?
 inline void RfSystem::rx() {
   idle();
   write(0x66, 0xff);
 }
 
+// WHY IDLE?
 inline void RfSystem::tx() {
   idle();
   write(0x65, 0xff);
@@ -438,6 +436,22 @@ RfSystem::recv(char *buf) {
   }
 }
 
+etl::optional<size_t>
+RfSystem::recv(char* buf, etl::delegate<void(size_t)> resize) {
+  clrRxFifoRdPtr();
+  size_t len = read(0x52 | 0x80);
+  if (len == 0) {
+    rx();
+    return etl::nullopt;
+  } else {
+    resize(len);
+    readFifo(reinterpret_cast<uint8_t *>(buf), len);
+    rx();
+    return etl::make_optional(len);
+  }
+}
+
+
 void RfSystem::begin() {
   gpioConfigure();
 
@@ -465,6 +479,9 @@ void RfSystem::begin() {
 
   //设置中心频点
   setFreq(476.0, 0, 0);
+
+  setWorTimer(500);
+  setWorRxTimer(250);
 
   //设置发射功率
   setPA(PowerAmpGain::DBM20);

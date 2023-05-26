@@ -4,11 +4,9 @@
 #include "system_tick.h"
 #include "gpio.h"
 #include "instant.h"
-#include <etl/string.h>
-#include <etl/to_string.h>
+#include <etl/vector.h>
 #include "rfsystem.h"
 #include <printf.h>
-#include "utils.h"
 
 /// won't add trailing `LF` or `CRLF` and caller should decide whether to add one.
 void static printWithSize(const char *str, size_t size, bool hex = false) {
@@ -62,6 +60,7 @@ int main() {
   printf("[INFO] TX mode\n");
   #else
   printf("RX mode\n");
+  rf.wor();
   #endif
 
   while (true) {
@@ -90,33 +89,26 @@ int main() {
       instant.reset();
     }
     #else // RX
-    auto d = std::chrono::duration<uint32_t , std::milli>(500);
+    auto d = std::chrono::duration<uint32_t, std::milli>(800);
     if (instant.elapsed() > d) {
-      auto status = rf.pollStatus();
       auto state = rf.pollState();
-      if (!status.rx) {
-        rf.rx();
-      }
-      RF::printStatus(status);
-      RF::printState(state);
-//      etl::string<256> buf;
-      char buf[256];
+      etl::vector<char, 256> buf;
       // magic number 0x03 means no packet received
       // when a valid packet is received the state will be 0xc0
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
-      if (state.rx_pkt_state != 0x03) {
-        if (auto maybe = rf.recv(buf)) {
-//          buf.resize(maybe.value());
-          auto l = maybe.value();
-          printf("len=%d\n", l);
+      if (state.rx_pkt_state != RF::NO_PACKET_RECEIVED) {
+        if (auto maybe = rf.recv(buf.data(), [&buf](size_t s) { buf.resize(s); })) {
+          printf("len=%d\n", buf.size());
           printf("buf=");
-          printWithSize(buf, l);
-          printf("\n");
+          printWithSize(buf.cbegin(), buf.size());
+          if (*(buf.end() - 1) != '\n') {
+            printf("\n");
+          }
           rf.clrRxFifo();
           rf.resetRxFlag();
+          rf.wor();
         }
       }
-
       instant.reset();
     }
     #endif

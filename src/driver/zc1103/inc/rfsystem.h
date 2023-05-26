@@ -13,6 +13,7 @@
 #include "gpio.h"
 #include "unit.h"
 #include <etl/optional.h>
+#include <etl/delegate.h>
 
 /// 0x46 (8'h46)
 struct RfStatus {
@@ -46,6 +47,7 @@ struct RfState {
  */
 
 namespace RF {
+  const uint8_t NO_PACKET_RECEIVED = 0x03;
   enum class DataRate{
     K2_4,
     K5,
@@ -251,6 +253,14 @@ public:
   etl::optional<size_t> recv(char *buf);
 
 /**
+  * @brief  接收数据包
+  * @param [OUT] buffer pointer
+  * @param a lambda to resize the buffer
+  * @return 接收数据长度
+  */
+  etl::optional<size_t> recv(char *buf, etl::delegate<void(size_t)> resize);
+
+/**
  * \brief  设置频率
  * \param [IN]  freq 频率值
  */
@@ -288,7 +298,12 @@ public:
   void standBy();
 
 /**
-  * \brief  使能接收模式
+  * @brief  使能接收模式
+  * @note
+  * 收到接收数据命令后，芯片先打开 PLL 及 VCO，进行校准，等待至 PLL 达到要求接收的频率，
+  * 启用接收器电路(LNA，混频器、及 ADC)，再启用数字解调器的接收模式。
+  * 直到收到接收到一包数据完成的指示信号或者是 SWOR 功能超时信号，
+  * 如果是 SWOR 功能超时信号状态，则直接进入 STANDBY 模式;
   */
   void rx();
 

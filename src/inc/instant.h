@@ -6,12 +6,8 @@
 #define SIMPLE_INSTANT_H
 
 #include "system_tick.h"
+#include <etl/delegate.h>
 #include <chrono>
-#ifdef FUNCTIONAL
-#include <functional>
-#else
-#include <utility>
-#endif
 
 class Instant {
   uint64_t time;
@@ -44,16 +40,13 @@ public:
     return this->time;
   }
 
-  #ifdef FUNCTIONAL
-  /// region `FLASH' overflowed by 3934 bytes
   template<typename T>
-  void try_run(std::function<T> f, std::chrono::duration<uint64_t, std::milli> d) {
+  void try_run(etl::delegate<T> f, std::chrono::duration<uint64_t, std::milli> d) {
     if (this->elapsed() > d) {
       f();
       this->reset();
     }
   }
-  #endif
 };
 
 #endif //SIMPLE_INSTANT_H
