@@ -7,6 +7,7 @@
 
 #include "ch32v003fun.h"
 
+void configureEXTI();
 extern "C" void EXTI7_0_IRQHandler( void ) __attribute__((interrupt));
 
 #endif //SIMPLE_EXTI_H
