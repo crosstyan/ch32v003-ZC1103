@@ -312,10 +312,15 @@ inline void RfSystem::clrTxFifoWrPtr() {
   write(0x53, 0x80);
 }
 
-/// the bigger the number the more power
+// https://github.com/LSatan/SmartRC-CC1101-Driver-Lib/blob/b8c6af4c7c2214cd77a4e9b2e2cb37b24b393605/ELECHOUSE_CC1101_SRC_DRV.cpp#L1117-L1124
 uint8_t RfSystem::rssi() {
   auto raw = read(0x43);
-  return raw / 2;
+  if (raw >= 128) {
+    raw = (raw - 256) / 2 - 74;
+  } else {
+    raw = (raw / 2) - 74;
+  }
+  return raw;
 }
 
 void RfSystem::writeFifo(const char *src, uint8_t len) {
@@ -370,12 +375,16 @@ inline void RfSystem::idle() { write(0x60, 0xff); }
 inline void RfSystem::fs() { write(0x64, 0xff); }
 
 // WHY IDLE?
+// the CC1101 driver does this too
+// https://github.com/LSatan/SmartRC-CC1101-Driver-Lib/blob/b8c6af4c7c2214cd77a4e9b2e2cb37b24b393605/ELECHOUSE_CC1101_SRC_DRV.cpp#L1079-L1084
 inline void RfSystem::rx() {
   idle();
   write(0x66, 0xff);
 }
 
 // WHY IDLE?
+// the CC1101 driver does this too
+// https://github.com/LSatan/SmartRC-CC1101-Driver-Lib/blob/b8c6af4c7c2214cd77a4e9b2e2cb37b24b393605/ELECHOUSE_CC1101_SRC_DRV.cpp#L1091-L1097
 inline void RfSystem::tx() {
   idle();
   write(0x65, 0xff);
@@ -446,6 +455,20 @@ etl::optional<size_t> RfSystem::recv(char *buf,
   } else {
     resize(len);
     readFifo(reinterpret_cast<uint8_t *>(buf), len);
+    rx();
+    return etl::make_optional(len);
+  }
+}
+
+etl::optional<size_t> RfSystem::recv(etl::ivector<char>& buf) {
+  clrRxFifoRdPtr();
+  size_t len = read(0x52 | 0x80);
+  if (len == 0) {
+    rx();
+    return etl::nullopt;
+  } else {
+    bur.resize(len);
+    readFifo(reinterpret_cast<uint8_t *>(buf.data()), len);
     rx();
     return etl::make_optional(len);
   }

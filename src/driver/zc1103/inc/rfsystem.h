@@ -13,6 +13,7 @@
 #include "gpio.h"
 #include "unit.h"
 #include <etl/optional.h>
+#include <etl/vector.h>
 #include <etl/delegate.h>
 
 /// 0x46 (8'h46)
@@ -250,15 +251,22 @@ public:
 /**
   * @brief  retrieve data from FIFO. Works with C style pointer.
   * @param [OUT]buf buffer pointer
-  * @return the length of the data received
+  * @return the length of the data received, if any
   */
   etl::optional<size_t> recv(char *buf);
+
+/**
+  * @brief  retrieve data from FIFO. Works with ETL vector.
+  * @param [OUT]buf ETL vector
+  * @return the length of the data received, if any
+  */
+  etl::optional<size_t> RfSystem::recv(etl::ivector<char>& buf);
 
 /**
   * @brief  retrieve data from FIFO. The resize function is useful for C++ STL like container.
   * @param [OUT]buf C style pointer. could be `buf.data()` or `&buf[0]` or `buf.begin()`.
   * @param resize  a lambda to resize the buffer. Capture the container by reference.
-  * @return the length of the data received
+  * @return the length of the data received, if any
   */
   etl::optional<size_t> recv(char *buf, etl::delegate<void(size_t)> resize);
 
