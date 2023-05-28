@@ -9,10 +9,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <printf.h>
+#include <etl/vector.h>
 
 namespace utils {
   int rand_range(int min, int max);
   void printWithSize(const char *str, size_t size, bool hex = false);
+  void printWithSize(const etl::ivector<char> &vec, bool hex = false);
 }
 
 

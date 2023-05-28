@@ -1,4 +1,4 @@
-#define TX
+//#define TX
 #include "spi.h"
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -93,7 +93,7 @@ int main() {
         if (auto maybe = rf.recv(buf)) {
           printf("len=%d; ", buf.size());
           printf("buf=");
-          utils::printWithSize(buf.cbegin(), buf.size());
+          utils::printWithSize(buf);
           if (*(buf.end() - 1) != '\n') {
             printf("\n");
           }

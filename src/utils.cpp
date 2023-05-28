@@ -25,3 +25,7 @@ void utils::printWithSize(const char *str, size_t size, bool hex) {
     }
   }
 };
+
+void utils::printWithSize(const etl::ivector<char> &vec, bool hex){
+  utils::printWithSize(vec.data(), vec.size(), hex);
+};
