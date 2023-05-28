@@ -136,7 +136,7 @@ int main() {
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
       // one should only use interrupt to detect the packet
       if (state.rx_pkt_state != RF::NO_PACKET_RECEIVED) {
-        if (auto maybe = rf.recv(buf.data(), [&buf](size_t s) { buf.resize(s); })) {
+        if (auto maybe = rf.recv(buf)) {
           printf("len=%d; ", buf.size());
           printf("buf=");
           printWithSize(buf.cbegin(), buf.size());

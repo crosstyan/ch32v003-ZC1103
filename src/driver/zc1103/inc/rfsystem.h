@@ -260,7 +260,7 @@ public:
   * @param [OUT]buf ETL vector
   * @return the length of the data received, if any
   */
-  etl::optional<size_t> RfSystem::recv(etl::ivector<char>& buf);
+  etl::optional<size_t> recv(etl::ivector<char>& buf);
 
 /**
   * @brief  retrieve data from FIFO. The resize function is useful for C++ STL like container.

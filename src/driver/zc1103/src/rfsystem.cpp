@@ -86,6 +86,9 @@ uint8_t RfSystem::read(const uint8_t addr) {
 }
 
 void RfSystem::registerConfigure() {
+  // r(0x0c) channel detect
+  // 0x03 = 0b0000_0011
+  // TODO: configure r(0x0a) ACK and r(0x0b) RE_TX_TIMES
   write(0x09, 0x08);
   write(0x0c, 0x03);
   /* r(0x0e)
@@ -467,7 +470,7 @@ etl::optional<size_t> RfSystem::recv(etl::ivector<char>& buf) {
     rx();
     return etl::nullopt;
   } else {
-    bur.resize(len);
+    buf.resize(len);
     readFifo(reinterpret_cast<uint8_t *>(buf.data()), len);
     rx();
     return etl::make_optional(len);
