@@ -1,5 +1,4 @@
-//#define TX
-#include "spi.h"
+#define TX
 #include "clock.h"
 #include "ch32v003fun.h"
 #include "system_tick.h"

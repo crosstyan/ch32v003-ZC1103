@@ -93,13 +93,43 @@ void RfSystem::registerConfigure() {
   write(0x0c, 0x03);
   /* r(0x0e)
    0xa1 = 0b10100001
-            1        preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
-             0       sync word 中断使能，当接收端收到有效的 同步字 sync word 时产生中断信号
-              1      该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
-               00001 allowed error bit
+   7        1        preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
+   6         0       sync word 中断使能，当接收端收到有效的 同步字 sync word 时产生中断信号
+   5          1      该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
+   [4:0]       00001 allowed error bit
   */
   // write(0x0e, 0xa1);
   write(0x0e, 0b00100001);
+  /*
+   * r(0x0a)
+   * 0x1f = 0b00011111
+   * 7        0          SRST_EN
+   * 6         0         AUTO_ACK_EN
+   * [5:0]      011111   AUTO_ACK_RX_TIME 每个步进表示增加 128 个 bit 数据的时间
+   */
+  // enable auto acknowledge
+  write(0x0a, 0b01011111);
+  /*
+   * r(0x0b)
+   * 0x03 = 0b00000011
+   * [7:4]    0000      RC32K_CAL_OFFSET
+   * [3:0]        0011  RE_TX_TIMES
+   */
+  write(0x0b, 0x03);
+  /*
+   * r(0x0c)
+   * 0x03 = 0b00000011
+   * 7        0          TX_DATA_INVERSE 发送数据取反
+   * 6         0         读取中频信号幅度值
+   * 5          0        AUTO_DET_TX_CHL 在发送数据前先检测信道是否忙
+   * 4           0       AUTO_DET_CHL_MODE
+   *                     0: exit directly when channel is busy
+   *                     1: wait until channel is idle
+   * [3:0]        0011   AUTO_DET_WAIT_TIME
+   *                     1bit = 256us
+   */
+  // enable auto detect channel and choose mode 1
+  write(0x0c, 0b00110011);
   /*
    r(0x0f)
    0x0a = 0b00001010
@@ -111,16 +141,15 @@ void RfSystem::registerConfigure() {
   /*
    r(0x1b) WOR
    0x25 = 0b00100101
-            0          Reserved
-             0         自动唤醒后执行的命令 (0: RX, 1: TX)
-              1        内部低频 RC 振荡时钟校准使能
-               0       WOR (Wake On Radio) 使能
-                0101   WOR 功能计数器时钟选择 (32KHz/2^n)
+   7        0          Reserved
+   6         0         自动唤醒后执行的命令 (0: RX, 1: TX)
+   5          1        内部低频 RC 振荡时钟校准使能
+   4            0       WOR (Wake On Radio) 使能
+   [3:0]         0101   WOR 功能计数器时钟选择 (32KHz/2^n)
                        0b0101 = 5 = 32KHz/2^5 = 1KHz 
                        i.e. 1ms per tick
-    write(0x1b, 0b00110101);
   */
-  write(0x1b, 0b00110101);
+  write(0x1b, 0b00100101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
@@ -139,11 +168,11 @@ void RfSystem::registerConfigure() {
 
   /* r(0x39)
    0x74 = 0b0111_0100
-            0          Preamble Threshold
-             1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
-              1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
-               1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
-                  -    rest trivial
+   7        0          Preamble Threshold
+   6         1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
+   5          1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
+   4           1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
+   -              -    rest trivial
   */
   write(0x39, 0x74);
   write(0x3A, 0x61);
@@ -180,17 +209,17 @@ void RfSystem::registerConfigure() {
 
    r(0x06) Packet Control
    0x3a = 0b00111010
-            0        SYNC_WORD_LEN: 同步字长度设置 
-             0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 
+   7        0        SYNC_WORD_LEN: 同步字长度设置
+   6         0       LENGTH_SEL: 默认为数据包的第一个字节为包长度
                      (0: 1 byte,1: 2 bytes)
                      0:2bytes {r(0x11),r(0x12)}
                      1:4bytes {r(0x11), r(0x12), r(0x13), r(0x14)}
-              1      CRC_EN
-               1     SCRAMBLE_EN i.e. Whitening
-                1    FIFO_SHARE_EN
-                 0   DIRECT_MODE
-                  1  PKT_LENGTH_EN
-                   0 HW_TERM_EN
+   5          1      CRC_EN
+   4           1     SCRAMBLE_EN i.e. Whitening
+   3            1    FIFO_SHARE_EN
+   2             0   DIRECT_MODE
+   1              1  PKT_LENGTH_EN
+   0               0 HW_TERM_EN
   */
   write(0x06, 0x3a);
   // r(0x04) Preamble Length
@@ -198,15 +227,16 @@ void RfSystem::registerConfigure() {
   write(0x04, 0x0a);
   /* r(0x05) Packet Setting
    0x30 = 0b00110000
-            0          Reserved
-             0         Preamble Format (0: 1010, 1: 0101)
-              1        Sync Word Enable
-               1       Preamble Enable
-                00     Packet Encoding Scheme 
+   7        0          Reserved
+   6         0         Preamble Format (0: 1010, 1: 0101)
+   5          1        Sync Word Enable
+   4           1       Preamble Enable
+   [3:2]        00     Packet Encoding Scheme
                        (00: NRZ, 11: Interleave, else:Reserved)
-                  00   FEC (01: 1/3, 10: 2/3, else: None)
-  */                
-  write(0x05, 0x30);
+   [1:0]          00   FEC (01: 1/3, 10: 2/3, else: None)
+  */
+  // interleave + 2/3 FEC
+  write(0x05, 0b00111110);
   // r(0x3b) Preamble Threshold
   write(0x3B, 0x04);
   /* r(0x3c) Demod Config
@@ -268,22 +298,23 @@ void RfSystem::setPA(PowerAmpGain gain) {
 
 void RfSystem::setSyncLockRssi() { write(0x3e, read(0x3e) | 0x40); }
 
-// TODO: find out why fucking cast would mess up the thing?
-void RfSystem::setVcoFreq(const double freq) {
-  auto f = static_cast<size_t>(freq * pow(2.0, 20.0));
+void RfSystem::setVcoFreq(double freq) {
+  unsigned int Fre = 0;
+  unsigned char reg77 = 0,reg76 = 0,reg75 = 0,reg74 = 0,temp = 0;
+  Fre = (unsigned int)(freq * pow(2.0,20.0));
 
-  auto reg77 = static_cast<uint8_t>(f & 0xFF);
-  auto reg76 = static_cast<uint8_t>((f >> 8) & 0xFF);
-  auto reg75 = static_cast<uint8_t>((f >> 16) & 0xFF);
-  auto reg74 = static_cast<uint8_t>(((f >> 24) & 0xFF) | (read(0x74) & 0xc0));
+  reg77 =(unsigned char)(Fre & 0xFF);
+  reg76 =(unsigned char)((Fre >> 8) & 0xFF);
+  reg75 =(unsigned char)((Fre >> 16) & 0xFF);
+  reg74 =(unsigned char)(((Fre >> 24) & 0xFF)| (read(0x74)&0xc0));
 
-  auto temp = read(0x00);
-  write(0x00, (0x80 | temp));
+  temp = read(0x00);
+  write(0x00,(0x80 | temp));
 
-  write(0x77, reg77);
-  write(0x76, reg76);
-  write(0x75, reg75);
-  write(0x74, reg74);
+  write(0x77,reg77);
+  write(0x76,reg76);
+  write(0x75,reg75);
+  write(0x74,reg74);
 }
 
 // TODO: find documentation for this
@@ -304,7 +335,7 @@ void RfSystem::setFreqStep(double step) {
   write(0x01, reg1);
 }
 
-void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
+inline void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
   setVcoFreq(f0);
   setFreq(N);
   setFreqStep(step);
@@ -506,7 +537,7 @@ void RfSystem::begin() {
   setFreq(476.0, 0, 0);
 
   setWorTimer(500);
-  setWorRxTimer(250);
+  setWorRxTimer(400);
 
   // 设置发射功率
   setPA(PowerAmpGain::DBM20);
