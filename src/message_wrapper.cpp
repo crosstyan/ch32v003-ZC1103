@@ -157,7 +157,7 @@ void MessageWrapper::Decoder::printHeader(const MessageWrapper::WrapperHeader &h
   printf("\n");
 }
 
-const char * MessageWrapper::decodeResultToString(MessageWrapper::WrapperDecodeResult result){
+const char *MessageWrapper::decodeResultToString(MessageWrapper::WrapperDecodeResult result) {
   switch (result) {
     case WrapperDecodeResult::BadHeader:
       return "BadHeader";

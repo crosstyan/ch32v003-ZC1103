@@ -16,7 +16,7 @@
 namespace MessageWrapper {
   // total size = 3 + 3 + 1 + 1 + 2 + 1 = 11
   // use __attribute__((packed)) to avoid padding
-  struct WrapperHeader  {
+  struct WrapperHeader {
     uint8_t src[3];
     uint8_t dst[3];
     uint8_t pkt_id;
@@ -27,7 +27,7 @@ namespace MessageWrapper {
     /// inference by encoder
     uint8_t cur_payload_size;
   } __attribute__((packed));
-  constexpr size_t HEADER_SIZE = sizeof (WrapperHeader);
+  constexpr size_t HEADER_SIZE = sizeof(WrapperHeader);
   constexpr size_t MAX_ENCODER_OUTPUT_SIZE = 254;
   constexpr size_t MAX_PAYLOAD_SIZE = MAX_ENCODER_OUTPUT_SIZE - HEADER_SIZE;
   constexpr size_t MAX_DECODER_OUTPUT_SIZE = 512;
@@ -42,7 +42,7 @@ namespace MessageWrapper {
     TotalPayloadSizeTooLarge,
   };
 
-  const char * decodeResultToString(WrapperDecodeResult result);
+  const char *decodeResultToString(WrapperDecodeResult result);
 
   class Encoder {
     etl::vector<char, MAX_ENCODER_OUTPUT_SIZE> output;
@@ -70,13 +70,16 @@ namespace MessageWrapper {
     bool _decoding = false;
     etl::vector<char, MAX_DECODER_OUTPUT_SIZE> output;
     WrapperHeader header{};
-    public:
+  public:
     /// pure function
     static etl::optional<WrapperHeader> decodeHeader(const char *message, size_t size);
+
     static void printHeader(const WrapperHeader &header);
+
     WrapperDecodeResult decode(const char *message, size_t size);
+
     [[nodiscard]]
-    const etl::vector<char, MAX_DECODER_OUTPUT_SIZE>& getOutput() const;
+    const etl::vector<char, MAX_DECODER_OUTPUT_SIZE> &getOutput() const;
 
     void reset();
   };
