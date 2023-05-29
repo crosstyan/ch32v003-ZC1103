@@ -7,6 +7,7 @@
 #include "exti.h"
 #include <etl/vector.h>
 #include "rfsystem.h"
+#include "message_wrapper.h"
 #include "utils.h"
 #include <printf.h>
 #ifdef TX
@@ -40,6 +41,7 @@ int main() {
   // expect to be 0x03
   auto version = rf.version();
   printf("[INFO] version=%d\n", version);
+  printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
   rf.printRegisters();
   #ifdef TX
   printf("[INFO] TX mode\n");
@@ -49,7 +51,15 @@ int main() {
   rf.rx();
   #endif
 
+  char src[3] = {0x01, 0x02, 0x03};
+  char dst[3] = {0x04, 0x05, 0x06};
+  uint8_t counter = 0;
   auto instant = Instant();
+  #ifdef TX
+  auto encoder = MessageWrapper::Encoder(src, dst, counter);
+  #else
+  auto decoder = MessageWrapper::Decoder();
+  #endif
   while (true) {
     #ifdef TX
     auto d = std::chrono::duration<uint16_t , std::milli>(1000);
@@ -59,20 +69,22 @@ int main() {
       auto r = utils::rand_range(0, 65535);
       etl::to_string(r, payload, true);
       payload.append("\r\n");
-      auto status = rf.pollStatus();
-      if (!status.tx) {
-        rf.tx();
+      utils::printWithSize(payload.data(), payload.size());
+      encoder.reset(src, dst, counter);
+      encoder.setPayload(payload.c_str(), payload.length());
+      auto res = encoder.next();
+      while(res.has_value()){
+        auto &v = res.value();
+        printf("size=%d\n", v.size());
+        rf.send(v.data(), v.size());
+        digitalWrite(GPIO::D6, HIGH);
+        Delay_Ms(10);
+        digitalWrite(GPIO::D6, LOW);
+        auto state = rf.pollState();
+        RF::printState(state);
+        res = encoder.next();
       }
-      auto res = rf.send(payload.c_str(), payload.length());
-      if (!res.has_value()){
-        printf("[ERROR] TX timeout\n");
-      }
-      utils::printWithSize(payload.c_str(), payload.length());
-      digitalWrite(GPIO::D6, HIGH);
-      Delay_Ms(10);
-      digitalWrite(GPIO::D6, LOW);
-      auto state = rf.pollState();
-      RF::printState(state);
+      counter++;
       instant.reset();
     }
     #else // RX
@@ -90,11 +102,23 @@ int main() {
       // one should only use interrupt to detect the packet
       if (state.rx_pkt_state != RF::NO_PACKET_RECEIVED) {
         if (auto maybe = rf.recv(buf)) {
-          printf("len=%d; ", buf.size());
-          printf("buf=");
-          utils::printWithSize(buf);
-          if (*(buf.end() - 1) != '\n') {
-            printf("\n");
+          auto h = decoder.decodeHeader(buf.data(), buf.size());
+          if (h.has_value()) {
+            decoder.printHeader(h.value());
+          }
+          auto res = decoder.decode(buf.data(), buf.size());
+          if (res == MessageWrapper::WrapperDecodeResult::Finished) {
+            auto payload = decoder.getOutput();
+            printf("[INFO] payload=");
+            utils::printWithSize(payload);
+            if (*(buf.end() - 1) != '\n') {
+              printf("\n");
+            }
+          } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
+            printf("[INFO] unfinished\n");
+          } else {
+            printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
+            decoder.reset();
           }
           rf.clrRxFifo();
           RF::setRxFlag(false);
