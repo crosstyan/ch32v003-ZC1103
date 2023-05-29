@@ -364,7 +364,7 @@ public:
    */
   void scanR();
 
-  /// read RSSI
+  /// when measuring RSSI, the chip will enter RX mode
   uint8_t rssi();
 
   uint8_t pollTxPktSt();

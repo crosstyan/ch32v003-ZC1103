@@ -1,5 +1,9 @@
 #include "rfsystem.h"
 
+// TODO: figure out how RSSI in this chip works.
+// otherwise we can't use auto detect channel before transmission.
+uint8_t const RSSI_THRESHOLD = 100;
+
 volatile bool rx_flag = false;
 
 void RF::setRxFlag(bool flag) { rx_flag = flag; }
@@ -108,7 +112,7 @@ void RfSystem::registerConfigure() {
    * [5:0]      011111   AUTO_ACK_RX_TIME 每个步进表示增加 128 个 bit 数据的时间
    */
   // enable auto acknowledge
-  write(0x0a, 0b01011111);
+  write(0x0a, 0b00011111);
   /*
    * r(0x0b)
    * 0x03 = 0b00000011
@@ -128,8 +132,11 @@ void RfSystem::registerConfigure() {
    * [3:0]        0011   AUTO_DET_WAIT_TIME
    *                     1bit = 256us
    */
-  // enable auto detect channel and choose mode 1
-  write(0x0c, 0b00110011);
+  // disable this for now... can't figure out RSSI_THRESHOLD
+  write(0x0c, 0b00010011);
+  //  信道检测忙参考值，RSSI 绝对值低于该寄
+  //  存器值时表示信道忙。最低 1bit 表示小数
+  write(0x0d, RSSI_THRESHOLD << 1);
   /*
    r(0x0f)
    0x0a = 0b00001010
@@ -299,22 +306,20 @@ void RfSystem::setPA(PowerAmpGain gain) {
 void RfSystem::setSyncLockRssi() { write(0x3e, read(0x3e) | 0x40); }
 
 void RfSystem::setVcoFreq(double freq) {
-  unsigned int Fre = 0;
-  unsigned char reg77 = 0,reg76 = 0,reg75 = 0,reg74 = 0,temp = 0;
-  Fre = (unsigned int)(freq * pow(2.0,20.0));
+  auto f = static_cast<size_t>(freq * pow(2.0, 20.0));
 
-  reg77 =(unsigned char)(Fre & 0xFF);
-  reg76 =(unsigned char)((Fre >> 8) & 0xFF);
-  reg75 =(unsigned char)((Fre >> 16) & 0xFF);
-  reg74 =(unsigned char)(((Fre >> 24) & 0xFF)| (read(0x74)&0xc0));
+  auto reg77 = static_cast<uint8_t>(f & 0xFF);
+  auto reg76 = static_cast<uint8_t>((f >> 8) & 0xFF);
+  auto reg75 = static_cast<uint8_t>((f >> 16) & 0xFF);
+  auto reg74 = static_cast<uint8_t>(((f >> 24) & 0xFF) | (read(0x74) & 0xc0));
 
-  temp = read(0x00);
-  write(0x00,(0x80 | temp));
+  auto temp = read(0x00);
+  write(0x00, (0x80 | temp));
 
-  write(0x77,reg77);
-  write(0x76,reg76);
-  write(0x75,reg75);
-  write(0x74,reg74);
+  write(0x77, reg77);
+  write(0x76, reg76);
+  write(0x75, reg75);
+  write(0x74, reg74);
 }
 
 // TODO: find documentation for this
@@ -348,13 +353,9 @@ inline void RfSystem::clrTxFifoWrPtr() {
 
 // https://github.com/LSatan/SmartRC-CC1101-Driver-Lib/blob/b8c6af4c7c2214cd77a4e9b2e2cb37b24b393605/ELECHOUSE_CC1101_SRC_DRV.cpp#L1117-L1124
 uint8_t RfSystem::rssi() {
+  this->rx();
   auto raw = read(0x43);
-  if (raw >= 128) {
-    raw = (raw - 256) / 2 - 74;
-  } else {
-    raw = (raw / 2) - 74;
-  }
-  return raw;
+  return raw/2;
 }
 
 void RfSystem::writeFifo(const char *src, uint8_t len) {
@@ -537,7 +538,7 @@ void RfSystem::begin() {
   setFreq(476.0, 0, 0);
 
   setWorTimer(500);
-  setWorRxTimer(400);
+  setWorRxTimer(250);
 
   // 设置发射功率
   setPA(PowerAmpGain::DBM20);

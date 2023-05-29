@@ -71,6 +71,8 @@ int main() {
       digitalWrite(GPIO::D6, HIGH);
       Delay_Ms(10);
       digitalWrite(GPIO::D6, LOW);
+      auto rssi = rf.rssi();
+      printf("[INFO] rssi=%d\n", rssi);
       auto state = rf.pollState();
       RF::printState(state);
       instant.reset();
