@@ -92,7 +92,6 @@ uint8_t RfSystem::read(const uint8_t addr) {
 void RfSystem::registerConfigure() {
   // r(0x0c) channel detect
   // 0x03 = 0b0000_0011
-  // TODO: configure r(0x0a) ACK and r(0x0b) RE_TX_TIMES
   write(0x09, 0x08);
   write(0x0c, 0x03);
   /* r(0x0e)
@@ -109,17 +108,18 @@ void RfSystem::registerConfigure() {
    * 0x1f = 0b00011111
    * 7        0          SRST_EN
    * 6         0         AUTO_ACK_EN
-   * [5:0]      011111   AUTO_ACK_RX_TIME 每个步进表示增加 128 个 bit 数据的时间
+   * [5:0]      011111   AUTO_ACK_RX_TIME 每个步进表示增加 128bit (16 bytes) 数据的时间
+   *                     (decided by the data rate?)
    */
   // enable auto acknowledge
-  write(0x0a, 0b00011111);
+  write(0x0a, 0b01010000);
   /*
    * r(0x0b)
    * 0x03 = 0b00000011
    * [7:4]    0000      RC32K_CAL_OFFSET
    * [3:0]        0011  RE_TX_TIMES
    */
-  write(0x0b, 0x03);
+  write(0x0b, 0x05);
   /*
    * r(0x0c)
    * 0x03 = 0b00000011
@@ -156,7 +156,7 @@ void RfSystem::registerConfigure() {
                        0b0101 = 5 = 32KHz/2^5 = 1KHz 
                        i.e. 1ms per tick
   */
-  write(0x1b, 0b00100101);
+  write(0x1b, 0b00110101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
@@ -243,7 +243,7 @@ void RfSystem::registerConfigure() {
    [1:0]          00   FEC (01: 1/3, 10: 2/3, else: None)
   */
   // interleave + 2/3 FEC
-  write(0x05, 0b00111110);
+   write(0x05, 0b00111110);
   // r(0x3b) Preamble Threshold
   write(0x3B, 0x04);
   /* r(0x3c) Demod Config
