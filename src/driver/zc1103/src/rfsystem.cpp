@@ -156,7 +156,7 @@ void RfSystem::registerConfigure() {
                        0b0101 = 5 = 32KHz/2^5 = 1KHz 
                        i.e. 1ms per tick
   */
-  write(0x1b, 0b00110101);
+  write(0x1b, 0b00100101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
@@ -522,7 +522,7 @@ void RfSystem::begin() {
 
   registerConfigure();
 
-  setDR(RF::DataRate::K9_6);
+  setDR(RF::DataRate::K2_4);
   setSync(0x41, 0x53);
 
   // 设置参考频率
@@ -537,8 +537,8 @@ void RfSystem::begin() {
   // 设置中心频点
   setFreq(476.0, 0, 0);
 
-  setWorTimer(500);
-  setWorRxTimer(250);
+  setWorTimer(5000);
+  setWorRxTimer(1000);
 
   // 设置发射功率
   setPA(PowerAmpGain::DBM20);
@@ -864,3 +864,13 @@ void RfSystem::setSync(uint8_t s1, uint8_t s2) {
   write(0x11, s1);
   write(0x12, s2);
 }
+
+void RfSystem::setWorEn(bool en){
+  auto temp = read(0x1b);
+  if(en) {
+    temp |= 0b00010000;
+  } else {
+    temp &= 0b11101111;
+  }
+  write(0x1b, temp);
+};

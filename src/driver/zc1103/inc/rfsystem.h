@@ -239,6 +239,8 @@ public:
 
   void reset();
 
+  void setWorEn(bool en);
+
 /**
   * \brief  发送数据包
   * \param [IN] buffer 发送数据

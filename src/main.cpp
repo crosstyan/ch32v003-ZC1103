@@ -47,8 +47,8 @@ int main() {
   printf("[INFO] TX mode\n");
   #else
   printf("RX mode\n");
-  rf.wor();
   rf.rx();
+  rf.setWorEn(true);
   #endif
 
   char src[3] = {0x01, 0x02, 0x03};
@@ -90,6 +90,7 @@ int main() {
     #else // RX
     // See also `exti.cpp`
     if (RF::rxFlag()) {
+      rf.setWorEn(false);
       digitalWrite(GPIO::D6, HIGH);
       auto state = rf.pollState();
       if (state.crc_error) {
@@ -121,8 +122,8 @@ int main() {
             decoder.reset();
           }
           rf.clrRxFifo();
-          RF::setRxFlag(false);
           rf.wor();
+          RF::setRxFlag(false);
         }
       }
       digitalWrite(GPIO::D6, LOW);
