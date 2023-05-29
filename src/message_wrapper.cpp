@@ -60,7 +60,7 @@ etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> Messag
   output.push_back(header.cur_payload_size);
   push_back_many(output, message, header.cur_payload_size);
   cur_left -= current_payload_size;
-  if (cur_left < 0) {
+  if (cur_left < 0) [[unlikely]] {
     this->message = nullptr;
     this->total_message_size = 0;
     this->cur_left = 0;
