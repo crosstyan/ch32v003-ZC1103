@@ -35,6 +35,12 @@ inline void static push_back_many(etl::ivector<char> &vec, const uint8_t *data, 
   }
 }
 
+inline void static add_padding(etl::ivector<char> &vec, size_t size) {
+  for (size_t i = 0; i < size; i++) {
+    vec.push_back(0);
+  }
+}
+
 void MessageWrapper::Encoder::setPayload(const char *payload, size_t size) {
   this->message = const_cast<char *>(payload);
   this->total_message_size = size;
@@ -45,6 +51,8 @@ void MessageWrapper::Encoder::setPayload(const uint8_t *payload, size_t size) {
   setPayload(reinterpret_cast<const char *>(payload), size);
 }
 
+// TODO: optimize this
+// eats 256 bytes of Flash
 etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> MessageWrapper::Encoder::next() {
   if (this->message == nullptr) {
     return etl::nullopt;
@@ -63,15 +71,14 @@ etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> Messag
   header.cur_payload_size = current_payload_size;
   output.push_back(header.cur_payload_size);
   push_back_many(output, message, header.cur_payload_size);
-  for (auto i=0; i < ENDING_PAD_SIZE; i++) {
-    output.push_back(0);
-  }
+  add_padding(output, ENDING_PAD_SIZE);
   cur_left -= current_payload_size;
   if (cur_left < 0) [[unlikely]] {
     this->message = nullptr;
     this->total_message_size = 0;
     this->cur_left = 0;
     return etl::nullopt;
+    // last packet
   } else if (cur_left == 0) {
     this->message = nullptr;
     this->total_message_size = 0;
@@ -84,6 +91,8 @@ etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> Messag
   }
 }
 
+// TODO: optimize this
+// eats 132 bytes of Flash
 etl::optional<MessageWrapper::WrapperHeader> MessageWrapper::Decoder::decodeHeader(const char *message, size_t size) {
   if (size < HEADER_SIZE) {
     return etl::nullopt;

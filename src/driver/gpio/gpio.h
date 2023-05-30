@@ -73,8 +73,14 @@ GPIO_TypeDef *gpioRegister(uint8_t gpio);
 
 uint8_t gpioPin(uint8_t gpio, pin_size_t pin);
 
+/**
+ * @note cost 102 bytes in Flash
+ */
 void pinMode(pin_size_t pin, PinMode mode);
 
+/**
+ * @note cost 66 bytes in Flash
+ */
 void digitalWrite(pin_size_t pin, PinStatus val);
 
 PinStatus digitalRead(pin_size_t pin);

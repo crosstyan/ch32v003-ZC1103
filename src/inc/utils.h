@@ -12,6 +12,10 @@
 #include <etl/vector.h>
 
 namespace utils {
+  /**
+   * @brief random number generator
+   * @deprecated You bastard! used 6kb of FLASH! use `etl::random` instead!
+   */
   int rand_range(int min, int max);
   void printWithSize(const char *str, size_t size, bool hex = false);
   void printWithSize(const etl::ivector<char> &vec, bool hex = false);
