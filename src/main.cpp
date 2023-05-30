@@ -13,6 +13,7 @@
 #include <pb_decode.h>
 #include "simple.pb.h"
 #include "led.h"
+#include <etl/random.h>
 
 #ifdef TX
 #include <pb_encode.h>
@@ -22,10 +23,6 @@ static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN = GPIO::C2;
 static const pin_size_t CS_PIN = GPIO::C4;
 static const pin_size_t RST_PIN = GPIO::C1;
-
-static const pin_size_t LED_B_PIN = GPIO::D3;
-static const pin_size_t LED_G_PIN = GPIO::D2;
-static const pin_size_t LED_R_PIN = GPIO::D1;
 
 int main() {
   SystemInit48HSI();
@@ -64,8 +61,9 @@ int main() {
   auto d = std::chrono::duration<uint16_t, std::milli>(1000);
   auto led_instant = Instant();
   auto d_led = std::chrono::duration<uint16_t, std::milli>(500);
-  auto led = LED();
-  led.begin();
+  LED::begin();
+  auto rng = etl::random_xorshift();
+  rng.initialise(0);
   #ifdef TX
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
   #else
@@ -117,15 +115,15 @@ int main() {
       instant.reset();
     }
     if (led_instant.elapsed() >= d_led) {
-      bool random_r = utils::rand_range(0, 1);
-      bool random_g = utils::rand_range(0, 1);
-      bool random_b = utils::rand_range(0, 1);
+      bool random_r = rng.range(0, 1);
+      bool random_g = rng.range(0, 1);
+      bool random_b = rng.range(0, 1);
       if (random_r == 0 && random_g == 0 && random_b == 0) {
         // at least one color should be on
         random_g = 1;
         random_b = 1;
       }
-      led.setColor(random_r, random_g, random_b);
+      LED::setColor(random_r, random_g, random_b);
       led_instant.reset();
     }
     #else // RX
@@ -160,7 +158,7 @@ int main() {
           if (res == MessageWrapper::WrapperDecodeResult::Finished) {
             auto payload = decoder.getOutput();
             etl::vector<char, 32> string_payload;
-            pb_istream_t istream = pb_istream_from_buffer(reinterpret_cast<uint8_t*>(payload.data()) , payload.size());
+            pb_istream_t istream = pb_istream_from_buffer(reinterpret_cast<uint8_t *>(payload.data()), payload.size());
             Simple message = Simple_init_zero;
             message.message.arg = &string_payload;
             message.message.funcs.decode = [](pb_istream_t *stream, const pb_field_t *field, void **arg) {
