@@ -44,6 +44,9 @@ namespace MessageWrapper {
 
   const char *decodeResultToString(WrapperDecodeResult result);
 
+  /// the unique packet id is the packet id + packet current count
+  uint16_t getUniquePktId(const WrapperHeader &header);
+
   class Encoder {
     etl::vector<char, MAX_ENCODER_OUTPUT_SIZE> output;
     WrapperHeader header{};
@@ -51,8 +54,12 @@ namespace MessageWrapper {
     size_t total_message_size = 0;
     size_t cur_left = 0;
   public:
-    void setPayload(const char *message, size_t size);
+    void setPayload(const char *payload, size_t size);
+    void setPayload(const uint8_t *payload, size_t size);
 
+    /*
+     * @brief iterator like. return `etl::nullopt` when finished, otherwise return the next encoded packet.
+     */
     etl::optional<etl::vector<char, MAX_ENCODER_OUTPUT_SIZE>> next();
 
     /*
@@ -76,6 +83,9 @@ namespace MessageWrapper {
 
     static void printHeader(const WrapperHeader &header);
 
+    /*
+     * @brief when `WrapperDecodeResult::Finished` is returned then use `getOutput()` to retrieve the output
+     */
     WrapperDecodeResult decode(const char *message, size_t size);
 
     [[nodiscard]]
@@ -83,8 +93,6 @@ namespace MessageWrapper {
 
     void reset();
   };
-
-  etl::optional<WrapperHeader> getHeader(const char *message, size_t size);
 }
 
 

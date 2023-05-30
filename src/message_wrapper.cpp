@@ -35,10 +35,14 @@ inline void static push_back_many(etl::ivector<char> &vec, const uint8_t *data, 
   }
 }
 
-void MessageWrapper::Encoder::setPayload(const char *message, size_t size) {
-  this->message = const_cast<char *>(message);
+void MessageWrapper::Encoder::setPayload(const char *payload, size_t size) {
+  this->message = const_cast<char *>(payload);
   this->total_message_size = size;
   this->cur_left = size;
+}
+
+void MessageWrapper::Encoder::setPayload(const uint8_t *payload, size_t size) {
+  setPayload(reinterpret_cast<const char *>(payload), size);
 }
 
 etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> MessageWrapper::Encoder::next() {
@@ -179,3 +183,7 @@ const char *MessageWrapper::decodeResultToString(MessageWrapper::WrapperDecodeRe
       std::unreachable();
   }
 };
+
+uint16_t MessageWrapper::getUniquePktId(const WrapperHeader &header) {
+  return (header.pkt_id << 8) | header.pkt_cur_count;
+}

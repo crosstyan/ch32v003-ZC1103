@@ -10,9 +10,12 @@
 #include "message_wrapper.h"
 #include "utils.h"
 #include <printf.h>
+#include <pb_common.h>
+#include <pb_decode.h>
+#include "simple.pb.h"
+
 #ifdef TX
-#include <etl/string.h>
-#include <etl/to_string.h>
+#include <pb_encode.h>
 #endif
 
 static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
@@ -42,7 +45,6 @@ int main() {
   auto version = rf.version();
   printf("[INFO] version=%d\n", version);
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
-  rf.printRegisters();
   #ifdef TX
   printf("[INFO] TX mode\n");
   #else
@@ -53,37 +55,57 @@ int main() {
 
   char src[3] = {0x01, 0x02, 0x03};
   char dst[3] = {0x04, 0x05, 0x06};
-  uint8_t counter = 0;
+  uint8_t pkt_id = 0;
+  uint32_t counter = 0;
   auto instant = Instant();
   #ifdef TX
-  auto encoder = MessageWrapper::Encoder(src, dst, counter);
+  auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
   #else
   auto decoder = MessageWrapper::Decoder();
   #endif
   while (true) {
     #ifdef TX
-    auto d = std::chrono::duration<uint16_t , std::milli>(1000);
+    auto d = std::chrono::duration<uint16_t, std::milli>(1000);
     if (instant.elapsed() >= d) {
-      // construct a payload
-      etl::string<32> payload = "hello world:";
-      auto r = utils::rand_range(0, 65535);
-      etl::to_string(r, payload, true);
-      payload.append("\r\n");
-      utils::printWithSize(payload.data(), payload.size());
-      encoder.reset(src, dst, counter);
-      encoder.setPayload(payload.c_str(), payload.length());
-      auto res = encoder.next();
-      while(res.has_value()){
-        auto &v = res.value();
-        printf("size=%d\n", v.size());
-        rf.send(v.data(), v.size());
-        digitalWrite(GPIO::D6, HIGH);
-        Delay_Ms(10);
-        digitalWrite(GPIO::D6, LOW);
-        auto state = rf.pollState();
-        RF::printState(state);
-        res = encoder.next();
+      uint8_t buf[256];
+      Simple message = Simple_init_zero;
+      pb_ostream_t stream = pb_ostream_from_buffer(buf, sizeof(buf));
+      message.counter = counter;
+      message.message.funcs.encode = [](pb_ostream_t *stream, const pb_field_t *field, void *const *arg) {
+        auto message = static_cast<char *>(*arg);
+        // zero terminated string (zero sentinel is not included)
+        if (!pb_encode_tag_for_field(stream, field)) {
+          return false;
+        } else {
+          bool res = pb_encode_string(stream, reinterpret_cast<uint8_t *>(message), strlen(message));
+          if (!res) {
+            return false;
+          }
+        }
+        return true;
+      };
+      uint8_t payload[] = "hello world!";
+      message.message.arg = payload;
+      bool status = pb_encode(&stream, Simple_fields, &message);
+      if (status) {
+        encoder.reset(src, dst, pkt_id);
+        encoder.setPayload(buf, stream.bytes_written);
+        auto res = encoder.next();
+        while (res.has_value()) {
+          auto &v = res.value();
+          printf("size=%d; payload_size=%d\n", v.size(), stream.bytes_written);
+          rf.send(v.data(), v.size());
+          digitalWrite(GPIO::D6, HIGH);
+          Delay_Ms(10);
+          digitalWrite(GPIO::D6, LOW);
+          auto state = rf.pollState();
+          RF::printState(state);
+          res = encoder.next();
+        }
+      } else {
+        printf("[ERROR] failed to encode\n");
       }
+      pkt_id++;
       counter++;
       instant.reset();
     }
@@ -96,24 +118,41 @@ int main() {
       if (state.crc_error) {
         printf("[ERROR] CRC error\n");
       }
-      etl::vector<char, 256> buf;
+      etl::vector<char, 256> rx_buf;
       // when a valid packet is received the state should be 0xc0
       // (at least the rx_pkt_state would be 0x00)
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
       // one should only use interrupt to detect the packet
       if (state.rx_pkt_state != RF::NO_PACKET_RECEIVED) {
-        if (auto maybe = rf.recv(buf)) {
-          auto h = decoder.decodeHeader(buf.data(), buf.size());
+        if (auto maybe = rf.recv(rx_buf)) {
+          auto h = decoder.decodeHeader(rx_buf.data(), rx_buf.size());
           if (h.has_value()) {
             decoder.printHeader(h.value());
           }
-          auto res = decoder.decode(buf.data(), buf.size());
+          auto res = decoder.decode(rx_buf.data(), rx_buf.size());
           if (res == MessageWrapper::WrapperDecodeResult::Finished) {
             auto payload = decoder.getOutput();
-            printf("[INFO] payload=");
-            utils::printWithSize(payload);
-            if (*(buf.end() - 1) != '\n') {
-              printf("\n");
+            etl::vector<char, 32> string_payload;
+            pb_istream_t istream = pb_istream_from_buffer(reinterpret_cast<uint8_t*>(payload.data()) , payload.size());
+            Simple message = Simple_init_zero;
+            message.message.arg = &string_payload;
+            message.message.funcs.decode = [](pb_istream_t *stream, const pb_field_t *field, void **arg) {
+              auto &payload = *(static_cast<etl::ivector<char> *>(*arg));
+              if (stream->bytes_left > payload.max_size() - 1) {
+                return false;
+              }
+              payload.resize(stream->bytes_left);
+              if (!pb_read(stream, reinterpret_cast<uint8_t *>(payload.data()), stream->bytes_left)) {
+                return false;
+              }
+              payload.push_back('\0');
+              return true;
+            };
+            bool status = pb_decode(&istream, Simple_fields, &message);
+            if (status) {
+              printf("[INFO] counter=%d, message=%s\n", message.counter, string_payload.data());
+            } else {
+              printf("[ERROR] failed to decode\n");
             }
           } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
             printf("[INFO] unfinished\n");

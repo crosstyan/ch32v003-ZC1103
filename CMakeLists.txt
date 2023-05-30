@@ -40,6 +40,8 @@ add_executable(${CMAKE_PROJECT_NAME}.elf
         ${FUN_SRC}
         ${APP_SRC}
         ${LIB_PRINTF_SRC}
+        ${NANOPB_SRC}
+        ${NANOPB_GEN_SRC}
         ${ZC1103_SRC})
 add_compile_definitions(
         PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1
