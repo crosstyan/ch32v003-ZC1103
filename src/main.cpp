@@ -1,4 +1,4 @@
-//#define TX
+#define TX
 #include "clock.h"
 #include "ch32v003fun.h"
 #include "system_tick.h"
@@ -18,13 +18,20 @@
 #include <pb_encode.h>
 #endif
 
+static uint8_t a1[] = "Conflict";
+static uint8_t a2[] = "Unavailable For Legal Reasons";
+static uint8_t a3[] = "Multiple Choices";
+static uint8_t a4[] = "Not Found";
+static uint8_t a5[] = "Payment Required";
+static uint8_t a6[] = "Forbidden";
+
 static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN = GPIO::C2;
 static const pin_size_t CS_PIN = GPIO::C4;
 static const pin_size_t RST_PIN = GPIO::C1;
 
 int main() {
-  putchar('a');
+  etl::vector<uint8_t *, 6> payload = {a1, a2, a3, a4, a5, a6};
   SystemInit48HSI();
   SysTick_init();
   SetupDebugPrintf();
@@ -84,16 +91,18 @@ int main() {
         }
         return true;
       };
-      uint8_t payload[] = "hello world!";
-      message.message.arg = payload;
+      auto idx = utils::rand_range(0, payload.size() - 1);
+      message.message.arg = payload[idx];
       bool status = pb_encode(&stream, Simple_fields, &message);
       if (status) {
         encoder.reset(src, dst, pkt_id);
         encoder.setPayload(buf, stream.bytes_written);
+        utils::printWithSize(reinterpret_cast<const char *>(buf), stream.bytes_written, true);
+        printf("\n");
         auto res = encoder.next();
         while (res.has_value()) {
           auto &v = res.value();
-          printf("size=%d; payload_size=%d\n", v.size(), stream.bytes_written);
+          printf("counter:%d; size=%d; payload_size=%d; \n", message.counter, v.size(), stream.bytes_written);
           rf.send(v.data(), v.size());
           digitalWrite(GPIO::D6, HIGH);
           Delay_Ms(10);
@@ -132,12 +141,15 @@ int main() {
           auto res = decoder.decode(rx_buf.data(), rx_buf.size());
           if (res == MessageWrapper::WrapperDecodeResult::Finished) {
             auto payload = decoder.getOutput();
+            utils::printWithSize(payload, true);
+            printf("\n");
             etl::vector<char, 32> string_payload;
             pb_istream_t istream = pb_istream_from_buffer(reinterpret_cast<uint8_t*>(payload.data()) , payload.size());
             Simple message = Simple_init_zero;
             message.message.arg = &string_payload;
             message.message.funcs.decode = [](pb_istream_t *stream, const pb_field_t *field, void **arg) {
               auto &payload = *(static_cast<etl::ivector<char> *>(*arg));
+              payload.clear();
               if (stream->bytes_left > payload.max_size() - 1) {
                 return false;
               }
@@ -150,7 +162,8 @@ int main() {
             };
             bool status = pb_decode(&istream, Simple_fields, &message);
             if (status) {
-              printf("[INFO] counter=%d, message=%s\n", message.counter, string_payload.data());
+              auto c = message.counter;
+              printf("[INFO] counter=%d, message=\"%s\"\n", c, string_payload.data());
             } else {
               printf("[ERROR] failed to decode\n");
             }

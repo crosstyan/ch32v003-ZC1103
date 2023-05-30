@@ -11,8 +11,8 @@
 
 /* Struct definitions */
 typedef struct _Simple {
-    pb_callback_t message;
     int32_t counter;
+    pb_callback_t message;
 } Simple;
 
 
@@ -21,17 +21,17 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define Simple_init_default                      {{{NULL}, NULL}, 0}
-#define Simple_init_zero                         {{{NULL}, NULL}, 0}
+#define Simple_init_default                      {0, {{NULL}, NULL}}
+#define Simple_init_zero                         {0, {{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define Simple_message_tag                       1
-#define Simple_counter_tag                       2
+#define Simple_counter_tag                       1
+#define Simple_message_tag                       2
 
 /* Struct field encoding specification for nanopb */
 #define Simple_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   message,           1) \
-X(a, STATIC,   SINGULAR, INT32,    counter,           2)
+X(a, STATIC,   SINGULAR, INT32,    counter,           1) \
+X(a, CALLBACK, SINGULAR, STRING,   message,           2)
 #define Simple_CALLBACK pb_default_field_callback
 #define Simple_DEFAULT NULL
 

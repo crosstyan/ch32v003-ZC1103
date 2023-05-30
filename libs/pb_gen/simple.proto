@@ -1,6 +1,6 @@
 syntax = "proto3";
 
 message Simple {
-  string message = 1;
-  int32 counter = 2;
+  int32 counter = 1;
+  string message = 2;
 }

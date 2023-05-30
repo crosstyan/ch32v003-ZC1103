@@ -27,9 +27,11 @@ namespace MessageWrapper {
     /// inference by encoder
     uint8_t cur_payload_size;
   } __attribute__((packed));
+  // pad is needed since the transmission would corrupt the last few bytes (why????)
+  constexpr size_t ENDING_PAD_SIZE = 3;
   constexpr size_t HEADER_SIZE = sizeof(WrapperHeader);
   constexpr size_t MAX_ENCODER_OUTPUT_SIZE = 254;
-  constexpr size_t MAX_PAYLOAD_SIZE = MAX_ENCODER_OUTPUT_SIZE - HEADER_SIZE;
+  constexpr size_t MAX_PAYLOAD_SIZE = MAX_ENCODER_OUTPUT_SIZE - HEADER_SIZE - ENDING_PAD_SIZE;
   constexpr size_t MAX_DECODER_OUTPUT_SIZE = 512;
   enum class WrapperDecodeResult {
     Finished,

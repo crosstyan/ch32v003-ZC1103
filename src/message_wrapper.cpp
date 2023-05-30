@@ -63,6 +63,9 @@ etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> Messag
   header.cur_payload_size = current_payload_size;
   output.push_back(header.cur_payload_size);
   push_back_many(output, message, header.cur_payload_size);
+  for (auto i=0; i < ENDING_PAD_SIZE; i++) {
+    output.push_back(0);
+  }
   cur_left -= current_payload_size;
   if (cur_left < 0) [[unlikely]] {
     this->message = nullptr;
@@ -107,14 +110,12 @@ MessageWrapper::WrapperDecodeResult MessageWrapper::Decoder::decode(const char *
     if (header.total_payload_size > MAX_DECODER_OUTPUT_SIZE) {
       return WrapperDecodeResult::TotalPayloadSizeTooLarge;
     }
+    output.clear();
+    push_back_many(output, message + HEADER_SIZE, header.cur_payload_size);
     if (header.total_payload_size == header.cur_payload_size) {
-      output.clear();
-      push_back_many(output, message + HEADER_SIZE, header.cur_payload_size);
       _decoding = false;
       return WrapperDecodeResult::Finished;
     } else {
-      output.clear();
-      push_back_many(output, message + HEADER_SIZE, header.cur_payload_size);
       return WrapperDecodeResult::Unfinished;
     }
     // following packets
