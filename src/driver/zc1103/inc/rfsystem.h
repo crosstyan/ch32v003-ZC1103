@@ -239,6 +239,8 @@ public:
 
   void reset();
 
+  void setWorEn(bool en);
+
 /**
   * \brief  发送数据包
   * \param [IN] buffer 发送数据
@@ -364,7 +366,7 @@ public:
    */
   void scanR();
 
-  /// read RSSI
+  /// when measuring RSSI, the chip will enter RX mode
   uint8_t rssi();
 
   uint8_t pollTxPktSt();

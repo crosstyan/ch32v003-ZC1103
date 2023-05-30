@@ -10,3 +10,6 @@
 [submodule "libs/etl"]
 	path = libs/etl
 	url = https://github.com/ETLCPP/etl
+[submodule "libs/nanopb"]
+	path = libs/nanopb
+	url = https://github.com/nanopb/nanopb

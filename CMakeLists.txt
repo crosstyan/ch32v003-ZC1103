@@ -20,7 +20,7 @@ set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
 set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
 include_directories(${ZC1103_DIRECTORY}/inc)
 
-set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp src/inc/clock.h src/inc/spi.h src/system_tick.cpp src/inc/system_tick.h src/inc/instant.h src/inc/utils.h src/utils.cpp src/exti.cpp src/inc/unit.h src/inc/exti.h)
+set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp src/inc/clock.h src/inc/spi.h src/system_tick.cpp src/inc/system_tick.h src/inc/instant.h src/inc/utils.h src/utils.cpp src/exti.cpp src/inc/unit.h src/inc/exti.h src/inc/message_wrapper.h src/message_wrapper.cpp)
 include_directories(src/inc src/driver/gpio)
 
 set(GIT_DIR_LOOKUP_POLICY ALLOW_LOOKING_ABOVE_CMAKE_SOURCE_DIR)
@@ -28,11 +28,20 @@ set(ETL_DIR libs/etl)
 add_subdirectory(${ETL_DIR})
 include_directories(${ETL_DIR}/include)
 
+set(NANOPB_DIR libs/nanopb)
+set(NANOPB_SRC ${NANOPB_DIR}/pb_common.c ${NANOPB_DIR}/pb_decode.c ${NANOPB_DIR}/pb_encode.c)
+include_directories(${NANOPB_DIR})
+
+set(NANOPB_GEN_DIR libs/pb_gen)
+set(NANOPB_GEN_SRC ${NANOPB_GEN_DIR}/simple.pb.c)
+include_directories(${NANOPB_GEN_DIR})
 
 add_executable(${CMAKE_PROJECT_NAME}.elf
         ${FUN_SRC}
         ${APP_SRC}
         ${LIB_PRINTF_SRC}
+        ${NANOPB_SRC}
+        ${NANOPB_GEN_SRC}
         ${ZC1103_SRC})
 add_compile_definitions(
         PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1

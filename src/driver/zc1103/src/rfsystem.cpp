@@ -1,5 +1,9 @@
 #include "rfsystem.h"
 
+// TODO: figure out how RSSI in this chip works.
+// otherwise we can't use auto detect channel before transmission.
+uint8_t const RSSI_THRESHOLD = 100;
+
 volatile bool rx_flag = false;
 
 void RF::setRxFlag(bool flag) { rx_flag = flag; }
@@ -88,18 +92,51 @@ uint8_t RfSystem::read(const uint8_t addr) {
 void RfSystem::registerConfigure() {
   // r(0x0c) channel detect
   // 0x03 = 0b0000_0011
-  // TODO: configure r(0x0a) ACK and r(0x0b) RE_TX_TIMES
   write(0x09, 0x08);
   write(0x0c, 0x03);
   /* r(0x0e)
    0xa1 = 0b10100001
-            1        preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
-             0       sync word 中断使能，当接收端收到有效的 同步字 sync word 时产生中断信号
-              1      该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
-               00001 allowed error bit
+   7        1        preamble 中断使能，当接收端收到有效 的前导码 preamble 时产生中断信号
+   6         0       sync word 中断使能，当接收端收到有效的 同步字 sync word 时产生中断信号
+   5          1      该位选择 pkt_flag 有效 后，是否自动拉低。如果自动拉低, 脉冲宽度大约 1us
+   [4:0]       00001 allowed error bit
   */
   // write(0x0e, 0xa1);
   write(0x0e, 0b00100001);
+  /*
+   * r(0x0a)
+   * 0x1f = 0b00011111
+   * 7        0          SRST_EN
+   * 6         0         AUTO_ACK_EN
+   * [5:0]      011111   AUTO_ACK_RX_TIME 每个步进表示增加 128bit (16 bytes) 数据的时间
+   *                     (decided by the data rate?)
+   */
+  // enable auto acknowledge
+  write(0x0a, 0b01010000);
+  /*
+   * r(0x0b)
+   * 0x03 = 0b00000011
+   * [7:4]    0000      RC32K_CAL_OFFSET
+   * [3:0]        0011  RE_TX_TIMES
+   */
+  write(0x0b, 0x05);
+  /*
+   * r(0x0c)
+   * 0x03 = 0b00000011
+   * 7        0          TX_DATA_INVERSE 发送数据取反
+   * 6         0         读取中频信号幅度值
+   * 5          0        AUTO_DET_TX_CHL 在发送数据前先检测信道是否忙
+   * 4           0       AUTO_DET_CHL_MODE
+   *                     0: exit directly when channel is busy
+   *                     1: wait until channel is idle
+   * [3:0]        0011   AUTO_DET_WAIT_TIME
+   *                     1bit = 256us
+   */
+  // disable this for now... can't figure out RSSI_THRESHOLD
+  write(0x0c, 0b00010011);
+  //  信道检测忙参考值，RSSI 绝对值低于该寄
+  //  存器值时表示信道忙。最低 1bit 表示小数
+  write(0x0d, RSSI_THRESHOLD << 1);
   /*
    r(0x0f)
    0x0a = 0b00001010
@@ -111,16 +148,15 @@ void RfSystem::registerConfigure() {
   /*
    r(0x1b) WOR
    0x25 = 0b00100101
-            0          Reserved
-             0         自动唤醒后执行的命令 (0: RX, 1: TX)
-              1        内部低频 RC 振荡时钟校准使能
-               0       WOR (Wake On Radio) 使能
-                0101   WOR 功能计数器时钟选择 (32KHz/2^n)
+   7        0          Reserved
+   6         0         自动唤醒后执行的命令 (0: RX, 1: TX)
+   5          1        内部低频 RC 振荡时钟校准使能
+   4            0       WOR (Wake On Radio) 使能
+   [3:0]         0101   WOR 功能计数器时钟选择 (32KHz/2^n)
                        0b0101 = 5 = 32KHz/2^5 = 1KHz 
                        i.e. 1ms per tick
-    write(0x1b, 0b00110101);
   */
-  write(0x1b, 0b00110101);
+  write(0x1b, 0b00100101);
 
   write(0x20, 0xa4);
   write(0x21, 0x37);
@@ -139,11 +175,11 @@ void RfSystem::registerConfigure() {
 
   /* r(0x39)
    0x74 = 0b0111_0100
-            0          Preamble Threshold
-             1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
-              1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
-               1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
-                  -    rest trivial
+   7        0          Preamble Threshold
+   6         1         该功能使能时，接收端找到谱线后一定周期内没有没有收到同步字，则进行复位
+   5          1        使能在 100K 以上数据率时自动识别信号 到达时先进行软复位
+   4           1       找到谱线后一定周期内没有收到有效的 preamble 则进行接收机复位
+   -              -    rest trivial
   */
   write(0x39, 0x74);
   write(0x3A, 0x61);
@@ -180,17 +216,17 @@ void RfSystem::registerConfigure() {
 
    r(0x06) Packet Control
    0x3a = 0b00111010
-            0        SYNC_WORD_LEN: 同步字长度设置 
-             0       LENGTH_SEL: 默认为数据包的第一个字节为包长度 
+   7        0        SYNC_WORD_LEN: 同步字长度设置
+   6         0       LENGTH_SEL: 默认为数据包的第一个字节为包长度
                      (0: 1 byte,1: 2 bytes)
                      0:2bytes {r(0x11),r(0x12)}
                      1:4bytes {r(0x11), r(0x12), r(0x13), r(0x14)}
-              1      CRC_EN
-               1     SCRAMBLE_EN i.e. Whitening
-                1    FIFO_SHARE_EN
-                 0   DIRECT_MODE
-                  1  PKT_LENGTH_EN
-                   0 HW_TERM_EN
+   5          1      CRC_EN
+   4           1     SCRAMBLE_EN i.e. Whitening
+   3            1    FIFO_SHARE_EN
+   2             0   DIRECT_MODE
+   1              1  PKT_LENGTH_EN
+   0               0 HW_TERM_EN
   */
   write(0x06, 0x3a);
   // r(0x04) Preamble Length
@@ -198,15 +234,16 @@ void RfSystem::registerConfigure() {
   write(0x04, 0x0a);
   /* r(0x05) Packet Setting
    0x30 = 0b00110000
-            0          Reserved
-             0         Preamble Format (0: 1010, 1: 0101)
-              1        Sync Word Enable
-               1       Preamble Enable
-                00     Packet Encoding Scheme 
+   7        0          Reserved
+   6         0         Preamble Format (0: 1010, 1: 0101)
+   5          1        Sync Word Enable
+   4           1       Preamble Enable
+   [3:2]        00     Packet Encoding Scheme
                        (00: NRZ, 11: Interleave, else:Reserved)
-                  00   FEC (01: 1/3, 10: 2/3, else: None)
-  */                
-  write(0x05, 0x30);
+   [1:0]          00   FEC (01: 1/3, 10: 2/3, else: None)
+  */
+  // interleave + 2/3 FEC
+   write(0x05, 0b00111110);
   // r(0x3b) Preamble Threshold
   write(0x3B, 0x04);
   /* r(0x3c) Demod Config
@@ -268,8 +305,7 @@ void RfSystem::setPA(PowerAmpGain gain) {
 
 void RfSystem::setSyncLockRssi() { write(0x3e, read(0x3e) | 0x40); }
 
-// TODO: find out why fucking cast would mess up the thing?
-void RfSystem::setVcoFreq(const double freq) {
+void RfSystem::setVcoFreq(double freq) {
   auto f = static_cast<size_t>(freq * pow(2.0, 20.0));
 
   auto reg77 = static_cast<uint8_t>(f & 0xFF);
@@ -304,7 +340,7 @@ void RfSystem::setFreqStep(double step) {
   write(0x01, reg1);
 }
 
-void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
+inline void RfSystem::setFreq(const double f0, const uint8_t N, const double step) {
   setVcoFreq(f0);
   setFreq(N);
   setFreqStep(step);
@@ -317,13 +353,9 @@ inline void RfSystem::clrTxFifoWrPtr() {
 
 // https://github.com/LSatan/SmartRC-CC1101-Driver-Lib/blob/b8c6af4c7c2214cd77a4e9b2e2cb37b24b393605/ELECHOUSE_CC1101_SRC_DRV.cpp#L1117-L1124
 uint8_t RfSystem::rssi() {
+  this->rx();
   auto raw = read(0x43);
-  if (raw >= 128) {
-    raw = (raw - 256) / 2 - 74;
-  } else {
-    raw = (raw / 2) - 74;
-  }
-  return raw;
+  return raw/2;
 }
 
 void RfSystem::writeFifo(const char *src, uint8_t len) {
@@ -490,7 +522,7 @@ void RfSystem::begin() {
 
   registerConfigure();
 
-  setDR(RF::DataRate::K9_6);
+  setDR(RF::DataRate::K2_4);
   setSync(0x41, 0x53);
 
   // 设置参考频率
@@ -505,8 +537,8 @@ void RfSystem::begin() {
   // 设置中心频点
   setFreq(476.0, 0, 0);
 
-  setWorTimer(500);
-  setWorRxTimer(250);
+  setWorTimer(5000);
+  setWorRxTimer(1000);
 
   // 设置发射功率
   setPA(PowerAmpGain::DBM20);
@@ -832,3 +864,13 @@ void RfSystem::setSync(uint8_t s1, uint8_t s2) {
   write(0x11, s1);
   write(0x12, s2);
 }
+
+void RfSystem::setWorEn(bool en){
+  auto temp = read(0x1b);
+  if(en) {
+    temp |= 0b00010000;
+  } else {
+    temp &= 0b11101111;
+  }
+  write(0x1b, temp);
+};
