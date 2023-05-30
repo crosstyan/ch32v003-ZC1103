@@ -10,6 +10,9 @@
 #include "clock.h"
 #include "ch32v003fun.h"
 
+// NOT usable...
+// #define SYSTEM_TICK_US
+
 extern "C" void SysTick_init();
 
 /*
@@ -20,5 +23,8 @@ extern "C" void SysTick_init();
 extern "C" void SysTick_Handler() __attribute__((interrupt));
 
 uint64_t millis();
+
+/// should only be used when `SYSTEM_TICK_US` is defined
+uint64_t micros();
 
 #endif //SIMPLE_SYSTEM_TICK_H

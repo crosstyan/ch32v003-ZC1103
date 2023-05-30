@@ -20,7 +20,8 @@ set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
 set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
 include_directories(${ZC1103_DIRECTORY}/inc)
 
-set(APP_SRC src/main.cpp src/driver/gpio/gpio.cpp src/inc/clock.h src/inc/spi.h src/system_tick.cpp src/inc/system_tick.h src/inc/instant.h src/inc/utils.h src/utils.cpp src/exti.cpp src/inc/unit.h src/inc/exti.h src/inc/message_wrapper.h src/message_wrapper.cpp)
+set(APP_SRC src/main.cpp src/system_tick.cpp src/utils.cpp src/exti.cpp src/message_wrapper.cpp)
+set(GPIO_SRC src/driver/gpio/gpio.cpp)
 include_directories(src/inc src/driver/gpio)
 
 set(GIT_DIR_LOOKUP_POLICY ALLOW_LOOKING_ABOVE_CMAKE_SOURCE_DIR)
@@ -36,14 +37,20 @@ set(NANOPB_GEN_DIR libs/pb_gen)
 set(NANOPB_GEN_SRC ${NANOPB_GEN_DIR}/simple.pb.c)
 include_directories(${NANOPB_GEN_DIR})
 
+set(LED_SRC src/driver/led/led.cpp)
+include_directories(src/driver/led)
+
 add_executable(${CMAKE_PROJECT_NAME}.elf
         ${FUN_SRC}
         ${APP_SRC}
         ${LIB_PRINTF_SRC}
         ${NANOPB_SRC}
+        ${LED_SRC}
+        ${GPIO_SRC}
         ${NANOPB_GEN_SRC}
         ${ZC1103_SRC})
 add_compile_definitions(
+        SYSTICK_USE_HCLK=1
         PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1
 )
 

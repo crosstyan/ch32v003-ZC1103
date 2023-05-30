@@ -5,7 +5,6 @@
 #include "gpio.h"
 #include "instant.h"
 #include "exti.h"
-#include <etl/vector.h>
 #include "rfsystem.h"
 #include "message_wrapper.h"
 #include "utils.h"
@@ -13,25 +12,22 @@
 #include <pb_common.h>
 #include <pb_decode.h>
 #include "simple.pb.h"
+#include "led.h"
 
 #ifdef TX
 #include <pb_encode.h>
 #endif
-
-static uint8_t a1[] = "Conflict";
-static uint8_t a2[] = "Unavailable For Legal Reasons";
-static uint8_t a3[] = "Multiple Choices";
-static uint8_t a4[] = "Not Found";
-static uint8_t a5[] = "Payment Required";
-static uint8_t a6[] = "Forbidden";
 
 static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN = GPIO::C2;
 static const pin_size_t CS_PIN = GPIO::C4;
 static const pin_size_t RST_PIN = GPIO::C1;
 
+static const pin_size_t LED_B_PIN = GPIO::D3;
+static const pin_size_t LED_G_PIN = GPIO::D2;
+static const pin_size_t LED_R_PIN = GPIO::D1;
+
 int main() {
-  etl::vector<uint8_t *, 6> payload = {a1, a2, a3, a4, a5, a6};
   SystemInit48HSI();
   SysTick_init();
   SetupDebugPrintf();
@@ -65,6 +61,11 @@ int main() {
   uint8_t pkt_id = 0;
   uint32_t counter = 0;
   auto instant = Instant();
+  auto d = std::chrono::duration<uint16_t, std::milli>(1000);
+  auto led_instant = Instant();
+  auto d_led = std::chrono::duration<uint16_t, std::milli>(500);
+  auto led = LED();
+  led.begin();
   #ifdef TX
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
   #else
@@ -72,7 +73,6 @@ int main() {
   #endif
   while (true) {
     #ifdef TX
-    auto d = std::chrono::duration<uint16_t, std::milli>(1000);
     if (instant.elapsed() >= d) {
       uint8_t buf[256];
       Simple message = Simple_init_zero;
@@ -91,14 +91,12 @@ int main() {
         }
         return true;
       };
-      auto idx = utils::rand_range(0, payload.size() - 1);
-      message.message.arg = payload[idx];
+      auto payload = "test";
+      message.message.arg = &payload;
       bool status = pb_encode(&stream, Simple_fields, &message);
       if (status) {
         encoder.reset(src, dst, pkt_id);
         encoder.setPayload(buf, stream.bytes_written);
-        utils::printWithSize(reinterpret_cast<const char *>(buf), stream.bytes_written, true);
-        printf("\n");
         auto res = encoder.next();
         while (res.has_value()) {
           auto &v = res.value();
@@ -118,6 +116,18 @@ int main() {
       counter++;
       instant.reset();
     }
+    if (led_instant.elapsed() >= d_led) {
+      bool random_r = utils::rand_range(0, 1);
+      bool random_g = utils::rand_range(0, 1);
+      bool random_b = utils::rand_range(0, 1);
+      if (random_r == 0 && random_g == 0 && random_b == 0) {
+        // at least one color should be on
+        random_g = 1;
+        random_b = 1;
+      }
+      led.setColor(random_r, random_g, random_b);
+      led_instant.reset();
+    }
     #else // RX
     // See also `exti.cpp`
     if (RF::rxFlag()) {
@@ -127,22 +137,28 @@ int main() {
       if (state.crc_error) {
         printf("[ERROR] CRC error\n");
       }
-      etl::vector<char, 256> rx_buf;
+      char rx_buf[256];
+      uint16_t rx_size;
       // when a valid packet is received the state should be 0xc0
       // (at least the rx_pkt_state would be 0x00)
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
       // one should only use interrupt to detect the packet
       if (state.rx_pkt_state != RF::NO_PACKET_RECEIVED) {
         if (auto maybe = rf.recv(rx_buf)) {
-          auto h = decoder.decodeHeader(rx_buf.data(), rx_buf.size());
+          rx_size = maybe.value();
+          auto h = decoder.decodeHeader(rx_buf, rx_size);
           if (h.has_value()) {
             decoder.printHeader(h.value());
           }
-          auto res = decoder.decode(rx_buf.data(), rx_buf.size());
+          auto end_padding = rx_buf + rx_size - 3;
+          if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
+            printf("[ERROR] end padding is not correct. gets \"");
+            utils::printWithSize(rx_buf + rx_size - 3, 3, true);
+            printf("\"\n");
+          }
+          auto res = decoder.decode(rx_buf, rx_size);
           if (res == MessageWrapper::WrapperDecodeResult::Finished) {
             auto payload = decoder.getOutput();
-            utils::printWithSize(payload, true);
-            printf("\n");
             etl::vector<char, 32> string_payload;
             pb_istream_t istream = pb_istream_from_buffer(reinterpret_cast<uint8_t*>(payload.data()) , payload.size());
             Simple message = Simple_init_zero;
