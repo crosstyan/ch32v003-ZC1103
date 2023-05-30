@@ -1,4 +1,4 @@
-#define TX
+//#define TX
 #include "clock.h"
 #include "ch32v003fun.h"
 #include "system_tick.h"
@@ -138,11 +138,15 @@ int main() {
           if (h.has_value()) {
             decoder.printHeader(h.value());
           }
+          auto end_padding = rx_buf.data() + rx_buf.size() - 3;
+          if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
+            printf("[ERROR] end padding is not correct. gets \"");
+            utils::printWithSize(rx_buf.data() + rx_buf.size() - 3, 3, true);
+            printf("\"\n");
+          }
           auto res = decoder.decode(rx_buf.data(), rx_buf.size());
           if (res == MessageWrapper::WrapperDecodeResult::Finished) {
             auto payload = decoder.getOutput();
-            utils::printWithSize(payload, true);
-            printf("\n");
             etl::vector<char, 32> string_payload;
             pb_istream_t istream = pb_istream_from_buffer(reinterpret_cast<uint8_t*>(payload.data()) , payload.size());
             Simple message = Simple_init_zero;
