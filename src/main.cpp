@@ -1,4 +1,5 @@
 #define TX
+
 #include "clock.h"
 #include "ch32v003fun.h"
 #include "system_tick.h"
@@ -16,7 +17,9 @@
 #include <etl/random.h>
 
 #ifdef TX
+
 #include <pb_encode.h>
+
 #endif
 
 static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
@@ -89,8 +92,8 @@ int main() {
         }
         return true;
       };
-      auto payload = "test";
-      message.message.arg = &payload;
+      const char *payload = "test";
+      message.message.arg = const_cast<char *>(payload);
       bool status = pb_encode(&stream, Simple_fields, &message);
       if (status) {
         encoder.reset(src, dst, pkt_id);
@@ -103,6 +106,8 @@ int main() {
           digitalWrite(GPIO::D6, HIGH);
           Delay_Ms(10);
           digitalWrite(GPIO::D6, LOW);
+//          utils::printWithSize(reinterpret_cast<const char *>(buf), stream.bytes_written, true);
+//          printf("\n");
           auto state = rf.pollState();
           RF::printState(state);
           res = encoder.next();
