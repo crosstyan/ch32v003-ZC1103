@@ -120,14 +120,16 @@ int main() {
       instant.reset();
     }
     if (led_instant.elapsed() >= d_led) {
-      bool random_r = rng.range(0, 1);
-      bool random_g = rng.range(0, 1);
-      bool random_b = rng.range(0, 1);
-      if (random_r == 0 && random_g == 0 && random_b == 0) {
-        // at least one color should be on
-        random_g = 1;
-        random_b = 1;
-      }
+      bool random_r;
+      bool random_g;
+      bool random_b;
+      uint8_t rgb;
+      do {
+        random_r = rng.range(0, 1);
+        random_g = rng.range(0, 1);
+        random_b = rng.range(0, 1);
+        rgb = random_r | (random_g << 1) | (random_b << 2);
+      } while (rgb == 0); // refresh until at least one color is on
       LED::setColor(random_r, random_g, random_b);
       led_instant.reset();
     }
