@@ -12,4 +12,4 @@ minichlink -b -T
 
 See also
 
-- [AdiHamulic/CH32V003-SPI-DMA](https://github.com/AdiHamulic/CH32V003-SPI-DMA---ILI9341)
+- [SPI 24L01+ RX demo](https://github.com/cnlohr/ch32v003fun/tree/master/examples/spi_24L01_rx)

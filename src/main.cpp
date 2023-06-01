@@ -1,4 +1,4 @@
-#define TX
+//#define TX
 
 #include "clock.h"
 #include "ch32v003fun.h"
