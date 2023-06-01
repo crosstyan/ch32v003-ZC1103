@@ -67,6 +67,7 @@ int main() {
   LED::begin();
   auto rng = etl::random_xorshift();
   rng.initialise(0);
+  uint8_t rgb = 0;
   #ifdef TX
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
   #else
@@ -77,6 +78,21 @@ int main() {
     if (instant.elapsed() >= d) {
       uint8_t buf[256];
       Simple message = Simple_init_zero;
+      bool random_r;
+      bool random_g;
+      bool random_b;
+      uint8_t temp;
+      do {
+          random_r = rng.range(0, 1);
+          random_g = rng.range(0, 1);
+          random_b = rng.range(0, 1);
+          temp = random_r | (random_g << 1) | (random_b << 2);
+      } while (!(temp != 0) || !(temp != rgb)); // refresh until at least one color is on and the color is different from the previous one
+        rgb = temp;
+      LED::setColor(random_r, random_g, random_b);
+      message.is_red = random_r;
+      message.is_green = random_g;
+      message.is_blue = random_b;
       pb_ostream_t stream = pb_ostream_from_buffer(buf, sizeof(buf));
       message.counter = counter;
       message.message.funcs.encode = [](pb_ostream_t *stream, const pb_field_t *field, void *const *arg) {
@@ -106,8 +122,6 @@ int main() {
           digitalWrite(GPIO::D6, HIGH);
           Delay_Ms(10);
           digitalWrite(GPIO::D6, LOW);
-//          utils::printWithSize(reinterpret_cast<const char *>(buf), stream.bytes_written, true);
-//          printf("\n");
           auto state = rf.pollState();
           RF::printState(state);
           res = encoder.next();
@@ -120,17 +134,6 @@ int main() {
       instant.reset();
     }
     if (led_instant.elapsed() >= d_led) {
-      bool random_r;
-      bool random_g;
-      bool random_b;
-      uint8_t rgb;
-      do {
-        random_r = rng.range(0, 1);
-        random_g = rng.range(0, 1);
-        random_b = rng.range(0, 1);
-        rgb = random_r | (random_g << 1) | (random_b << 2);
-      } while (rgb == 0); // refresh until at least one color is on
-      LED::setColor(random_r, random_g, random_b);
       led_instant.reset();
     }
     #else // RX
@@ -184,7 +187,9 @@ int main() {
             bool status = pb_decode(&istream, Simple_fields, &message);
             if (status) {
               auto c = message.counter;
-              printf("[INFO] counter=%d, message=\"%s\"\n", c, string_payload.data());
+              rgb = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
+              printf("[INFO] counter=%d; message=\"%s\"; rgb=0x%02x\n", c, string_payload.data(), rgb);
+              LED::setColor(message.is_red, message.is_green, message.is_blue);
             } else {
               printf("[ERROR] failed to decode\n");
             }

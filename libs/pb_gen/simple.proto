@@ -3,4 +3,7 @@ syntax = "proto3";
 message Simple {
   int32 counter = 1;
   string message = 2;
+  bool is_red = 3;
+  bool is_green = 4;
+  bool is_blue = 5;
 }
