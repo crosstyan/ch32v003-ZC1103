@@ -1,4 +1,4 @@
-//#define TX
+// #define TX
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -23,9 +23,9 @@
 #endif
 
 static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
-static const pin_size_t SDN_PIN = GPIO::C2;
-static const pin_size_t CS_PIN = GPIO::C4;
-static const pin_size_t RST_PIN = GPIO::C1;
+static const pin_size_t SDN_PIN      = GPIO::C2;
+static const pin_size_t CS_PIN       = GPIO::C4;
+static const pin_size_t RST_PIN      = GPIO::C1;
 
 int main() {
   SystemInit48HSI();
@@ -37,7 +37,7 @@ int main() {
   pinMode(LED_pin, OUTPUT);
   configureEXTI();
 
-  auto &rf = RfSystem::get();
+  auto &rf     = RfSystem::get();
   auto success = rf.setPins(RST_PIN, CS_PIN, PKT_FLAG_PIN, SDN_PIN);
   if (!success) {
     printf("[ERROR] failed to set pins\n");
@@ -48,33 +48,33 @@ int main() {
   auto version = rf.version();
   printf("[INFO] version=%d\n", version);
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
-  #ifdef TX
+#ifdef TX
   printf("[INFO] TX mode\n");
-  #else
+#else
   printf("RX mode\n");
   rf.rx();
   rf.setWorEn(true);
-  #endif
+#endif
 
-  char src[3] = {0x01, 0x02, 0x03};
-  char dst[3] = {0x04, 0x05, 0x06};
-  uint8_t pkt_id = 0;
+  char src[3]      = {0x01, 0x02, 0x03};
+  char dst[3]      = {0x04, 0x05, 0x06};
+  uint8_t pkt_id   = 0;
   uint32_t counter = 0;
-  auto instant = Instant();
-  auto d = std::chrono::duration<uint16_t, std::milli>(1000);
+  auto instant     = Instant();
+  auto d           = std::chrono::duration<uint16_t, std::milli>(1000);
   auto led_instant = Instant();
-  auto d_led = std::chrono::duration<uint16_t, std::milli>(500);
+  auto d_led       = std::chrono::duration<uint16_t, std::milli>(500);
   LED::begin();
   auto rng = etl::random_xorshift();
   rng.initialise(0);
   uint8_t rgb = 0;
-  #ifdef TX
+#ifdef TX
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
-  #else
+#else
   auto decoder = MessageWrapper::Decoder();
-  #endif
+#endif
   while (true) {
-    #ifdef TX
+#ifdef TX
     if (instant.elapsed() >= d) {
       uint8_t buf[256];
       Simple message = Simple_init_zero;
@@ -83,18 +83,18 @@ int main() {
       bool random_b;
       uint8_t temp;
       do {
-          random_r = rng.range(0, 1);
-          random_g = rng.range(0, 1);
-          random_b = rng.range(0, 1);
-          temp = random_r | (random_g << 1) | (random_b << 2);
+        random_r = rng.range(0, 1);
+        random_g = rng.range(0, 1);
+        random_b = rng.range(0, 1);
+        temp     = random_r | (random_g << 1) | (random_b << 2);
       } while (!(temp != 0) || !(temp != rgb)); // refresh until at least one color is on and the color is different from the previous one
-        rgb = temp;
+      rgb = temp;
       LED::setColor(random_r, random_g, random_b);
-      message.is_red = random_r;
-      message.is_green = random_g;
-      message.is_blue = random_b;
-      pb_ostream_t stream = pb_ostream_from_buffer(buf, sizeof(buf));
-      message.counter = counter;
+      message.is_red               = random_r;
+      message.is_green             = random_g;
+      message.is_blue              = random_b;
+      pb_ostream_t stream          = pb_ostream_from_buffer(buf, sizeof(buf));
+      message.counter              = counter;
       message.message.funcs.encode = [](pb_ostream_t *stream, const pb_field_t *field, void *const *arg) {
         auto message = static_cast<char *>(*arg);
         // zero terminated string (zero sentinel is not included)
@@ -110,7 +110,7 @@ int main() {
       };
       const char *payload = "test";
       message.message.arg = const_cast<char *>(payload);
-      bool status = pb_encode(&stream, Simple_fields, &message);
+      bool status         = pb_encode(&stream, Simple_fields, &message);
       if (status) {
         encoder.reset(src, dst, pkt_id);
         encoder.setPayload(buf, stream.bytes_written);
@@ -136,7 +136,7 @@ int main() {
     if (led_instant.elapsed() >= d_led) {
       led_instant.reset();
     }
-    #else // RX
+#else // RX
     // See also `exti.cpp`
     if (RF::rxFlag()) {
       rf.setWorEn(false);
@@ -152,9 +152,11 @@ int main() {
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
       // one should only use interrupt to detect the packet
       if (state.rx_pkt_state != RF::NO_PACKET_RECEIVED) {
+        auto rssi = rf.rssi();
+        printf("[INFO] RSSI=%d\n", rssi);
         if (auto maybe = rf.recv(rx_buf)) {
           rx_size = maybe.value();
-          auto h = decoder.decodeHeader(rx_buf, rx_size);
+          auto h  = decoder.decodeHeader(rx_buf, rx_size);
           if (h.has_value()) {
             decoder.printHeader(h.value());
           }
@@ -168,9 +170,9 @@ int main() {
           if (res == MessageWrapper::WrapperDecodeResult::Finished) {
             auto payload = decoder.getOutput();
             etl::vector<char, 32> string_payload;
-            pb_istream_t istream = pb_istream_from_buffer(reinterpret_cast<uint8_t *>(payload.data()), payload.size());
-            Simple message = Simple_init_zero;
-            message.message.arg = &string_payload;
+            pb_istream_t istream         = pb_istream_from_buffer(reinterpret_cast<uint8_t *>(payload.data()), payload.size());
+            Simple message               = Simple_init_zero;
+            message.message.arg          = &string_payload;
             message.message.funcs.decode = [](pb_istream_t *stream, const pb_field_t *field, void **arg) {
               auto &payload = *(static_cast<etl::ivector<char> *>(*arg));
               payload.clear();
@@ -187,7 +189,7 @@ int main() {
             bool status = pb_decode(&istream, Simple_fields, &message);
             if (status) {
               auto c = message.counter;
-              rgb = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
+              rgb    = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
               printf("[INFO] counter=%d; message=\"%s\"; rgb=0x%02x\n", c, string_payload.data(), rgb);
               LED::setColor(message.is_red, message.is_green, message.is_blue);
             } else {
@@ -206,6 +208,6 @@ int main() {
       }
       digitalWrite(GPIO::D6, LOW);
     }
-    #endif
+#endif
   }
 }
