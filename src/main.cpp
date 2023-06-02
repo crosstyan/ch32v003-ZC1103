@@ -1,4 +1,4 @@
-// #define TX
+#define TX
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -61,9 +61,7 @@ int main() {
   uint8_t pkt_id   = 0;
   uint32_t counter = 0;
   auto instant     = Instant();
-  auto d           = std::chrono::duration<uint16_t, std::milli>(1000);
-  auto led_instant = Instant();
-  auto d_led       = std::chrono::duration<uint16_t, std::milli>(500);
+  auto d           = std::chrono::duration<uint16_t, std::milli>(250);
   LED::begin();
   auto rng = etl::random_xorshift();
   rng.initialise(0);
@@ -132,9 +130,6 @@ int main() {
       pkt_id++;
       counter++;
       instant.reset();
-    }
-    if (led_instant.elapsed() >= d_led) {
-      led_instant.reset();
     }
 #else // RX
     // See also `exti.cpp`

@@ -527,7 +527,7 @@ void RfSystem::begin() {
 
   registerConfigure();
 
-  setDR(RF::DataRate::K2_4);
+  setDR(RF::DataRate::K5);
   setSync(0x41, 0x53);
 
   // 设置参考频率
@@ -540,7 +540,7 @@ void RfSystem::begin() {
   setSyncLockRssi();
 
   // 设置中心频点
-  setFreq(476.0, 0, 0);
+  setFreq(470.4, 0, 0);
 
   setWorTimer(5000);
   setWorRxTimer(1000);
