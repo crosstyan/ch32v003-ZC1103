@@ -243,7 +243,8 @@ void RfSystem::registerConfigure() {
    [1:0]          00   FEC (01: 1/3, 10: 2/3, else: None)
   */
   // interleave + 2/3 FEC
-  write(0x05, 0b00111110);
+  write(0x05, 0x30);
+//  write(0x05, 0b00111110);
   // r(0x3b) Preamble Threshold
   write(0x3B, 0x04);
   /* r(0x3c) Demod Config
@@ -527,7 +528,7 @@ void RfSystem::begin() {
 
   registerConfigure();
 
-  setDR(RF::DataRate::K5);
+  setDR(RF::DataRate::K19_2);
   setSync(0x41, 0x53);
 
   // 设置参考频率
@@ -540,7 +541,7 @@ void RfSystem::begin() {
   setSyncLockRssi();
 
   // 设置中心频点
-  setFreq(470.4, 0, 0);
+  setFreq(476.0, 0, 0);
 
   setWorTimer(5000);
   setWorRxTimer(1000);

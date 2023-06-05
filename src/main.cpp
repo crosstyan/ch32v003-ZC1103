@@ -1,4 +1,4 @@
-#define TX
+//#define TX
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -147,8 +147,6 @@ int main() {
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
       // one should only use interrupt to detect the packet
       if (state.rx_pkt_state != RF::NO_PACKET_RECEIVED) {
-        auto rssi = rf.rssi();
-        printf("[INFO] RSSI=%d\n", rssi);
         if (auto maybe = rf.recv(rx_buf)) {
           rx_size = maybe.value();
           auto h  = decoder.decodeHeader(rx_buf, rx_size);
