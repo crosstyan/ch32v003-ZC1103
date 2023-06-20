@@ -175,6 +175,9 @@ int16_t LLCC68::receive(uint8_t *data, size_t len) {
   uint8_t modem = getPacketType();
   if (modem == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
     // calculate timeout (100 LoRa symbols, the default for SX127x series)
+    // TODO: eliminate floating point math
+    // use fixed point math instead
+#warning "TODO: eliminate floating point math"
     float symbolLength = (float)(uint32_t(1) << this->spreadingFactor) / (float)this->bandwidthKhz;
     timeout            = (uint32_t)(symbolLength * 100.0 * 1000.0);
   } else if (modem == RADIOLIB_SX126X_PACKET_TYPE_GFSK) {

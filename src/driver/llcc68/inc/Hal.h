@@ -69,14 +69,7 @@ class RadioLibHal {
       \param ms Number of milliseconds to wait.
     */
     void delay(unsigned long ms);
-    
-    /*!
-      \brief Blocking microsecond wait function.
-      Must be implemented by the platform-specific hardware abstraction!
-      \param us Number of microseconds to wait.
-    */
-    // virtual void delayMicroseconds(unsigned long us) = 0;
-    
+
     /*!
       \brief Get number of milliseconds since start.
       Must be implemented by the platform-specific hardware abstraction!
@@ -84,23 +77,6 @@ class RadioLibHal {
     */
     unsigned long millis();
     
-    /*!
-      \brief Get number of microseconds since start.
-      Must be implemented by the platform-specific hardware abstraction!
-      \returns Number of microseconds since start.
-    */
-    // virtual unsigned long micros() = 0;
-    
-    /*!
-      \brief Measure the length of incoming digital pulse in microseconds.
-      Must be implemented by the platform-specific hardware abstraction!
-      \param pin Pin to measure on (platform-specific).
-      \param state Pin level to monitor (platform-specific).
-      \param timeout Timeout in microseconds.
-      \returns Pulse length in microseconds, or 0 if the pulse did not start before timeout.
-    */
-    // virtual long pulseIn(uint32_t pin, uint32_t state, unsigned long timeout) = 0;
-
     /*!
       \brief SPI initialization method.
     */
@@ -127,9 +103,6 @@ class RadioLibHal {
       \brief SPI termination method.
     */
     void spiEnd();
-
-    // virtual methods - these may or may not exists on a given platform
-    // they exist in this implementation, but do nothing
 
     /*!
       \brief Module initialization method.

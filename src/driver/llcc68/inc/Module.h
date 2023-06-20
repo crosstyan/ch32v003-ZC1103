@@ -469,17 +469,6 @@ class Module {
     */
     static void hexdump(uint8_t* data, size_t len, uint32_t offset = 0, uint8_t width = 1, bool be = false);
 
-    /*!
-      \brief Function to dump device registers as hex into the debug port.
-      \param start First address to dump.
-      \param len Number of bytes to dump.
-    */
-    void regdump(uint16_t start, size_t len);
-
-    #if defined(RADIOLIB_DEBUG) and defined(RADIOLIB_BUILD_ARDUINO)
-    static size_t serialPrintf(const char* format, ...);
-    #endif
-
 #if !defined(RADIOLIB_GODMODE)
   private:
 #endif

@@ -1,7 +1,6 @@
 #include "Module.h"
+#include "printf.h"
 #include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
 
 Module::Module(RadioLibHal *hal, uint32_t cs, uint32_t irq, uint32_t rst, uint32_t gpio) : csPin(cs), irqPin(irq), rstPin(rst), gpioPin(gpio) {
   this->hal = hal;
@@ -296,21 +295,21 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
   this->hal->digitalWrite(this->csPin, this->hal->GpioLevelHigh);
 
   // wait for GPIO to go high and then low
-  if(waitForGpio) {
-    if(this->gpioPin == RADIOLIB_NC) {
-      this->hal->delay(1);
-    } else {
-      // this->hal->delayMicroseconds(1);
-      uint32_t start = this->hal->millis();
-      while(this->hal->digitalRead(this->gpioPin)) {
-        // this->hal->yield();
-        if(this->hal->millis() - start >= timeout) {
-          state = RADIOLIB_ERR_SPI_CMD_TIMEOUT;
-          break;
-        }
-      }
-    }
-  }
+//  if(waitForGpio) {
+//    if(this->gpioPin == RADIOLIB_NC) {
+//      this->hal->delay(1);
+//    } else {
+//      // this->hal->delayMicroseconds(1);
+//      uint32_t start = this->hal->millis();
+//      while(this->hal->digitalRead(this->gpioPin)) {
+//        // this->hal->yield();
+//        if(this->hal->millis() - start >= timeout) {
+//          state = RADIOLIB_ERR_SPI_CMD_TIMEOUT;
+//          break;
+//        }
+//      }
+//    }
+//  }
 
   // print debug output
   #if defined(RADIOLIB_VERBOSE)
@@ -356,61 +355,8 @@ uint32_t Module::reflect(uint32_t in, uint8_t bits) {
 }
 
 void Module::hexdump(uint8_t* data, size_t len, uint32_t offset, uint8_t width, bool be) {
-  size_t rem_len = len;
-  for(size_t i = 0; i < len; i+=16) {
-    char str[80];
-    sprintf(str, "%07" PRIx32 "  ", i+offset);
-    size_t line_len = 16;
-    if(rem_len < line_len) {
-      line_len = rem_len;
-    }
-    for(size_t j = 0; j < line_len; j+=width) {
-      if(width > 1) {
-        int m = 0;
-        int step = width/2;
-        if(be) {
-          step *= -1;
-        }
-        for(int32_t k = width - 1; k >= -width + 1; k+=step) {
-          sprintf(&str[8 + (j+m)*3], "%02x ", data[i+j+k+m]);
-          m++;
-        }
-      } else {
-        sprintf(&str[8 + (j)*3], "%02x ", data[i+j]);
-      }
-    }
-    for(size_t j = line_len; j < 16; j++) {
-      sprintf(&str[8 + j*3], "   ");
-    }
-    str[56] = '|';
-    str[57] = ' ';
-    for(size_t j = 0; j < line_len; j++) {
-      char c = data[i+j];
-      if((c < ' ') || (c > '~')) {
-        c = '.';
-      }
-      sprintf(&str[58 + j], "%c", c);
-    }
-    for(size_t j = line_len; j < 16; j++) {
-      sprintf(&str[58 + j], "   ");
-    }
-    RADIOLIB_DEBUG_PRINT(str);
-    RADIOLIB_DEBUG_PRINTLN();
-    rem_len -= 16;
-  }
-}
-
-void Module::regdump(uint16_t start, size_t len) {
-  #if defined(RADIOLIB_STATIC_ONLY)
-    uint8_t buff[RADIOLIB_STATIC_ARRAY_SIZE];
-  #else
-    uint8_t* buff = new uint8_t[len];
-  #endif
-  SPIreadRegisterBurst(start, len, buff);
-  hexdump(buff, len, start);
-  #if !defined(RADIOLIB_STATIC_ONLY)
-    delete[] buff;
-  #endif
+#warning "memory efficient implementation needed"
+  // TODO: memory efficient implementation
 }
 
 #if defined(RADIOLIB_DEBUG) and defined(RADIOLIB_BUILD_ARDUINO)
@@ -456,7 +402,8 @@ void Module::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
 }
 
 void Module::setRfSwitchTable(const uint32_t (&pins)[3], const RfSwitchMode_t table[]) {
-  memcpy(this->rfSwitchPins, pins, sizeof(this->rfSwitchPins));
+#warning "FIXME"
+//  memcpy(this->rfSwitchPins, pins, sizeof(this->rfSwitchPins));
   this->rfSwitchTable = table;
   for(size_t i = 0; i < RFSWITCH_MAX_PINS; i++)
     this->hal->pinMode(pins[i], this->hal->GpioModeOutput);

@@ -7,9 +7,9 @@
 
 #include "spi.h"
 #include "clock.h"
+#include "printf.h"
 #include "ch32v003fun.h"
 #include "ch32v003_SPI.h"
-#include "printf.h"
 #include "gpio.h"
 #include "unit.h"
 #include <etl/optional.h>
@@ -626,7 +626,7 @@ protected:
   int16_t writeBuffer(uint8_t* data, uint8_t numBytes, uint8_t offset = 0x00);
   int16_t readBuffer(uint8_t* data, uint8_t numBytes, uint8_t offset = 0x00);
   int16_t setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = RADIOLIB_SX126X_IRQ_NONE, uint16_t dio3Mask = RADIOLIB_SX126X_IRQ_NONE);
-  virtual int16_t clearIrqStatus(uint16_t clearIrqParams = RADIOLIB_SX126X_IRQ_ALL);
+  int16_t clearIrqStatus(uint16_t clearIrqParams = RADIOLIB_SX126X_IRQ_ALL);
   int16_t setRfFrequency(uint32_t frf);
   int16_t calibrateImage(uint8_t* data);
   uint8_t getPacketType();
