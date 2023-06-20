@@ -13,3 +13,6 @@
 [submodule "libs/nanopb"]
 	path = libs/nanopb
 	url = https://github.com/nanopb/nanopb
+[submodule "libs/RadioLib"]
+	path = libs/RadioLib
+	url = https://github.com/jgromes/RadioLib

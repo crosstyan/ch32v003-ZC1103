@@ -20,6 +20,19 @@ set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
 set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
 include_directories(${ZC1103_DIRECTORY}/inc)
 
+set(LLCC68_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/llcc68)
+set(LLCC68_SRC ${LLCC68_DIRECTORY}/src/llcc68.cpp)
+include_directories(${LLCC68_DIRECTORY}/inc)
+
+#set(RAIDOLIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/RadioLib)
+#include_directories(${RAIDOLIB_DIRECTORY}/src
+#        ${RAIDOLIB_DIRECTORY}/src/modules/LLCC68)
+#set(RAIDOLIB_SRC
+#        ${RAIDOLIB_DIRECTORY}/src/modules/LLCC68/LLCC68.cpp
+#        ${RAIDOLIB_DIRECTORY}/src/modules/SX126x/SX126x.cpp
+#        ${RAIDOLIB_DIRECTORY}/src/Module.cpp
+#        ${RAIDOLIB_DIRECTORY}/src/Hal.cpp)
+
 set(APP_SRC src/main.cpp src/system_tick.cpp src/utils.cpp src/exti.cpp src/message_wrapper.cpp)
 set(GPIO_SRC src/driver/gpio/gpio.cpp)
 include_directories(src/inc src/driver/gpio)
@@ -37,10 +50,11 @@ set(NANOPB_GEN_DIR libs/pb_gen)
 set(NANOPB_GEN_SRC ${NANOPB_GEN_DIR}/simple.pb.c)
 include_directories(${NANOPB_GEN_DIR})
 
-set(LED_SRC src/driver/led/led.cpp)
+set(LED_SRC src/driver/led/led.cpp src/driver/llcc68/src/llcc68.cpp src/driver/llcc68/inc/radio_sx126x.h)
 include_directories(src/driver/led)
 
 add_executable(${CMAKE_PROJECT_NAME}.elf
+        ${LLCC68_SRC}
         ${FUN_SRC}
         ${APP_SRC}
         ${LIB_PRINTF_SRC}
