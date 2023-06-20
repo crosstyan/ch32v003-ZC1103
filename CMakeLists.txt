@@ -16,9 +16,9 @@ set(LIB_PRINTF_SRC ${LIB_PRINTF_DIRECTORY}/src/printf/printf.c)
 include_directories(${LIB_PRINTF_DIRECTORY}/src)
 include_directories(${LIB_PRINTF_DIRECTORY}/src/printf)
 
-set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
-set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
-include_directories(${ZC1103_DIRECTORY}/inc)
+#set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
+#set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
+#include_directories(${ZC1103_DIRECTORY}/inc)
 
 set(LLCC68_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/llcc68)
 set(LLCC68_SRC

@@ -434,4 +434,7 @@
 // size of the spectral scan result
 #define RADIOLIB_SX126X_SPECTRAL_SCAN_RES_SIZE                  (33)
 
+//RADIOLIB_SX126X_CMD_SET_PA_CONFIG
+#define RADIOLIB_SX126X_PA_CONFIG_SX1262                        0x00
+
 #endif // SIMPLE_RADIO_SX126X_H

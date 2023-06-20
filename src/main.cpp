@@ -6,7 +6,8 @@
 #include "gpio.h"
 #include "instant.h"
 #include "exti.h"
-#include "rfsystem.h"
+// #include "rfsystem.h"
+#include "llcc68.h"
 #include "message_wrapper.h"
 #include "utils.h"
 #include <printf.h>
@@ -22,12 +23,11 @@
 
 #endif
 
-using namespace GPIO;
-
-static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
-static const pin_size_t SDN_PIN      = GPIO::C2;
+// TODO: what's the IRQ pin?
+static const pin_size_t IRQ_PIN = RADIOLIB_NC;
+static const pin_size_t BUSY_PIN      = GPIO::C3;
 static const pin_size_t CS_PIN       = GPIO::C4;
-static const pin_size_t RST_PIN      = GPIO::C1;
+static const pin_size_t RST_PIN      = GPIO::C0;
 
 int main() {
   SystemInit48HSI();
@@ -36,19 +36,16 @@ int main() {
   printf("[INFO] booting\n");
 
   pin_size_t LED_pin = GPIO::D6;
-  pinMode(LED_pin, OUTPUT);
+  pinMode(LED_pin, GPIO::OUTPUT);
   configureEXTI();
 
-  auto &rf     = RfSystem::get();
-  auto success = rf.setPins(RST_PIN, CS_PIN, PKT_FLAG_PIN, SDN_PIN);
-  if (!success) {
-    printf("[ERROR] failed to set pins\n");
-  }
-  rf.begin();
+  auto hal = RadioLibHal();
+  auto mod = Module(&hal, CS_PIN, IRQ_PIN, RST_PIN, BUSY_PIN);
+  auto rf     = LLCC68(&mod);
+  // TODO: ...
+  // rf.begin();
 
   // expect to be 0x03
-  auto version = rf.version();
-  printf("[INFO] version=%d\n", version);
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
 #ifdef TX
   printf("[INFO] TX mode\n");
@@ -118,12 +115,12 @@ int main() {
         while (res.has_value()) {
           auto &v = res.value();
           printf("counter:%d; size=%d; payload_size=%d; \n", message.counter, v.size(), stream.bytes_written);
-          rf.send(v.data(), v.size());
-          digitalWrite(GPIO::D6, HIGH);
+//          rf.send(v.data(), v.size());
+          digitalWrite(GPIO::D6, GPIO::HIGH);
           Delay_Ms(10);
-          digitalWrite(GPIO::D6, LOW);
-          auto state = rf.pollState();
-          RF::printState(state);
+          digitalWrite(GPIO::D6, GPIO::LOW);
+//          auto state = rf.pollState();
+//          RF::printState(state);
           res = encoder.next();
         }
       } else {

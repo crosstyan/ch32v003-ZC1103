@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "gpio.h"
 
 // https://www.youtube.com/watch?v=gTNJXVmuRRA
 // I do those to eliminate the unnecessary virtual function.

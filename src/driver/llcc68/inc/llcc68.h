@@ -24,13 +24,14 @@
 
 
 class LLCC68 {
+public:
   /*!
     \brief Default constructor.
     \param mod Instance of Module that will be used to communicate with the radio.
   */
   LLCC68(Module* mod);
 
-  Module* getMod();
+  Module* getMod() const;
 
   /*!
     \brief Whether the module has an XTAL (true) or TCXO (false). Defaults to false.
@@ -570,6 +571,15 @@ class LLCC68 {
     \returns \ref status_codes
   */
   int16_t spectralScanGetResult(uint16_t* results);
+
+
+  /*!
+    \brief Sets output power. Allowed values are in range from -9 to 22 dBm.
+    This method is virtual to allow override from the SX1261 class.
+    \param power Output power to be set in dBm.
+    \returns \ref status_codes
+  */
+  int16_t setOutputPower(int8_t power);
 
 #if !defined(RADIOLIB_GODMODE)
 protected:
