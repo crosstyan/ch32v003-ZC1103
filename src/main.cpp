@@ -22,6 +22,8 @@
 
 #endif
 
+using namespace GPIO;
+
 static const pin_size_t PKT_FLAG_PIN = GPIO::C3;
 static const pin_size_t SDN_PIN      = GPIO::C2;
 static const pin_size_t CS_PIN       = GPIO::C4;

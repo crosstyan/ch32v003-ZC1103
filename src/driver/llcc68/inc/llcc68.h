@@ -17,88 +17,26 @@
 #include <etl/delegate.h>
 #include "radio_sx126x.h"
 #include "TypeDef.h"
+#include "Module.h"
 
 // basically LLCC68 is a SX126x
 // LLCC68芯片引脚兼容SX1262,且在设计、驱动代码及应用上与SX1262完全相同
 
 
 class LLCC68 {
-  float freqStep;
-  size_t maxPacketLength;
+  /*!
+    \brief Default constructor.
+    \param mod Instance of Module that will be used to communicate with the radio.
+  */
+  LLCC68(Module* mod);
 
-  uint8_t bufferBitPos;
-  uint8_t bufferWritePos;
-  uint8_t bufferReadPos;
-  uint8_t buffer[RADIOLIB_STATIC_ARRAY_SIZE];
-  uint32_t syncBuffer;
-  uint32_t directSyncWord;
-  uint8_t directSyncWordLen;
-  uint32_t directSyncWordMask;
-  bool gotSync;
+  Module* getMod();
 
-  bool _is_initialized = false;
+  /*!
+    \brief Whether the module has an XTAL (true) or TCXO (false). Defaults to false.
+  */
+  bool XTAL;
 
-  /// 芯片复位脚，低电平有效，复位后寄存器数值丢失，全部变为默认值。
-  pin_size_t RST_PIN = GPIO::C0;
-  /// CS/NSS 低电平选中
-  pin_size_t CS_PIN = GPIO::C4;
-  /// 高电平表示忙
-  pin_size_t BUSY_PIN = GPIO::C3;
-  pin_size_t TXEN_PIN = GPIO::C1;
-  pin_size_t RXEN_PIN = GPIO::C2;
-
-  void gpioConfigure();
-
-  void spiConfigure();
-
-  /**
- * \brief  设置PA增益
- * \param [IN]  gain 增益
- * \retval  None
-   */
-//  void setPA(PowerAmpGain gain);
-
-  void RST_LOW();
-
-  void RST_HIGH();
-
-  void CS_HIGH();
-
-  void CS_LOW();
-
-
-  /**
- * \brief  通过spi传输一个字节
- * \param  [IN] byte 发送的字节
- * \retval  接收的字节
-   */
-  uint8_t sendByte(uint8_t byte);
-
-  /// when you want to send a bunch of bytes and don't care about the return value
-  void sendBytes(const uint8_t *bytes, size_t len);
-
-  void sendBytes(const char *bytes, size_t len);
-
-  /**
- * \brief  写 RF 寄存器
- * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
- * \param[IN] val  写入的值
-   */
-  void write(uint8_t addr, uint8_t val);
-
-  /**
- * \brief  读 RF 寄存器
- * \param[IN] addr 寄存器地址 取值0x00 - 0x7F
-   */
-  uint8_t read(uint8_t addr);
-
-protected:
-  /// ch32v003 only has one SPI so there's no need to specify the SPI bus
-  /// Have to set to default constructor or the linker will complain
-  LLCC68() = default;
-  ~LLCC68() = default;
-
-public:
   // basic methods
 
   /*!
@@ -113,6 +51,15 @@ public:
   int16_t begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO = false);
 
   /*!
+    \brief Reset method. Will reset the chip to the default state using RST pin.
+    \param verify Whether correct module startup should be verified. When set to true, RadioLib will attempt to verify the module has started correctly
+    by repeatedly issuing setStandby command. Enabled by default.
+    \returns \ref status_codes
+  */
+  int16_t reset(bool verify = true);
+
+
+  /*!
     \brief Blocking binary transmit method.
     Overloads for string-based transmissions are implemented in PhysicalLayer.
     \param data Binary data to be sent.
@@ -120,7 +67,7 @@ public:
     \param addr Address to send the data to. Will only be added if address filtering was enabled.
     \returns \ref status_codes
   */
-  int16_t transmit(uint8_t* data, size_t len, uint8_t addr = 0);
+  int16_t transmit(uint8_t* data, size_t len, uint8_t addr = 0) ;
 
   /*!
     \brief Blocking binary receive method.
@@ -129,21 +76,21 @@ public:
     \param len Number of bytes to send.
     \returns \ref status_codes
   */
-  int16_t receive(uint8_t* data, size_t len);
+  int16_t receive(uint8_t* data, size_t len) ;
 
   /*!
     \brief Starts direct mode transmission.
     \param frf Raw RF frequency value. Defaults to 0, required for quick frequency shifts in RTTY.
     \returns \ref status_codes
   */
-  int16_t transmitDirect(uint32_t frf = 0);
+  int16_t transmitDirect(uint32_t frf = 0) ;
 
   /*!
     \brief Starts direct mode reception. Only implemented for PhysicalLayer compatibility, as %SX126x series does not support direct mode reception.
     Will always return RADIOLIB_ERR_UNKNOWN.
     \returns \ref status_codes
   */
-  int16_t receiveDirect();
+  int16_t receiveDirect() ;
 
   /*!
     \brief Performs scan for LoRa transmission in the current channel. Detects both preamble and payload.
@@ -166,7 +113,7 @@ public:
     \brief Sets the module to standby mode (overload for PhysicalLayer compatibility, uses 13 MHz RC oscillator).
     \returns \ref status_codes
   */
-  int16_t standby();
+  int16_t standby() ;
 
   /*!
     \brief Sets the module to standby mode.
@@ -178,17 +125,7 @@ public:
   int16_t standby(uint8_t mode, bool wakeup = true);
 
   // interrupt methods
-
-  /*!
-    \brief Sets interrupt service routine to call when DIO1 activates.
-    \param func ISR to call.
-  */
-  void setDio1Action(void (*func)(void));
-
-  /*!
-    \brief Clears interrupt service routine to call when DIO1 activates.
-  */
-  void clearDio1Action();
+  // ISR is managed by my self
 
   /*!
     \brief Interrupt-driven binary transmit method.
@@ -198,13 +135,13 @@ public:
     \param addr Address to send the data to. Will only be added if address filtering was enabled.
     \returns \ref status_codes
   */
-  int16_t startTransmit(uint8_t* data, size_t len, uint8_t addr = 0);
+  int16_t startTransmit(uint8_t* data, size_t len, uint8_t addr = 0) ;
 
   /*!
     \brief Clean up after transmission is done.
     \returns \ref status_codes
   */
-  int16_t finishTransmit();
+  int16_t finishTransmit() ;
 
   /*!
     \brief Interrupt-driven receive method with default parameters.
@@ -272,7 +209,7 @@ public:
     When more bytes than received are requested, only the number of bytes requested will be returned.
     \returns \ref status_codes
   */
-  int16_t readData(uint8_t* data, size_t len);
+  int16_t readData(uint8_t* data, size_t len) ;
 
   /*!
     \brief Interrupt-driven channel activity detection method. DIO0 will be activated
@@ -346,7 +283,7 @@ public:
     \param freqDev FSK frequency deviation to be set in kHz.
     \returns \ref status_codes
   */
-  int16_t setFrequencyDeviation(float freqDev);
+  int16_t setFrequencyDeviation(float freqDev) ;
 
   /*!
     \brief Sets FSK bit rate. Allowed values range from 0.6 to 300.0 kbps.
@@ -380,7 +317,7 @@ public:
     \param sh Time-bandwidth product of Gaussian filter to be set.
     \returns \ref status_codes
   */
-  int16_t setDataShaping(uint8_t sh);
+  int16_t setDataShaping(uint8_t sh) ;
 
   /*!
     \brief Sets FSK sync word in the form of array of up to 8 bytes.
@@ -489,7 +426,7 @@ public:
     \param update Update received packet length. Will return cached value when set to false.
     \returns Length of last received packet in bytes.
   */
-  size_t getPacketLength(bool update = true);
+  size_t getPacketLength(bool update = true) ;
 
   /*!
     \brief Set modem in fixed packet length mode. Available in FSK mode only.
@@ -537,11 +474,18 @@ public:
   */
   int16_t setRegulatorDCDC();
 
+  /*!
+    \brief Sets transmission encoding. Available in FSK mode only. Serves only as alias for PhysicalLayer compatibility.
+    \param encoding Encoding to be used. Set to 0 for NRZ, and 2 for whitening.
+    \returns \ref status_codes
+  */
+  int16_t setEncoding(uint8_t encoding) ;
+
   /*! \copydoc Module::setRfSwitchPins */
   void setRfSwitchPins(uint32_t rxEn, uint32_t txEn);
 
   /*! \copydoc Module::setRfSwitchTable */
-  // void setRfSwitchTable(const uint32_t (&pins)[Module::RFSWITCH_MAX_PINS], const Module::RfSwitchMode_t table[]);
+  void setRfSwitchTable(const uint32_t (&pins)[Module::RFSWITCH_MAX_PINS], const Module::RfSwitchMode_t table[]);
 
   /*!
     \brief Forces LoRa low data rate optimization. Only available in LoRa mode. After calling this method,
@@ -574,18 +518,19 @@ public:
   */
   int16_t invertIQ(bool enable);
 
+  // What's exclude direct receive?
 #if !defined(RADIOLIB_EXCLUDE_DIRECT_RECEIVE)
-  /*!
-    \brief Set interrupt service routine function to call when data bit is receveid in direct mode.
-    \param func Pointer to interrupt service routine.
-  */
-  void setDirectAction(void (*func)(void));
-
-  /*!
-    \brief Function to read and process data bit in direct reception mode.
-    \param pin Pin on which to read.
-  */
-  void readBit(uint32_t pin);
+//  /*!
+//    \brief Set interrupt service routine function to call when data bit is receveid in direct mode.
+//    \param func Pointer to interrupt service routine.
+//  */
+//  void setDirectAction(void (*func)(void));
+//
+//  /*!
+//    \brief Function to read and process data bit in direct reception mode.
+//    \param pin Pin on which to read.
+//  */
+//  void readBit(uint32_t pin);
 #endif
 
   /*!
@@ -626,7 +571,84 @@ public:
   */
   int16_t spectralScanGetResult(uint16_t* results);
 
-  void reset();
+#if !defined(RADIOLIB_GODMODE)
+protected:
+#endif
+  // SX126x SPI command implementations
+  int16_t setFs();
+  int16_t setTx(uint32_t timeout = 0);
+  int16_t setRx(uint32_t timeout);
+  int16_t setCad(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin);
+  int16_t setPaConfig(uint8_t paDutyCycle, uint8_t deviceSel, uint8_t hpMax = RADIOLIB_SX126X_PA_CONFIG_HP_MAX, uint8_t paLut = RADIOLIB_SX126X_PA_CONFIG_PA_LUT);
+  int16_t writeRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
+  int16_t readRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
+  int16_t writeBuffer(uint8_t* data, uint8_t numBytes, uint8_t offset = 0x00);
+  int16_t readBuffer(uint8_t* data, uint8_t numBytes, uint8_t offset = 0x00);
+  int16_t setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = RADIOLIB_SX126X_IRQ_NONE, uint16_t dio3Mask = RADIOLIB_SX126X_IRQ_NONE);
+  virtual int16_t clearIrqStatus(uint16_t clearIrqParams = RADIOLIB_SX126X_IRQ_ALL);
+  int16_t setRfFrequency(uint32_t frf);
+  int16_t calibrateImage(uint8_t* data);
+  uint8_t getPacketType();
+  int16_t setTxParams(uint8_t power, uint8_t rampTime = RADIOLIB_SX126X_PA_RAMP_200U);
+  int16_t setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, uint8_t ldro);
+  int16_t setModulationParamsFSK(uint32_t br, uint8_t sh, uint8_t rxBw, uint32_t freqDev);
+  int16_t setPacketParams(uint16_t preambleLen, uint8_t crcType, uint8_t payloadLen, uint8_t hdrType, uint8_t invertIQ);
+  int16_t setPacketParamsFSK(uint16_t preambleLen, uint8_t crcType, uint8_t syncWordLen, uint8_t addrCmp, uint8_t whiten, uint8_t packType = RADIOLIB_SX126X_GFSK_PACKET_VARIABLE, uint8_t payloadLen = 0xFF, uint8_t preambleDetectorLen = RADIOLIB_SX126X_GFSK_PREAMBLE_DETECT_16);
+  int16_t setBufferBaseAddress(uint8_t txBaseAddress = 0x00, uint8_t rxBaseAddress = 0x00);
+  int16_t setRegulatorMode(uint8_t mode);
+  uint8_t getStatus();
+  uint32_t getPacketStatus();
+  uint16_t getDeviceErrors();
+  int16_t clearDeviceErrors();
+
+  int16_t startReceiveCommon(uint32_t timeout = RADIOLIB_SX126X_RX_TIMEOUT_INF, uint16_t irqFlags = RADIOLIB_SX126X_IRQ_RX_DEFAULT, uint16_t irqMask = RADIOLIB_SX126X_IRQ_RX_DONE);
+  int16_t setFrequencyRaw(float freq);
+  int16_t setPacketMode(uint8_t mode, uint8_t len);
+  int16_t setHeaderType(uint8_t hdrType, size_t len = 0xFF);
+  int16_t directMode();
+  int16_t packetMode();
+
+  // fixes to errata
+  int16_t fixSensitivity();
+  int16_t fixPaClamping(bool enable = true);
+  int16_t fixImplicitTimeout();
+  int16_t fixInvertedIQ(uint8_t iqConfig);
+
+#if !defined(RADIOLIB_GODMODE) && !defined(RADIOLIB_LOW_LEVEL)
+protected:
+#endif
+  Module* mod;
+
+  // common low-level SPI interface
+  static int16_t SPIparseStatus(uint8_t in);
+
+#if !defined(RADIOLIB_GODMODE)
+protected:
+#endif
+
+  uint8_t bandwidth = 0, spreadingFactor = 0, codingRate = 0, ldrOptimize = 0, crcTypeLoRa = 0, headerType = 0;
+  uint16_t preambleLengthLoRa = 0;
+  float bandwidthKhz = 0;
+  bool ldroAuto = true;
+
+  uint32_t bitRate = 0, frequencyDev = 0;
+  uint8_t rxBandwidth = 0, pulseShape = 0, crcTypeFSK = 0, syncWordLength = 0, addrComp = 0, whitening = 0, packetType = 0;
+  uint16_t preambleLengthFSK = 0;
+  float rxBandwidthKhz = 0;
+
+  float dataRateMeasured = 0;
+
+  uint32_t tcxoDelay = 0;
+
+  size_t implicitLen = 0;
+  uint8_t invertIQEnabled = RADIOLIB_SX126X_LORA_IQ_STANDARD;
+  const char* chipType;
+
+  // Allow subclasses to define different TX modes
+  uint8_t txMode = Module::MODE_TX;
+
+  int16_t config(uint8_t modem);
+  bool findChip(const char* verStr);
 
 };
 

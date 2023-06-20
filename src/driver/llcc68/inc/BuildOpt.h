@@ -7,7 +7,8 @@
   #define RADIOLIB_BUILD_ARDUINO
 #else
   // generic build
-  #include <stdio.h>
+  // #include <stdio.h>
+#include "printf.h"
   #define RADIOLIB_BUILD_GENERIC
 #endif
 
@@ -345,7 +346,7 @@
  * Note: Enabled by default.
  */
 #if !defined(RADIOLIB_SPI_PARANOID)
-  #define RADIOLIB_SPI_PARANOID
+  // #define RADIOLIB_SPI_PARANOID
 #endif
 
 /*

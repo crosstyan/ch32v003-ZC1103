@@ -380,7 +380,7 @@ public:
   void clrRxFifoRdPtr();
   void clrRxFifo();
 
-  PinStatus pollPktFlagPin();
+  GPIO::PinStatus pollPktFlagPin();
 };
 
 

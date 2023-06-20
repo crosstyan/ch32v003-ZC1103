@@ -21,45 +21,22 @@ class RadioLibHal {
     /*!
       \brief Value to be used as the "input" GPIO direction.
     */
-    const uint32_t GpioModeInput;
+    const uint32_t GpioModeInput = GPIO::INPUT;
 
     /*!
       \brief Value to be used as the "output" GPIO direction.
     */
-    const uint32_t GpioModeOutput;
+    const uint32_t GpioModeOutput = GPIO::OUTPUT;
     
     /*!
       \brief Value to be used as the "low" GPIO level.
     */
-    const uint32_t GpioLevelLow;
+    const uint32_t GpioLevelLow = GPIO::LOW;
     
     /*!
       \brief Value to be used as the "high" GPIO level.
     */
-    const uint32_t GpioLevelHigh;
-    
-    /*!
-      \brief Value to be used as the "rising" GPIO level change direction.
-    */
-    const uint32_t GpioInterruptRising;
-    
-    /*!
-      \brief Value to be used as the "falling" GPIO level change direction.
-    */
-    const uint32_t GpioInterruptFalling;
-
-    /*!
-      \brief Default constructor.
-      \param input Value to be used as the "input" GPIO direction.
-      \param output Value to be used as the "output" GPIO direction.
-      \param low Value to be used as the "low" GPIO level.
-      \param high Value to be used as the "high" GPIO level.
-      \param rising Value to be used as the "rising" GPIO level change direction.
-      \param falling Value to be used as the "falling" GPIO level change direction.
-    */
-    RadioLibHal(const uint32_t input, const uint32_t output, const uint32_t low, const uint32_t high, const uint32_t rising, const uint32_t falling);
-
-    // pure virtual methods - these must be implemented by the hardware abstraction for RadioLib to function
+    const uint32_t GpioLevelHigh = GPIO::HIGH;
 
     /*!
       \brief GPIO pin mode (input/output/...) configuration method.
@@ -85,22 +62,6 @@ class RadioLibHal {
     */
     uint32_t digitalRead(uint32_t pin);
     
-    /*!
-      \brief Method to attach function to an external interrupt.
-      Must be implemented by the platform-specific hardware abstraction!
-      \param interruptNum Interrupt number to attach to (platform-specific).
-      \param interruptCb Interrupt service routine to execute.
-      \param mode Rising/falling mode (platform-specific).
-    */
-    // virtual void attachInterrupt(uint32_t interruptNum, void (*interruptCb)(void), uint32_t mode) = 0;
-
-    /*!
-      \brief Method to detach function from an external interrupt.
-      Must be implemented by the platform-specific hardware abstraction!
-      \param interruptNum Interrupt number to detach from (platform-specific).
-    */
-    // virtual void detachInterrupt(uint32_t interruptNum) = 0;
-
     /*!
       \brief Blocking wait function.
       Must be implemented by the platform-specific hardware abstraction!
@@ -183,35 +144,7 @@ class RadioLibHal {
     */
     void term();
 
-    /*!
-      \brief Method to produce a square-wave with 50% duty cycle ("tone") of a given frequency at some pin.
-      \param pin Pin to be used as the output.
-      \param frequency Frequency of the square wave.
-      \param duration Duration of the tone in ms. When set to 0, the tone will be infinite.
-    */
-    // Don't care about tones
-    // virtual void tone(uint32_t pin, unsigned int frequency, unsigned long duration = 0);
-
-    /*!
-      \brief Method to stop producing a tone.
-      \param pin Pin which is currently producing the tone.
-    */
-    // Don't care about tones
-    // virtual void noTone(uint32_t pin);
-    
-    /*!
-      \brief Yield method, called from long loops in multi-threaded environment (to prevent blocking other threads).
-    */
-    // Don't care about multi-threading
-    // virtual void yield();
-    
-    /*!
-      \brief Function to convert from pin number to interrupt number.
-      \param pin Pin to convert from.
-      \returns The interrupt number of a given pin.
-    */
-    // Do it manually
-    // uint32_t pinToInterrupt(uint32_t pin);
+    void yield();
 };
 
 #endif

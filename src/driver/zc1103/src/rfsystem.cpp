@@ -4,6 +4,8 @@
 // otherwise we can't use auto detect channel before transmission.
 uint8_t const RSSI_THRESHOLD = 100;
 
+using namespace GPIO;
+
 volatile bool rx_flag = false;
 
 void RF::setRxFlag(bool flag) { rx_flag = flag; }

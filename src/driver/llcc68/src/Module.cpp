@@ -55,9 +55,9 @@ int16_t Module::SPIsetRegValue(uint16_t reg, uint8_t value, uint8_t msb, uint8_t
   #if defined(RADIOLIB_SPI_PARANOID)
     // check register value each millisecond until check interval is reached
     // some registers need a bit of time to process the change (e.g. SX127X_REG_OP_MODE)
-    uint32_t start = this->hal->micros();
+    uint32_t start = this->hal->millis();
     uint8_t readValue = 0x00;
-    while(this->hal->micros() - start < (checkInterval * 1000)) {
+    while(this->hal->millis() - start < checkInterval) {
       readValue = SPIreadRegister(reg);
       if((readValue & checkMask) == (newValue & checkMask)) {
         // check passed, we can stop the loop
@@ -232,7 +232,7 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
   } else {
     uint32_t start = this->hal->millis();
     while(this->hal->digitalRead(this->gpioPin)) {
-      this->hal->yield();
+      // this->hal->yield();
       if(this->hal->millis() - start >= timeout) {
         RADIOLIB_DEBUG_PRINTLN("Timed out waiting for GPIO pin, is it connected?");
         return(RADIOLIB_ERR_SPI_CMD_TIMEOUT);
@@ -300,10 +300,10 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
     if(this->gpioPin == RADIOLIB_NC) {
       this->hal->delay(1);
     } else {
-      this->hal->delayMicroseconds(1);
+      // this->hal->delayMicroseconds(1);
       uint32_t start = this->hal->millis();
       while(this->hal->digitalRead(this->gpioPin)) {
-        this->hal->yield();
+        // this->hal->yield();
         if(this->hal->millis() - start >= timeout) {
           state = RADIOLIB_ERR_SPI_CMD_TIMEOUT;
           break;
@@ -344,21 +344,7 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
 }
 
 void Module::waitForMicroseconds(uint32_t start, uint32_t len) {
-  #if defined(RADIOLIB_INTERRUPT_TIMING)
-  (void)start;
-  if((this->TimerSetupCb != nullptr) && (len != this->prevTimingLen)) {
-    prevTimingLen = len;
-    this->TimerSetupCb(len);
-  }
-  this->TimerFlag = false;
-  while(!this->TimerFlag) {
-    this->hal->yield();
-  }
-  #else
-   while(this->hal->micros() - start < len) {
-    this->hal->yield();
-  }
-  #endif
+  static_assert(true, "This function is not implemented for this module.");
 }
 
 uint32_t Module::reflect(uint32_t in, uint8_t bits) {

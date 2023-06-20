@@ -2,6 +2,7 @@
 // Created by Kurosu Chan on 2023/5/19.
 //
 #include "gpio.h"
+using namespace GPIO;
 
 bool statusToBool(PinStatus status) {
   return status == HIGH;

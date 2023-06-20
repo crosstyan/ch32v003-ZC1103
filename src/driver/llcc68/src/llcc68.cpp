@@ -4,70 +4,7 @@
 
 #include "llcc68.h"
 
-inline void LLCC68::RST_LOW() { digitalWrite(this->RST_PIN, LOW); }
-
-inline void LLCC68::RST_HIGH() { digitalWrite(this->RST_PIN, HIGH); }
-
-inline void LLCC68::CS_HIGH() { digitalWrite(this->CS_PIN, HIGH); }
-
-inline void LLCC68::CS_LOW() { digitalWrite(this->CS_PIN, LOW); }
-
-
-inline void LLCC68::gpioConfigure() {
-  pinMode(this->RST_PIN, OUTPUT);
-  pinMode(this->CS_PIN, OUTPUT);
-  // IRQ is configured elsewhere (checkout main.cpp)
-}
-
-/// 芯片的所有控制都是通 SPI 接口操作，支持的模式是时钟极性为正，相位极性可选，
-/// 当 ckpha=1 时，为下降沿采样，ckpha=0 时，上升沿采样。
-///
-/// See also `src/inc/spi.h`
-inline void LLCC68::spiConfigure() {
-  SPI_init();
-  SPI_begin_8();
-}
-
-void LLCC68::reset() {
-  RST_LOW();
-  Delay_Ms(10);
-  RST_HIGH();
-}
-
-inline uint8_t LLCC68::sendByte(uint8_t byte) { return SPI_transfer_8(byte); }
-
-inline void LLCC68::sendBytes(uint8_t const *bytes, size_t len) {
-  for (size_t i = 0; i < len; i++) {
-    sendByte(bytes[i]);
-  }
-};
-
-inline void LLCC68::sendBytes(char const *bytes, size_t len) {
-  for (size_t i = 0; i < len; i++) {
-    sendByte(bytes[i]);
-  }
-};
-
-/// On this particular device, you transmit a 7-bit register address
-/// (with the high-bit set to 1=read, 0=write),
-/// then either read or write the value of the register from there.
-void LLCC68::write(const uint8_t addr, const uint8_t val) {
-  // 0x7f = 0b0111_1111 i.e. set the high bit to 0 to indicate write
-  CS_LOW();
-  sendByte(addr & 0x7f);
-  sendByte(val);
-  CS_HIGH();
-}
-
-uint8_t LLCC68::read(const uint8_t addr) {
-  // 0x80 = 0b1000_0000 i.e. set the high bit to 1 to indicate read
-  CS_LOW();
-  sendByte(addr | 0x80);
-  auto data = sendByte(0xff);
-  CS_HIGH();
-  return data;
-}
-
+using namespace GPIO;
 
 int16_t LLCC68::begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO) {
   // set module properties
@@ -183,19 +120,22 @@ int16_t LLCC68::transmit(uint8_t* data, size_t len, uint8_t addr) {
   state = startTransmit(data, len, addr);
   RADIOLIB_ASSERT(state);
 
+  // NOTE: Don't get paranoid...
+  //
   // wait for packet transmission or timeout
-  uint32_t start = this->mod->hal->micros();
-  while(!this->mod->hal->digitalRead(this->mod->getIrq())) {
-    this->mod->hal->yield();
-    if(this->mod->hal->micros() - start > timeout) {
-      finishTransmit();
-      return(RADIOLIB_ERR_TX_TIMEOUT);
-    }
-  }
-  uint32_t elapsed = this->mod->hal->micros() - start;
+  //  uint32_t start = this->mod->hal->micros();
+  //  while(!this->mod->hal->digitalRead(this->mod->getIrq())) {
+  //    this->mod->hal->yield();
+  //    if(this->mod->hal->micros() - start > timeout) {
+  //      finishTransmit();
+  //      return(RADIOLIB_ERR_TX_TIMEOUT);
+  //    }
+  //  }
+  //  uint32_t elapsed = this->mod->hal->micros() - start;
 
   // update data rate
-  this->dataRateMeasured = (len*8.0)/((float)elapsed/1000000.0);
+  // Why the data rate need to be updated?
+  // this->dataRateMeasured = (len*8.0)/((float)elapsed/1000000.0);
 
   return(finishTransmit());
 }
@@ -234,10 +174,10 @@ int16_t LLCC68::receive(uint8_t* data, size_t len) {
   RADIOLIB_ASSERT(state);
 
   // wait for packet reception or timeout
-  uint32_t start = this->mod->hal->micros();
+  uint32_t start = this->mod->hal->millis();
   while(!this->mod->hal->digitalRead(this->mod->getIrq())) {
     this->mod->hal->yield();
-    if(this->mod->hal->micros() - start > timeout) {
+    if(this->mod->hal->millis() - start > (timeout/1000.0) ) {
       fixImplicitTimeout();
       clearIrqStatus();
       standby();
@@ -390,14 +330,6 @@ int16_t LLCC68::standby(uint8_t mode, bool wakeup) {
 
   uint8_t data[] = { mode };
   return(this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_STANDBY, data, 1));
-}
-
-void LLCC68::setDio1Action(void (*func)(void)) {
-  this->mod->hal->attachInterrupt(this->mod->hal->pinToInterrupt(this->mod->getIrq()), func, this->mod->hal->GpioInterruptRising);
-}
-
-void LLCC68::clearDio1Action() {
-  this->mod->hal->detachInterrupt(this->mod->hal->pinToInterrupt(this->mod->getIrq()));
 }
 
 int16_t LLCC68::startTransmit(uint8_t* data, size_t len, uint8_t addr) {
@@ -1374,13 +1306,13 @@ int16_t LLCC68::invertIQ(bool enable) {
 }
 
 #if !defined(RADIOLIB_EXCLUDE_DIRECT_RECEIVE)
-void LLCC68::setDirectAction(void (*func)(void)) {
-  setDio1Action(func);
-}
-
-void LLCC68::readBit(uint32_t pin) {
-  updateDirectBuffer((uint8_t)this->mod->hal->digitalRead(pin));
-}
+//void LLCC68::setDirectAction(void (*func)(void)) {
+//  setDio1Action(func);
+//}
+//
+//void LLCC68::readBit(uint32_t pin) {
+//  updateDirectBuffer((uint8_t)this->mod->hal->digitalRead(pin));
+//}
 #endif
 
 int16_t LLCC68::uploadPatch(const uint32_t* patch, size_t len, bool nonvolatile) {
@@ -1963,3 +1895,35 @@ bool LLCC68::findChip(const char* verStr) {
   return(flagFound);
 }
 
+int16_t LLCC68::reset(bool verify) {
+  // run the reset sequence
+  this->mod->hal->pinMode(this->mod->getRst(), this->mod->hal->GpioModeOutput);
+  this->mod->hal->digitalWrite(this->mod->getRst(), this->mod->hal->GpioLevelLow);
+  this->mod->hal->delay(1);
+  this->mod->hal->digitalWrite(this->mod->getRst(), this->mod->hal->GpioLevelHigh);
+
+  // return immediately when verification is disabled
+  if(!verify) {
+    return(RADIOLIB_ERR_NONE);
+  }
+
+  // set mode to standby - SX126x often refuses first few commands after reset
+  uint32_t start = this->mod->hal->millis();
+  while(true) {
+    // try to set mode to standby
+    int16_t state = standby();
+    if(state == RADIOLIB_ERR_NONE) {
+      // standby command successful
+      return(RADIOLIB_ERR_NONE);
+    }
+
+    // standby command failed, check timeout and try again
+    if(this->mod->hal->millis() - start >= 1000) {
+      // timed out, possibly incorrect wiring
+      return(state);
+    }
+
+    // wait a bit to not spam the module
+    this->mod->hal->delay(100);
+  }
+}
