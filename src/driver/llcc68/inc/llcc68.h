@@ -23,6 +23,19 @@
 
 
 class LLCC68 {
+  float freqStep;
+  size_t maxPacketLength;
+
+  uint8_t bufferBitPos;
+  uint8_t bufferWritePos;
+  uint8_t bufferReadPos;
+  uint8_t buffer[RADIOLIB_STATIC_ARRAY_SIZE];
+  uint32_t syncBuffer;
+  uint32_t directSyncWord;
+  uint8_t directSyncWordLen;
+  uint32_t directSyncWordMask;
+  bool gotSync;
+
   bool _is_initialized = false;
 
   /// 芯片复位脚，低电平有效，复位后寄存器数值丢失，全部变为默认值。
@@ -98,27 +111,6 @@ public:
     \returns \ref status_codes
   */
   int16_t begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO = false);
-
-  /*!
-    \brief Initialization method for FSK modem.
-    \param br FSK bit rate in kbps. Allowed values range from 0.6 to 300.0 kbps.
-    \param freqDev Frequency deviation from carrier frequency in kHz. Allowed values range from 0.0 to 200.0 kHz.
-    \param rxBw Receiver bandwidth in kHz. Allowed values are 4.8, 5.8, 7.3, 9.7, 11.7, 14.6, 19.5, 23.4, 29.3, 39.0,
-    46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0 kHz.
-    \param preambleLength FSK preamble length in bits. Allowed values range from 0 to 65535.
-    \param tcxoVoltage TCXO reference voltage to be set on DIO3. Defaults to 1.6 V, set to 0 to skip.
-    \param useRegulatorLDO Whether to use only LDO regulator (true) or DC-DC regulator (false). Defaults to false.
-    \returns \ref status_codes
-  */
-  int16_t beginFSK(float br, float freqDev, float rxBw, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO = false);
-
-  /*!
-    \brief Reset method. Will reset the chip to the default state using RST pin.
-    \param verify Whether correct module startup should be verified. When set to true, RadioLib will attempt to verify the module has started correctly
-    by repeatedly issuing setStandby command. Enabled by default.
-    \returns \ref status_codes
-  */
-  int16_t reset(bool verify = true);
 
   /*!
     \brief Blocking binary transmit method.

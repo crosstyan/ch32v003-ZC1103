@@ -21,7 +21,10 @@ set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
 include_directories(${ZC1103_DIRECTORY}/inc)
 
 set(LLCC68_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/llcc68)
-set(LLCC68_SRC ${LLCC68_DIRECTORY}/src/llcc68.cpp)
+set(LLCC68_SRC
+        ${LLCC68_DIRECTORY}/src/llcc68.cpp
+        ${LLCC68_DIRECTORY}/src/Hal.cpp
+        ${LLCC68_DIRECTORY}/src/Module.cpp)
 include_directories(${LLCC68_DIRECTORY}/inc)
 
 #set(RAIDOLIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/RadioLib)
