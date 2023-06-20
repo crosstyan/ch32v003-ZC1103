@@ -43,7 +43,7 @@ int main() {
   auto mod = Module(&hal, CS_PIN, IRQ_PIN, RST_PIN, BUSY_PIN);
   auto rf     = LLCC68(&mod);
   // TODO: ...
-  // rf.begin();
+   rf.begin();
 
   // expect to be 0x03
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);

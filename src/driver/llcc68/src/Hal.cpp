@@ -14,30 +14,30 @@ void RadioLibHal::term() {
   this->spiEnd();
 }
 
-inline void RadioLibHal::pinMode(uint32_t pin, uint32_t mode) {
+void RadioLibHal::pinMode(uint32_t pin, uint32_t mode) {
   GPIO::pinMode(pin, static_cast<GPIO::PinMode>(mode));
 }
 
-inline void RadioLibHal::digitalWrite(uint32_t pin, uint32_t value) {
+void RadioLibHal::digitalWrite(uint32_t pin, uint32_t value) {
   GPIO::digitalWrite(pin, static_cast<GPIO::PinStatus>(value));
 }
 
-inline uint32_t RadioLibHal::digitalRead(uint32_t pin) {
+uint32_t RadioLibHal::digitalRead(uint32_t pin) {
   return GPIO::digitalRead(pin);
 }
-inline void RadioLibHal::delay(unsigned long ms) {
+void RadioLibHal::delay(unsigned long ms) {
   Delay_Ms(ms);
 }
-inline unsigned long RadioLibHal::millis() {
+unsigned long RadioLibHal::millis() {
   return ::millis();
 }
 
-inline void RadioLibHal::spiBegin() {
+void RadioLibHal::spiBegin() {
   SPI_init();
   SPI_begin_8();
 }
 
-inline uint8_t RadioLibHal::spiTransfer(uint8_t b) {
+uint8_t RadioLibHal::spiTransfer(uint8_t b) {
   return SPI_transfer_8(b);
 }
 
