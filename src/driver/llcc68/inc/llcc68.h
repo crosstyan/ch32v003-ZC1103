@@ -51,6 +51,22 @@ public:
   */
   int16_t begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO = false);
 
+
+  /*!
+    \brief Initialization method for LoRa modem.
+    \param freq Carrier frequency in MHz. Defaults to 434.0 MHz.
+    \param bw LoRa bandwidth in kHz. Defaults to 125.0 kHz.
+    \param sf LoRa spreading factor. Defaults to 9.
+    \param cr LoRa coding rate denominator. Defaults to 7 (coding rate 4/7).
+    \param syncWord 1-byte LoRa sync word. Defaults to RADIOLIB_SX126X_SYNC_WORD_PRIVATE (0x12).
+    \param pwr Output power in dBm. Defaults to 10 dBm.
+    \param preambleLength LoRa preamble length in symbols. Defaults to 8 symbols.
+    \param tcxoVoltage TCXO reference voltage to be set on DIO3. Defaults to 1.6 V, set to 0 to skip.
+    \param useRegulatorLDO Whether to use only LDO regulator (true) or DC-DC regulator (false). Defaults to false.
+    \returns \ref status_codes
+  */
+  int16_t begin(float freq = 434.0, float bw = 125.0, uint8_t sf = 9, uint8_t cr = 7, uint8_t syncWord = RADIOLIB_SX126X_SYNC_WORD_PRIVATE, int8_t pwr = 10, uint16_t preambleLength = 8, float tcxoVoltage = 1.6, bool useRegulatorLDO = false);
+
   /*!
     \brief Reset method. Will reset the chip to the default state using RST pin.
     \param verify Whether correct module startup should be verified. When set to true, RadioLib will attempt to verify the module has started correctly
@@ -271,6 +287,21 @@ public:
     \returns Currently configured overcurrent protection limit in mA.
   */
   float getCurrentLimit();
+
+  /*!
+    \brief Sets carrier frequency. Allowed values are in range from 150.0 to 960.0 MHz.
+    \param freq Carrier frequency to be set in MHz.
+    \returns \ref status_codes
+  */
+  int16_t setFrequency(float freq);
+
+  /*!
+    \brief Sets carrier frequency. Allowed values are in range from 150.0 to 960.0 MHz.
+    \param freq Carrier frequency to be set in MHz.
+    \param calibrate Run image calibration.
+    \returns \ref status_codes
+  */
+  int16_t setFrequency(float freq, bool calibrate);
 
   /*!
     \brief Sets preamble length for LoRa or FSK modem. Allowed values range from 1 to 65535.

@@ -140,6 +140,30 @@ int16_t LLCC68::transmit(uint8_t *data, size_t len, uint8_t addr) {
   return (finishTransmit());
 }
 
+int16_t LLCC68::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t syncWord, int8_t pwr, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO) {
+  // execute common part
+  int16_t state = begin(cr, syncWord, preambleLength, tcxoVoltage, useRegulatorLDO);
+  RADIOLIB_ASSERT(state);
+
+  // configure publicly accessible settings
+  state = setFrequency(freq);
+  RADIOLIB_ASSERT(state);
+
+  state = setBandwidth(bw);
+  RADIOLIB_ASSERT(state);
+
+  state = setSpreadingFactor(sf);
+  RADIOLIB_ASSERT(state);
+
+  state = setOutputPower(pwr);
+  RADIOLIB_ASSERT(state);
+
+  state = fixPaClamping();
+  RADIOLIB_ASSERT(state);
+
+  return (state);
+}
+
 int16_t LLCC68::receive(uint8_t *data, size_t len) {
   // set mode to standby
   int16_t state = standby();
@@ -1971,4 +1995,36 @@ int16_t LLCC68::setOutputPower(int8_t power) {
 }
 LLCC68::LLCC68(Module *mod) {
   this->mod = mod;
+}
+int16_t LLCC68::setFrequency(float freq) {
+  return (setFrequency(freq, true));
+}
+int16_t LLCC68::setFrequency(float freq, bool calibrate) {
+  RADIOLIB_CHECK_RANGE(freq, 150.0, 960.0, RADIOLIB_ERR_INVALID_FREQUENCY);
+
+  // calibrate image
+  if (calibrate) {
+    uint8_t data[2];
+    if (freq > 900.0) {
+      data[0] = RADIOLIB_SX126X_CAL_IMG_902_MHZ_1;
+      data[1] = RADIOLIB_SX126X_CAL_IMG_902_MHZ_2;
+    } else if (freq > 850.0) {
+      data[0] = RADIOLIB_SX126X_CAL_IMG_863_MHZ_1;
+      data[1] = RADIOLIB_SX126X_CAL_IMG_863_MHZ_2;
+    } else if (freq > 770.0) {
+      data[0] = RADIOLIB_SX126X_CAL_IMG_779_MHZ_1;
+      data[1] = RADIOLIB_SX126X_CAL_IMG_779_MHZ_2;
+    } else if (freq > 460.0) {
+      data[0] = RADIOLIB_SX126X_CAL_IMG_470_MHZ_1;
+      data[1] = RADIOLIB_SX126X_CAL_IMG_470_MHZ_2;
+    } else {
+      data[0] = RADIOLIB_SX126X_CAL_IMG_430_MHZ_1;
+      data[1] = RADIOLIB_SX126X_CAL_IMG_430_MHZ_2;
+    }
+    int16_t state = calibrateImage(data);
+    RADIOLIB_ASSERT(state);
+  }
+
+  // set frequency
+  return (setFrequencyRaw(freq));
 }
