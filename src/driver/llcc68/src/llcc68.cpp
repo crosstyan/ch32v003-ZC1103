@@ -31,7 +31,7 @@ int16_t LLCC68::begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, flo
 
   // BW in kHz and SF are required in order to calculate LDRO for setModulationParams
   // set the defaults, this will get overwritten later anyway
-  this->bandwidthKhz    = 500.0;
+  this->bandwidthKhz    = fpm::fixed_16_16 {500.0};
   this->spreadingFactor = 9;
 
   // initialize configuration variables (will be overwritten during public settings configuration)
@@ -107,7 +107,7 @@ int16_t LLCC68::transmit(uint8_t *data, size_t len, uint8_t addr) {
   uint8_t modem = getPacketType();
   if (modem == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
     // calculate timeout (150% of expected time-on-air)
-    timeout = (getTimeOnAir(len) * 3) / 2;
+    timeout = static_cast<uint32_t >(getTimeOnAir(len) * 3) / static_cast<uint32_t>(2);
 
   } else if (modem == RADIOLIB_SX126X_PACKET_TYPE_GFSK) {
     // calculate timeout (500% of expected time-on-air)
@@ -117,7 +117,7 @@ int16_t LLCC68::transmit(uint8_t *data, size_t len, uint8_t addr) {
     return (RADIOLIB_ERR_UNKNOWN);
   }
 
-  // RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
+   RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
 
   // start transmission
   state = startTransmit(data, len, addr);
@@ -140,7 +140,7 @@ int16_t LLCC68::transmit(uint8_t *data, size_t len, uint8_t addr) {
 
   // update data rate
   // Why the data rate need to be updated?
-   this->dataRateMeasured = (len * 8.0) / (elapsed / 1000);
+  // this->dataRateMeasured = (len * 8.0) / (elapsed / 1000);
 
   return (finishTransmit());
 }
@@ -192,7 +192,7 @@ int16_t LLCC68::receive(uint8_t *data, size_t len) {
     if (len == 0) {
       maxLen = 0xFF;
     }
-    auto brBps = static_cast<uint32_t>(static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ * 1000000.0 * 32.0) / this->bitRate);
+    auto brBps = static_cast<uint32_t>(static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ * 1000000 * 32) / this->bitRate);
     timeout    = (uint32_t)(((maxLen * 8.0) / brBps) * 1000000.0 * 5.0);
 
   } else {
@@ -431,8 +431,7 @@ int16_t LLCC68::finishTransmit() {
   clearIrqStatus();
 
   // set mode to standby to disable transmitter/RF switch
-  // standby()
-  return RADIOLIB_ERR_NONE;
+  return standby();
 }
 
 int16_t LLCC68::startReceive() {
@@ -495,11 +494,11 @@ int16_t LLCC68::startReceiveDutyCycleAuto(uint16_t senderPreambleLength, uint16_
     return (startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF, irqFlags, irqMask));
   }
 
-  uint32_t symbolLength = ((uint32_t)(10 * 1000) << this->spreadingFactor) / (10 * this->bandwidthKhz);
+  uint32_t symbolLength = (static_cast<uint32_t>(10 * 1000) << this->spreadingFactor) / static_cast<uint32_t>(fpm::fixed_16_16 {10} * this->bandwidthKhz);
   uint32_t sleepPeriod  = symbolLength * sleepSymbols;
   RADIOLIB_DEBUG_PRINTLN("Auto sleep period: %d", sleepPeriod);
 
-  // when the unit detects a preamble, it starts a timer that will timeout if it doesn't receive a header in time.
+  // when the unit detects a preamble, it starts a timer that will time out if it doesn't receive a header in time.
   // the duration is sleepPeriod + 2 * wakePeriod.
   // The sleepPeriod doesn't take into account shutdown and startup time for the unit (~1ms)
   // We need to ensure that the timeout is longer than senderPreambleLength.
@@ -647,8 +646,9 @@ int16_t LLCC68::setBandwidth(float bw) {
   // ensure byte conversion doesn't overflow
   RADIOLIB_CHECK_RANGE(bw, 0.0, 510.0, RADIOLIB_ERR_INVALID_BANDWIDTH);
 
+  auto fixed_bw = fpm::fixed_16_16{bw};
   // check allowed bandwidth values
-  auto bw_div2 = static_cast<uint8_t>(fpm::fixed_16_16{bw} / 2 + fpm::fixed_16_16{0.01});
+  auto bw_div2 = static_cast<uint8_t>(fixed_bw / 2 + fpm::fixed_16_16{0.01});
   switch (bw_div2) {
     case 3: // 7.8:
       this->bandwidth = RADIOLIB_SX126X_LORA_BW_7_8;
@@ -685,7 +685,7 @@ int16_t LLCC68::setBandwidth(float bw) {
   }
 
   // update modulation parameters
-  this->bandwidthKhz = bw;
+  this->bandwidthKhz = fixed_bw;
   return (setModulationParams(this->spreadingFactor, this->bandwidth, this->codingRate, this->ldrOptimize));
 }
 
@@ -1236,7 +1236,7 @@ uint32_t LLCC68::getTimeOnAir(size_t len) {
   // some constants have .25, these are multiplied by 4, and have _x4 postfix to indicate that fact
   if (getPacketType() == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
     auto ibw                 = static_cast<uint32_t>(this->bandwidthKhz * 10);
-    uint32_t symbolLength_us = ((uint32_t)(1000 * 10) << this->spreadingFactor) / ibw;
+    uint32_t symbolLength_us = (static_cast<uint32_t>(1000 * 10) << this->spreadingFactor) / ibw;
     uint8_t sfCoeff1_x4      = 17; // (4.25 * 4)
     uint8_t sfCoeff2         = 8;
     if (this->spreadingFactor == 5 || this->spreadingFactor == 6) {
@@ -1263,7 +1263,10 @@ uint32_t LLCC68::getTimeOnAir(size_t len) {
 
     return ((symbolLength_us * nSymbol_x4) / 4);
   } else {
-    return ((len * 8 * this->bitRate) / (RADIOLIB_SX126X_CRYSTAL_FREQ * 32));
+    // don't ask why crazy casting performed here
+    // float arithmetics should be eliminated
+    auto numerator = static_cast<uint32_t>( static_cast<uint32_t >(len) * static_cast<uint32_t>(8) * this->bitRate);
+    return static_cast<uint32_t>(numerator / static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ * 32));
   }
 }
 
@@ -1472,7 +1475,6 @@ int16_t LLCC68::setTCXO(float voltage, uint32_t delay) {
 
   auto v = fpm::fixed_16_16(voltage);
   // check 0 V disable
-#warning "TODO"
   if (fpm::abs(v - fpm::fixed_16_16(0.0)) <= fpm::fixed_16_16(0.001)) {
     return (reset(true));
   }
@@ -1699,7 +1701,7 @@ int16_t LLCC68::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, uint8_t 
     // TODO: find out why
     auto b            = static_cast<uint32_t>(this->bandwidthKhz);
     auto symbolLength = static_cast<uint32_t>(a / b);
-    RADIOLIB_DEBUG_PRINTLN("Symbol length: %f ms", symbolLength);
+    RADIOLIB_DEBUG_PRINTLN("Symbol length: %lu ms", symbolLength);
     if (symbolLength >= 16.0) {
       this->ldrOptimize = RADIOLIB_SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_ON;
     } else {
@@ -2016,6 +2018,7 @@ int16_t LLCC68::setOutputPower(int8_t power) {
   return (writeRegister(RADIOLIB_SX126X_REG_OCP_CONFIGURATION, &ocp, 1));
 }
 LLCC68::LLCC68(Module *mod) {
+  chipType = RADIOLIB_LLCC68_CHIP_TYPE;
   this->mod = mod;
 }
 int16_t LLCC68::setFrequency(float freq) {

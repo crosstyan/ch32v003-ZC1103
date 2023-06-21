@@ -129,12 +129,9 @@ int main() {
           if (r != RADIOLIB_ERR_NONE) {
             printf("[ERROR] failed to transmit, code %d\n", r);
           }
-//          rf.send(v.data(), v.size());
           digitalWrite(GPIO::D6, GPIO::HIGH);
           Delay_Ms(10);
           digitalWrite(GPIO::D6, GPIO::LOW);
-//          auto state = rf.pollState();
-//          RF::printState(state);
           res = encoder.next();
         }
       } else {

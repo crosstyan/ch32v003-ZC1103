@@ -18,10 +18,13 @@
 #include "radio_sx126x.h"
 #include "TypeDef.h"
 #include "Module.h"
+#include <fpm/fixed.hpp>
+
+using namespace fpm;
 
 // basically LLCC68 is a SX126x
 // LLCC68芯片引脚兼容SX1262,且在设计、驱动代码及应用上与SX1262完全相同
-
+#define RADIOLIB_LLCC68_CHIP_TYPE                               "LLCC68"
 
 class LLCC68 {
 public:
@@ -669,7 +672,7 @@ protected:
 
   uint8_t bandwidth = 0, spreadingFactor = 0, codingRate = 0, ldrOptimize = 0, crcTypeLoRa = 0, headerType = 0;
   uint16_t preambleLengthLoRa = 0;
-  float bandwidthKhz = 0;
+  fixed_16_16 bandwidthKhz = fixed_16_16 {0};
   bool ldroAuto = true;
 
   uint32_t bitRate = 0, frequencyDev = 0;

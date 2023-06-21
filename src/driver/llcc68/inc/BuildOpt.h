@@ -428,10 +428,10 @@
     #define RADIOLIB_DEBUG_PRINTLN(M, ...) Module::serialPrintf(M "\n", ##__VA_ARGS__)
   #else
     #if !defined(RADIOLIB_DEBUG_PRINT)
-      #define RADIOLIB_DEBUG_PRINT(...) fprintf(RADIOLIB_DEBUG_PORT, __VA_ARGS__)
+      #define RADIOLIB_DEBUG_PRINT(...) printf(__VA_ARGS__)
     #endif
     #if !defined(RADIOLIB_DEBUG_PRINTLN)
-      #define RADIOLIB_DEBUG_PRINTLN(M, ...) fprintf(RADIOLIB_DEBUG_PORT, M "\n", ##__VA_ARGS__)
+      #define RADIOLIB_DEBUG_PRINTLN(M, ...) printf(M "\n", ##__VA_ARGS__)
     #endif
   #endif
 #else
