@@ -15,6 +15,7 @@
 #include <pb_decode.h>
 #include "simple.pb.h"
 #include "led.h"
+#include <fpm/fixed.hpp>
 #include <etl/random.h>
 
 #ifdef TX
@@ -22,12 +23,6 @@
 #include <pb_encode.h>
 
 #endif
-
-#ifdef __GNUC__
-/* poision memory functions */
-#endif
-#   pragma GCC poison malloc new
-// https://stackoverflow.com/questions/18365804/is-it-possible-to-completely-disable-the-default-c-new-operator
 
 // TODO: what's the IRQ pin?
 static const pin_size_t IRQ_PIN = RADIOLIB_NC;

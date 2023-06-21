@@ -3,6 +3,7 @@
 //
 
 #include "llcc68.h"
+#include <fpm/fixed.hpp>
 
 using namespace GPIO;
 
@@ -178,15 +179,15 @@ int16_t LLCC68::receive(uint8_t *data, size_t len) {
     // TODO: eliminate floating point math
     // use fixed point math instead
 #warning "TODO: eliminate floating point math"
-    float symbolLength = (float)(uint32_t(1) << this->spreadingFactor) / (float)this->bandwidthKhz;
-    timeout            = (uint32_t)(symbolLength * 100.0 * 1000.0);
+    auto symbolLength = static_cast<fpm::fixed_16_16>(uint32_t(1) << this->spreadingFactor) / static_cast<fpm::fixed_16_16>(this->bandwidthKhz);
+    timeout            = (uint32_t)(symbolLength * 100 * 1000);
   } else if (modem == RADIOLIB_SX126X_PACKET_TYPE_GFSK) {
     // calculate timeout (500 % of expected time-one-air)
     size_t maxLen = len;
     if (len == 0) {
       maxLen = 0xFF;
     }
-    float brBps = ((float)(RADIOLIB_SX126X_CRYSTAL_FREQ)*1000000.0 * 32.0) / (float)this->bitRate;
+    auto brBps = static_cast<uint32_t>(static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ*1000000.0 * 32.0) / this->bitRate);
     timeout     = (uint32_t)(((maxLen * 8.0) / brBps) * 1000000.0 * 5.0);
 
   } else {
@@ -196,7 +197,7 @@ int16_t LLCC68::receive(uint8_t *data, size_t len) {
   RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
 
   // start reception
-  uint32_t timeoutValue = (uint32_t)((float)timeout / 15.625);
+  uint32_t timeoutValue = (uint32_t)( fpm::fixed_24_8 {timeout} / fpm::fixed_24_8 {15.625});
   state                 = startReceive(timeoutValue);
   RADIOLIB_ASSERT(state);
 
