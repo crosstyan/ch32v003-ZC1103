@@ -27,8 +27,8 @@ set(LLCC68_SRC
         ${LLCC68_DIRECTORY}/src/Module.cpp)
 include_directories(${LLCC68_DIRECTORY}/inc)
 
-set(FPM_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/fpm)
-include_directories(${FPM_DIRECTORY}/include)
+set(CNL_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/fpm)
+include_directories(${CNL_DIRECTORY}/include)
 
 #set(RAIDOLIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/RadioLib)
 #include_directories(${RAIDOLIB_DIRECTORY}/src

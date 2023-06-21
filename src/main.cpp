@@ -15,7 +15,6 @@
 #include <pb_decode.h>
 #include "simple.pb.h"
 #include "led.h"
-#include <fpm/fixed.hpp>
 #include <etl/random.h>
 
 #ifdef TX
