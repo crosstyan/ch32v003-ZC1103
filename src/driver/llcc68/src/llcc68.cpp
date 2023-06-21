@@ -4,6 +4,7 @@
 
 #include "llcc68.h"
 #include <fpm/fixed.hpp>
+#include <fpm/math.hpp>
 
 using namespace GPIO;
 
@@ -1464,44 +1465,46 @@ int16_t LLCC68::setTCXO(float voltage, uint32_t delay) {
     clearDeviceErrors();
   }
 
+  auto v = fpm::fixed_16_16 (voltage);
   // check 0 V disable
 #warning "TODO"
-//  if (fabs(voltage - 0.0) <= 0.001) {
-//    return (reset(true));
-//  }
-//
-//  // check alowed voltage values
-//  uint8_t data[4];
-//  if (fabs(voltage - 1.6) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_6;
-//  } else if (fabs(voltage - 1.7) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_7;
-//  } else if (fabs(voltage - 1.8) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_8;
-//  } else if (fabs(voltage - 2.2) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_2;
-//  } else if (fabs(voltage - 2.4) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_4;
-//  } else if (fabs(voltage - 2.7) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_7;
-//  } else if (fabs(voltage - 3.0) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_3_0;
-//  } else if (fabs(voltage - 3.3) <= 0.001) {
-//    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_3_3;
-//  } else {
-//    return (RADIOLIB_ERR_INVALID_TCXO_VOLTAGE);
-//  }
-//
-//  // calculate delay
-//  uint32_t delayValue = (float)delay / 15.625;
-//  data[1]             = (uint8_t)((delayValue >> 16) & 0xFF);
-//  data[2]             = (uint8_t)((delayValue >> 8) & 0xFF);
-//  data[3]             = (uint8_t)(delayValue & 0xFF);
-//
-//  this->tcxoDelay = delay;
-//
-//  // enable TCXO control on DIO3
-//  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, data, 4));
+  if (fpm::abs(v - fpm::fixed_16_16 (0.0)) <= fpm::fixed_16_16 (0.001)) {
+    return (reset(true));
+  }
+  auto precision = fpm::fixed_16_16 (0.001);
+
+  // check alowed voltage values
+  uint8_t data[4];
+  if (fpm::abs(v - fpm::fixed_16_16 {1.6}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_6;
+  } else if (fpm::abs(v - fpm::fixed_16_16 {1.7}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_7;
+  } else if (fpm::abs(v - fpm::fixed_16_16 {1.8}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_8;
+  } else if (fpm::abs(v - fpm::fixed_16_16 {2.2}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_2;
+  } else if (fpm::abs(v - fpm::fixed_16_16 {2.4}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_4;
+  } else if (fpm::abs(v - fpm::fixed_16_16 {2.7}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_7;
+  } else if (fpm::abs(v - fpm::fixed_16_16 {3.0}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_3_0;
+  } else if (fpm::abs(v - fpm::fixed_16_16 {3.3}) <= precision) {
+    data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_3_3;
+  } else {
+    return (RADIOLIB_ERR_INVALID_TCXO_VOLTAGE);
+  }
+
+  // calculate delay
+  uint32_t delayValue = (float)delay / 15.625;
+  data[1]             = (uint8_t)((delayValue >> 16) & 0xFF);
+  data[2]             = (uint8_t)((delayValue >> 8) & 0xFF);
+  data[3]             = (uint8_t)(delayValue & 0xFF);
+
+  this->tcxoDelay = delay;
+
+  // enable TCXO control on DIO3
+  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, data, 4));
 }
 
 int16_t LLCC68::setDio2AsRfSwitch(bool enable) {
@@ -1682,13 +1685,16 @@ int16_t LLCC68::setHeaderType(uint8_t hdrType, size_t len) {
 }
 
 int16_t LLCC68::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, uint8_t ldro) {
-  // calculate symbol length and enable low data rate optimization, if auto-configuration is enabled
+  // calculate symbol length and enable low data rate optimization, if autoconfiguration is enabled
   if (this->ldroAuto) {
-//    auto symbolLength = fpm::fixed_16_16 (uint32_t(1) << this->spreadingFactor) / fpm::fixed_16_16(this->bandwidthKhz) ;
-//    auto symbolLength = fpm::fixed_24_8 (uint32_t(1) << this->spreadingFactor) + fpm::fixed_24_8(this->bandwidthKhz) ;
-    auto symbolLength = fpm::fixed_24_8 {10};
+    // auto symbolLength = fpm::fixed_16_16 (uint32_t(1) << this->spreadingFactor) / fpm::fixed_16_16(this->bandwidthKhz) ;
+    // the conversion from float to fixed point is somehow use float arithmetics...
+    // so conversion is necessary
+    auto a = static_cast<uint32_t>(uint32_t(1) << this->spreadingFactor);
+    auto b = static_cast<uint32_t>(this->bandwidthKhz);
+    auto symbolLength =  static_cast<uint32_t>(a / b);
     RADIOLIB_DEBUG_PRINTLN("Symbol length: %f ms", symbolLength);
-    if (symbolLength >= fpm::fixed_24_8 (16.0)) {
+    if (symbolLength >= 16.0) {
       this->ldrOptimize = RADIOLIB_SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_ON;
     } else {
       this->ldrOptimize = RADIOLIB_SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_OFF;
