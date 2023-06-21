@@ -12,7 +12,7 @@
 #define CH32V003_SPI_DIRECTION_2LINE_TXRX
 // 支持的模式是时钟极性为正，相位极性可选
 // 当 ckpha=1 时，为下降沿采样，ckpha=0 时，上升沿采样。
-#define CH32V003_SPI_CLK_MODE_POL0_PHA1
+#define CH32V003_SPI_CLK_MODE_POL0_PHA0
 #define CH32V003_SPI_NSS_SOFTWARE_ANY_MANUAL
 #define CH32V003_SPI_IMPLEMENTATION
 

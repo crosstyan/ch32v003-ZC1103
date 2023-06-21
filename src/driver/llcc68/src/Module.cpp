@@ -1,6 +1,7 @@
 #include "Module.h"
 #include "printf.h"
 #include <inttypes.h>
+#include "cstring"
 
 Module::Module(RadioLibHal *hal, uint32_t cs, uint32_t irq, uint32_t rst, uint32_t gpio) : csPin(cs), irqPin(irq), rstPin(rst), gpioPin(gpio) {
   this->hal = hal;
@@ -403,7 +404,7 @@ void Module::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
 
 void Module::setRfSwitchTable(const uint32_t (&pins)[3], const RfSwitchMode_t table[]) {
 #warning "FIXME"
-//  memcpy(this->rfSwitchPins, pins, sizeof(this->rfSwitchPins));
+  memcpy(this->rfSwitchPins, pins, sizeof(this->rfSwitchPins));
   this->rfSwitchTable = table;
   for(size_t i = 0; i < RFSWITCH_MAX_PINS; i++)
     this->hal->pinMode(pins[i], this->hal->GpioModeOutput);

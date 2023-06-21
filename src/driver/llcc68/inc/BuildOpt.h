@@ -346,7 +346,7 @@
  * Note: Enabled by default.
  */
 #if !defined(RADIOLIB_SPI_PARANOID)
-  // #define RADIOLIB_SPI_PARANOID
+   #define RADIOLIB_SPI_PARANOID
 #endif
 
 /*

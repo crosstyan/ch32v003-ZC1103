@@ -25,10 +25,13 @@
 #endif
 
 // TODO: what's the IRQ pin?
-static const pin_size_t IRQ_PIN = RADIOLIB_NC;
+// DIO2 is connected to IRQ (at PD1)
+static const pin_size_t IRQ_PIN = GPIO::D1;
 static const pin_size_t BUSY_PIN      = GPIO::C3;
 static const pin_size_t CS_PIN       = GPIO::C4;
 static const pin_size_t RST_PIN      = GPIO::C0;
+static const pin_size_t RX_EN_PIN = GPIO::C1;
+static const pin_size_t TX_EN_PIN = GPIO::C2;
 
 int main() {
   SystemInit48HSI();
@@ -41,10 +44,16 @@ int main() {
   configureEXTI();
 
   auto hal = RadioLibHal();
+  hal.spiBegin();
   auto mod = Module(&hal, CS_PIN, IRQ_PIN, RST_PIN, BUSY_PIN);
   auto rf     = LLCC68(&mod);
+  rf.setRfSwitchPins(RX_EN_PIN, TX_EN_PIN);
+  rf.setDio2AsRfSwitch(false);
   // TODO: ...
-   rf.begin();
+  auto res = rf.begin(434);
+  if (res != RADIOLIB_ERR_NONE) {
+    printf("[ERROR] failed to initialize radio, code %d\n", res);
+  }
 
   // expect to be 0x03
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
@@ -116,6 +125,10 @@ int main() {
         while (res.has_value()) {
           auto &v = res.value();
           printf("counter:%d; size=%d; payload_size=%d; \n", message.counter, v.size(), stream.bytes_written);
+          auto r = rf.transmit(reinterpret_cast<uint8_t *>(v.data()), v.size());
+          if (r != RADIOLIB_ERR_NONE) {
+            printf("[ERROR] failed to transmit, code %d\n", r);
+          }
 //          rf.send(v.data(), v.size());
           digitalWrite(GPIO::D6, GPIO::HIGH);
           Delay_Ms(10);

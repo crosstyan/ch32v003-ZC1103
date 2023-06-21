@@ -5,6 +5,7 @@
 #include "llcc68.h"
 #include <fpm/fixed.hpp>
 #include <fpm/math.hpp>
+#include <printf.h>
 
 using namespace GPIO;
 
@@ -116,28 +117,30 @@ int16_t LLCC68::transmit(uint8_t *data, size_t len, uint8_t addr) {
     return (RADIOLIB_ERR_UNKNOWN);
   }
 
-  RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
+  // RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
 
   // start transmission
   state = startTransmit(data, len, addr);
   RADIOLIB_ASSERT(state);
 
+  // get ms
+  timeout = timeout / 1000;
   // NOTE: Don't get paranoid...
   //
-  // wait for packet transmission or timeout
-  //  uint32_t start = this->mod->hal->micros();
-  //  while(!this->mod->hal->digitalRead(this->mod->getIrq())) {
-  //    this->mod->hal->yield();
-  //    if(this->mod->hal->micros() - start > timeout) {
-  //      finishTransmit();
-  //      return(RADIOLIB_ERR_TX_TIMEOUT);
-  //    }
-  //  }
-  //  uint32_t elapsed = this->mod->hal->micros() - start;
+  //   wait for packet transmission or timeout
+  uint32_t start = this->mod->hal->millis();
+  while (!this->mod->hal->digitalRead(this->mod->getIrq())) {
+    this->mod->hal->yield();
+    if (this->mod->hal->millis() - start > timeout) {
+      finishTransmit();
+      return (RADIOLIB_ERR_TX_TIMEOUT);
+    }
+  }
+  uint32_t elapsed = this->mod->hal->millis() - start;
 
   // update data rate
   // Why the data rate need to be updated?
-  // this->dataRateMeasured = (len*8.0)/((float)elapsed/1000000.0);
+   this->dataRateMeasured = (len * 8.0) / (elapsed / 1000);
 
   return (finishTransmit());
 }
@@ -182,15 +185,15 @@ int16_t LLCC68::receive(uint8_t *data, size_t len) {
 #warning "TODO: eliminate floating point math"
     // https://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html
     auto symbolLength = static_cast<fpm::fixed_16_16>(uint32_t(1) << this->spreadingFactor) / static_cast<fpm::fixed_16_16>(this->bandwidthKhz);
-    timeout            = (uint32_t)(symbolLength * 100 * 1000);
+    timeout           = (uint32_t)(symbolLength * 100 * 1000);
   } else if (modem == RADIOLIB_SX126X_PACKET_TYPE_GFSK) {
     // calculate timeout (500 % of expected time-one-air)
     size_t maxLen = len;
     if (len == 0) {
       maxLen = 0xFF;
     }
-    auto brBps = static_cast<uint32_t>(static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ*1000000.0 * 32.0) / this->bitRate);
-    timeout     = (uint32_t)(((maxLen * 8.0) / brBps) * 1000000.0 * 5.0);
+    auto brBps = static_cast<uint32_t>(static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ * 1000000.0 * 32.0) / this->bitRate);
+    timeout    = (uint32_t)(((maxLen * 8.0) / brBps) * 1000000.0 * 5.0);
 
   } else {
     return (RADIOLIB_ERR_UNKNOWN);
@@ -199,7 +202,7 @@ int16_t LLCC68::receive(uint8_t *data, size_t len) {
   RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
 
   // start reception
-  uint32_t timeoutValue = (uint32_t)( fpm::fixed_24_8 {timeout} / fpm::fixed_24_8 {15.625});
+  uint32_t timeoutValue = (uint32_t)(fpm::fixed_24_8{timeout} / fpm::fixed_24_8{15.625});
   state                 = startReceive(timeoutValue);
   RADIOLIB_ASSERT(state);
 
@@ -428,7 +431,8 @@ int16_t LLCC68::finishTransmit() {
   clearIrqStatus();
 
   // set mode to standby to disable transmitter/RF switch
-  return (standby());
+  // standby()
+  return RADIOLIB_ERR_NONE;
 }
 
 int16_t LLCC68::startReceive() {
@@ -644,7 +648,7 @@ int16_t LLCC68::setBandwidth(float bw) {
   RADIOLIB_CHECK_RANGE(bw, 0.0, 510.0, RADIOLIB_ERR_INVALID_BANDWIDTH);
 
   // check allowed bandwidth values
-  auto bw_div2 = static_cast<uint8_t>(fpm::fixed_16_16 {bw}  / 2 + fpm::fixed_16_16 {0.01});
+  auto bw_div2 = static_cast<uint8_t>(fpm::fixed_16_16{bw} / 2 + fpm::fixed_16_16{0.01});
   switch (bw_div2) {
     case 3: // 7.8:
       this->bandwidth = RADIOLIB_SX126X_LORA_BW_7_8;
@@ -745,7 +749,7 @@ int16_t LLCC68::setCurrentLimit(float currentLimit) {
   }
 
   // calculate raw value
-  uint8_t rawLimit = (uint8_t)( fpm::fixed_16_16 {currentLimit} / fpm::fixed_16_16 {2.5});
+  uint8_t rawLimit = (uint8_t)(fpm::fixed_16_16{currentLimit} / fpm::fixed_16_16{2.5});
 
   // update register
   return (writeRegister(RADIOLIB_SX126X_REG_OCP_CONFIGURATION, &rawLimit, 1));
@@ -1231,7 +1235,8 @@ uint32_t LLCC68::getTimeOnAir(size_t len) {
   // everything is in microseconds to allow integer arithmetic
   // some constants have .25, these are multiplied by 4, and have _x4 postfix to indicate that fact
   if (getPacketType() == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-    uint32_t symbolLength_us = ((uint32_t)(1000 * 10) << this->spreadingFactor) / (this->bandwidthKhz * 10);
+    auto ibw                 = static_cast<uint32_t>(this->bandwidthKhz * 10);
+    uint32_t symbolLength_us = ((uint32_t)(1000 * 10) << this->spreadingFactor) / ibw;
     uint8_t sfCoeff1_x4      = 17; // (4.25 * 4)
     uint8_t sfCoeff2         = 8;
     if (this->spreadingFactor == 5 || this->spreadingFactor == 6) {
@@ -1465,31 +1470,31 @@ int16_t LLCC68::setTCXO(float voltage, uint32_t delay) {
     clearDeviceErrors();
   }
 
-  auto v = fpm::fixed_16_16 (voltage);
+  auto v = fpm::fixed_16_16(voltage);
   // check 0 V disable
 #warning "TODO"
-  if (fpm::abs(v - fpm::fixed_16_16 (0.0)) <= fpm::fixed_16_16 (0.001)) {
+  if (fpm::abs(v - fpm::fixed_16_16(0.0)) <= fpm::fixed_16_16(0.001)) {
     return (reset(true));
   }
-  auto precision = fpm::fixed_16_16 (0.001);
+  auto precision = fpm::fixed_16_16(0.001);
 
   // check alowed voltage values
   uint8_t data[4];
-  if (fpm::abs(v - fpm::fixed_16_16 {1.6}) <= precision) {
+  if (fpm::abs(v - fpm::fixed_16_16{1.6}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_6;
-  } else if (fpm::abs(v - fpm::fixed_16_16 {1.7}) <= precision) {
+  } else if (fpm::abs(v - fpm::fixed_16_16{1.7}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_7;
-  } else if (fpm::abs(v - fpm::fixed_16_16 {1.8}) <= precision) {
+  } else if (fpm::abs(v - fpm::fixed_16_16{1.8}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_1_8;
-  } else if (fpm::abs(v - fpm::fixed_16_16 {2.2}) <= precision) {
+  } else if (fpm::abs(v - fpm::fixed_16_16{2.2}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_2;
-  } else if (fpm::abs(v - fpm::fixed_16_16 {2.4}) <= precision) {
+  } else if (fpm::abs(v - fpm::fixed_16_16{2.4}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_4;
-  } else if (fpm::abs(v - fpm::fixed_16_16 {2.7}) <= precision) {
+  } else if (fpm::abs(v - fpm::fixed_16_16{2.7}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_2_7;
-  } else if (fpm::abs(v - fpm::fixed_16_16 {3.0}) <= precision) {
+  } else if (fpm::abs(v - fpm::fixed_16_16{3.0}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_3_0;
-  } else if (fpm::abs(v - fpm::fixed_16_16 {3.3}) <= precision) {
+  } else if (fpm::abs(v - fpm::fixed_16_16{3.3}) <= precision) {
     data[0] = RADIOLIB_SX126X_DIO3_OUTPUT_3_3;
   } else {
     return (RADIOLIB_ERR_INVALID_TCXO_VOLTAGE);
@@ -1691,8 +1696,9 @@ int16_t LLCC68::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, uint8_t 
     // the conversion from float to fixed point is somehow use float arithmetics...
     // so conversion is necessary
     auto a = static_cast<uint32_t>(uint32_t(1) << this->spreadingFactor);
-    auto b = static_cast<uint32_t>(this->bandwidthKhz);
-    auto symbolLength =  static_cast<uint32_t>(a / b);
+    // TODO: find out why
+    auto b            = static_cast<uint32_t>(this->bandwidthKhz);
+    auto symbolLength = static_cast<uint32_t>(a / b);
     RADIOLIB_DEBUG_PRINTLN("Symbol length: %f ms", symbolLength);
     if (symbolLength >= 16.0) {
       this->ldrOptimize = RADIOLIB_SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_ON;
@@ -1778,8 +1784,10 @@ int16_t LLCC68::fixSensitivity() {
   int16_t state             = readRegister(RADIOLIB_SX126X_REG_SENSITIVITY_CONFIG, &sensitivityConfig, 1);
   RADIOLIB_ASSERT(state);
 
+  auto ibw = static_cast<int>(this->bandwidthKhz);
+
   // fix the value for LoRa with 500 kHz bandwidth
-  if ((getPacketType() == RADIOLIB_SX126X_PACKET_TYPE_LORA) && (fabs(this->bandwidthKhz - 500.0) <= 0.001)) {
+  if ((getPacketType() == RADIOLIB_SX126X_PACKET_TYPE_LORA) && (std::abs(ibw) <= 1)) {
     sensitivityConfig &= 0xFB;
   } else {
     sensitivityConfig |= 0x04;
