@@ -1,4 +1,5 @@
 //#define TX
+//#define DISABLE_LED
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -6,7 +7,6 @@
 #include "gpio.h"
 #include "instant.h"
 #include "exti.h"
-// #include "rfsystem.h"
 #include "llcc68.h"
 #include "message_wrapper.h"
 #include "utils.h"
@@ -19,9 +19,7 @@
 #include "flags.h"
 
 #ifdef TX
-
 #include <pb_encode.h>
-
 #endif
 
 // TODO: what's the IRQ pin?
@@ -79,6 +77,7 @@ int main() {
   auto decoder = MessageWrapper::Decoder();
   auto instant_rx = Instant();
   auto d_rx           = std::chrono::duration<uint16_t, std::milli>(1);
+
 #endif
   while (true) {
 #ifdef TX
@@ -136,8 +135,11 @@ int main() {
       } else {
         printf("[ERROR] failed to encode\n");
       }
+#ifndef DISABLE_LED
       LED::setColor(random_r, random_g, random_b);
-//      LED::setColor(false, false, false);
+#else
+      LED::setColor(false, false, false);
+#endif
       pkt_id++;
       counter++;
       instant.reset();
@@ -153,10 +155,25 @@ int main() {
       rf.rx();
       if (instant_rx.elapsed() >= d_rx) {
         printf("\n");
+        printf("configuring standby\n");
+
+        // enable linex interrupt event
+        EXTI->EVENR |= EXTI_Line0;
+        EXTI->FTENR |= EXTI_Line0;
+
+        // select standby on power-down
+        PWR->CTLR |= PWR_CTLR_PDDS;
+
+        // peripheral interrupt controller send to deep sleep
+        PFIC->SCTLR |= (1 << 2);
+        __WFE();
       }
     }
+    // I'm not sure if standby is working...
+    __WFE();
     // See also `exti.cpp`
     if (Flags::getFlag()) {
+      SystemInit48HSI();
       printf("[INFO] RX flag set\n");
       char rx_buf[256];
       uint16_t rx_size;
@@ -206,8 +223,11 @@ int main() {
             auto c = message.counter;
             rgb    = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
             printf("[INFO] counter=%d; message=\"%s\"; rgb=0x%02x\n", c, string_payload.data(), rgb);
+#ifdef DISABLE_LED
+            LED::setColor(false, false, false);
+#else
             LED::setColor(message.is_red, message.is_green, message.is_blue);
-            //          LED::setColor(false, false, false);
+#endif
           } else {
             printf("[ERROR] failed to decode\n");
           }
