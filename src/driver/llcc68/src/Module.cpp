@@ -356,12 +356,6 @@ uint32_t Module::reflect(uint32_t in, uint8_t bits) {
   return(res);
 }
 
-void Module::hexdump(uint8_t* data, size_t len, uint32_t offset, uint8_t width, bool be) {
-  // width and endian would be ignored
-  utils::printWithSize(reinterpret_cast<char*>(data + offset), len - offset, true);
-  printf("\n");
-}
-
 #if defined(RADIOLIB_DEBUG) and defined(RADIOLIB_BUILD_ARDUINO)
 // https://github.com/esp8266/Arduino/blob/65579d29081cb8501e4d7f786747bf12e7b37da2/cores/esp8266/Print.cpp#L50
 size_t Module::serialPrintf(const char* format, ...) {
@@ -405,7 +399,6 @@ void Module::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
 }
 
 void Module::setRfSwitchTable(const uint32_t (&pins)[3], const RfSwitchMode_t table[]) {
-#warning "FIXME"
   memcpy(this->rfSwitchPins, pins, sizeof(this->rfSwitchPins));
   this->rfSwitchTable = table;
   for(size_t i = 0; i < RFSWITCH_MAX_PINS; i++)

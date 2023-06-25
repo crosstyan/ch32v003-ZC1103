@@ -460,15 +460,6 @@ class Module {
     */
     static uint32_t reflect(uint32_t in, uint8_t bits);
 
-    /*!
-      \brief Function to dump data as hex into the debug port.
-      \param data Data to dump.
-      \param len Number of bytes to dump.
-      \param width Word width (1 for uint8_t, 2 for uint16_t, 4 for uint32_t).
-      \param be Print multi-byte data as big endian. Defaults to false.
-    */
-    static void hexdump(uint8_t* data, size_t len, uint32_t offset = 0, uint8_t width = 1, bool be = false);
-
 #if !defined(RADIOLIB_GODMODE)
   private:
 #endif

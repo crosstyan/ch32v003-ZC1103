@@ -1,4 +1,4 @@
-//#define TX
+// #define TX
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -26,10 +26,10 @@
 
 // TODO: what's the IRQ pin?
 // DIO2 is connected to IRQ (at PD1)
-static const pin_size_t IRQ_PIN = GPIO::D1;
-static const pin_size_t BUSY_PIN      = GPIO::C3;
-static const pin_size_t CS_PIN       = GPIO::C4;
-static const pin_size_t RST_PIN      = GPIO::C0;
+static const pin_size_t IRQ_PIN   = GPIO::D1;
+static const pin_size_t BUSY_PIN  = GPIO::C3;
+static const pin_size_t CS_PIN    = GPIO::C4;
+static const pin_size_t RST_PIN   = GPIO::C0;
 static const pin_size_t RX_EN_PIN = GPIO::C1;
 static const pin_size_t TX_EN_PIN = GPIO::C2;
 
@@ -46,15 +46,15 @@ int main() {
   auto hal = RadioLibHal();
   hal.spiBegin();
   auto mod = Module(&hal, CS_PIN, IRQ_PIN, RST_PIN, BUSY_PIN);
-  auto rf     = LLCC68(&mod);
-  rf.setRfSwitchPins(RX_EN_PIN, TX_EN_PIN);
+  auto rf  = LLCC68(&mod);
+  //  rf.setRfSwitchPins(RX_EN_PIN, TX_EN_PIN);
   // TODO: ...
   auto res = rf.begin(434);
   if (res != RADIOLIB_ERR_NONE) {
     printf("[ERROR] failed to initialize radio, code %d\n", res);
   }
   // enable DIO1 and DIO2 interrupts
-  rf.setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
+  // Won't change as long as startTransmit() is not called
   // expect to be 0x03
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
 #ifdef TX
@@ -77,6 +77,7 @@ int main() {
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
 #else
   auto decoder = MessageWrapper::Decoder();
+  rf.setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
 #endif
   while (true) {
 #ifdef TX
@@ -93,8 +94,7 @@ int main() {
         random_b = rng.range(0, 1);
         temp     = random_r | (random_g << 1) | (random_b << 2);
       } while (!(temp != 0) || !(temp != rgb)); // refresh until at least one color is on and the color is different from the previous one
-      rgb = temp;
-      LED::setColor(random_r, random_g, random_b);
+      rgb                          = temp;
       message.is_red               = random_r;
       message.is_green             = random_g;
       message.is_blue              = random_b;
@@ -135,71 +135,74 @@ int main() {
       } else {
         printf("[ERROR] failed to encode\n");
       }
+      LED::setColor(random_r, random_g, random_b);
       pkt_id++;
       counter++;
       instant.reset();
     }
 #else // RX
-    // See also `exti.cpp`
-    if (Flags::getFlag()) {
+      // See also `exti.cpp`
+    char rx_buf[256];
+    uint16_t rx_size;
+    // when a valid packet is received the state should be 0xc0
+    // (at least the rx_pkt_state would be 0x00)
+    // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
+    // one should only use interrupt to detect the packet
+
+    // TODO: sleep and duty cycle (see `startReceiveDutyCycleAuto`)
+    // polling for now... interrupt is not working
+    // check `setDioIrqParams`
+    if (auto maybe_len = rf.tryReceive(reinterpret_cast<uint8_t *>(rx_buf))) {
       digitalWrite(GPIO::D6, GPIO::HIGH);
-      char rx_buf[256];
-      uint16_t rx_size;
-      // when a valid packet is received the state should be 0xc0
-      // (at least the rx_pkt_state would be 0x00)
-      // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
-      // one should only use interrupt to detect the packet
-      if (auto maybe_len = rf.tryReceive(reinterpret_cast<uint8_t *>(rx_buf))) {
-        rx_size = maybe_len.value();
-        auto h  = decoder.decodeHeader(rx_buf, rx_size);
-        if (h.has_value()) {
-          decoder.printHeader(h.value());
-        }
-        auto end_padding = rx_buf + rx_size - 3;
-        if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
-          printf("[ERROR] end padding is not correct. gets \"");
-          utils::printWithSize(rx_buf + rx_size - 3, 3, true);
-          printf("\"\n");
-        }
-        auto res = decoder.decode(rx_buf, rx_size);
-        if (res == MessageWrapper::WrapperDecodeResult::Finished) {
-          auto payload = decoder.getOutput();
-          etl::vector<char, 32> string_payload;
-          pb_istream_t istream         = pb_istream_from_buffer(reinterpret_cast<uint8_t *>(payload.data()), payload.size());
-          Simple message               = Simple_init_zero;
-          message.message.arg          = &string_payload;
-          message.message.funcs.decode = [](pb_istream_t *stream, const pb_field_t *field, void **arg) {
-            auto &payload = *(static_cast<etl::ivector<char> *>(*arg));
-            payload.clear();
-            if (stream->bytes_left > payload.max_size() - 1) {
-              return false;
-            }
-            payload.resize(stream->bytes_left);
-            if (!pb_read(stream, reinterpret_cast<uint8_t *>(payload.data()), stream->bytes_left)) {
-              return false;
-            }
-            payload.push_back('\0');
-            return true;
-          };
-          bool status = pb_decode(&istream, Simple_fields, &message);
-          if (status) {
-            auto c = message.counter;
-            rgb    = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
-            printf("[INFO] counter=%d; message=\"%s\"; rgb=0x%02x\n", c, string_payload.data(), rgb);
-            LED::setColor(message.is_red, message.is_green, message.is_blue);
-          } else {
-            printf("[ERROR] failed to decode\n");
-          }
-        } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
-          printf("[INFO] unfinished\n");
-        } else {
-          printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
-          decoder.reset();
-        }
-        Flags::setFlag(false);
+      rx_size = maybe_len.value();
+      auto h  = decoder.decodeHeader(rx_buf, rx_size);
+      if (h.has_value()) {
+        decoder.printHeader(h.value());
       }
-      digitalWrite(GPIO::D6, GPIO::LOW);
+      auto end_padding = rx_buf + rx_size - 3;
+      if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
+        printf("[ERROR] end padding is not correct. gets \"");
+        utils::printWithSize(rx_buf + rx_size - 3, 3, true);
+        printf("\"\n");
+      }
+      auto res = decoder.decode(rx_buf, rx_size);
+      if (res == MessageWrapper::WrapperDecodeResult::Finished) {
+        auto payload = decoder.getOutput();
+        etl::vector<char, 32> string_payload;
+        pb_istream_t istream         = pb_istream_from_buffer(reinterpret_cast<uint8_t *>(payload.data()), payload.size());
+        Simple message               = Simple_init_zero;
+        message.message.arg          = &string_payload;
+        message.message.funcs.decode = [](pb_istream_t *stream, const pb_field_t *field, void **arg) {
+          auto &payload = *(static_cast<etl::ivector<char> *>(*arg));
+          payload.clear();
+          if (stream->bytes_left > payload.max_size() - 1) {
+            return false;
+          }
+          payload.resize(stream->bytes_left);
+          if (!pb_read(stream, reinterpret_cast<uint8_t *>(payload.data()), stream->bytes_left)) {
+            return false;
+          }
+          payload.push_back('\0');
+          return true;
+        };
+        bool status = pb_decode(&istream, Simple_fields, &message);
+        if (status) {
+          auto c = message.counter;
+          rgb    = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
+          printf("[INFO] counter=%d; message=\"%s\"; rgb=0x%02x\n", c, string_payload.data(), rgb);
+          LED::setColor(message.is_red, message.is_green, message.is_blue);
+        } else {
+          printf("[ERROR] failed to decode\n");
+        }
+      } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
+        printf("[INFO] unfinished\n");
+      } else {
+        printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
+        decoder.reset();
+      }
+      Flags::setFlag(false);
     }
+    digitalWrite(GPIO::D6, GPIO::LOW);
 #endif
   }
 }
