@@ -72,13 +72,13 @@ int main() {
   LED::begin();
   auto rng = etl::random_xorshift();
   rng.initialise(0);
-  uint8_t rgb = 0;
+  uint8_t rgb;
 #ifdef TX
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
 #else
   auto decoder = MessageWrapper::Decoder();
   auto instant_rx = Instant();
-  auto d_rx           = std::chrono::duration<uint16_t, std::milli>(100);
+  auto d_rx           = std::chrono::duration<uint16_t, std::milli>(1);
 #endif
   while (true) {
 #ifdef TX
@@ -147,6 +147,7 @@ int main() {
       }
     }
 #else // RX
+    // I guess some reorder magic is happening here
     while (instant_rx.elapsed() < d_rx) {
       printf("*");
       rf.rx();
