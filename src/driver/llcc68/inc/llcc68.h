@@ -177,7 +177,7 @@ public:
     \param len Only for PhysicalLayer compatibility, not used.
     \returns \ref status_codes
   */
-  int16_t startReceive(uint32_t timeout, uint16_t irqFlags = RADIOLIB_SX126X_IRQ_RX_DEFAULT, uint16_t irqMask = RADIOLIB_SX126X_IRQ_RX_DONE, size_t len = 0);
+  int16_t startReceive(uint32_t timeout);
 
   /*!
     \brief Interrupt-driven receive method where the device mostly sleeps and periodically wakes to listen.
@@ -611,6 +611,11 @@ public:
    */
   int16_t setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = RADIOLIB_SX126X_IRQ_NONE, uint16_t dio3Mask = RADIOLIB_SX126X_IRQ_NONE);
 
+  /**
+   * @brief `startReceive` but infinite timeout
+   */
+  void rx();
+
 #if !defined(RADIOLIB_GODMODE)
 protected:
 #endif
@@ -640,7 +645,7 @@ protected:
   uint16_t getDeviceErrors();
   int16_t clearDeviceErrors();
 
-  int16_t startReceiveCommon(uint32_t timeout = RADIOLIB_SX126X_RX_TIMEOUT_INF, uint16_t irqFlags = RADIOLIB_SX126X_IRQ_RX_DEFAULT, uint16_t irqMask = RADIOLIB_SX126X_IRQ_RX_DONE);
+  int16_t beforeStartReceive(uint32_t timeout);
   int16_t setFrequencyRaw(float freq);
   int16_t setPacketMode(uint8_t mode, uint8_t len);
   int16_t setHeaderType(uint8_t hdrType, size_t len = 0xFF);

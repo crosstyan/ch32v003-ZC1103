@@ -1,4 +1,4 @@
-// #define TX
+//#define TX
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -47,13 +47,13 @@ int main() {
   hal.spiBegin();
   auto mod = Module(&hal, CS_PIN, IRQ_PIN, RST_PIN, BUSY_PIN);
   auto rf  = LLCC68(&mod);
+  rf.setDio2AsRfSwitch(false);
   //  rf.setRfSwitchPins(RX_EN_PIN, TX_EN_PIN);
   // TODO: ...
   auto res = rf.begin(434);
   if (res != RADIOLIB_ERR_NONE) {
     printf("[ERROR] failed to initialize radio, code %d\n", res);
   }
-  // enable DIO1 and DIO2 interrupts
   // Won't change as long as startTransmit() is not called
   // expect to be 0x03
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
@@ -77,7 +77,7 @@ int main() {
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
 #else
   auto decoder = MessageWrapper::Decoder();
-  rf.setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
+  rf.startReceive();
 #endif
   while (true) {
 #ifdef TX
@@ -136,12 +136,22 @@ int main() {
         printf("[ERROR] failed to encode\n");
       }
       LED::setColor(random_r, random_g, random_b);
+//      LED::setColor(false, false, false);
       pkt_id++;
       counter++;
       instant.reset();
+      if (Flags::getFlag()) {
+        printf("[INFO] TX flag set\n");
+        Flags::setFlag(false);
+      }
     }
 #else // RX
       // See also `exti.cpp`
+    if (Flags::getFlag()) {
+      printf("[INFO] RX flag set\n");
+      Flags::setFlag(false);
+    }
+
     char rx_buf[256];
     uint16_t rx_size;
     // when a valid packet is received the state should be 0xc0
@@ -191,6 +201,7 @@ int main() {
           rgb    = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
           printf("[INFO] counter=%d; message=\"%s\"; rgb=0x%02x\n", c, string_payload.data(), rgb);
           LED::setColor(message.is_red, message.is_green, message.is_blue);
+//          LED::setColor(false, false, false);
         } else {
           printf("[ERROR] failed to decode\n");
         }
@@ -200,7 +211,6 @@ int main() {
         printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
         decoder.reset();
       }
-      Flags::setFlag(false);
     }
     digitalWrite(GPIO::D6, GPIO::LOW);
 #endif

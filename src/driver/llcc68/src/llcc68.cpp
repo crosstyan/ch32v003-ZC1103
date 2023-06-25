@@ -81,7 +81,7 @@ int16_t LLCC68::begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, flo
   state = setCurrentLimit(60.0);
   RADIOLIB_ASSERT(state);
 
-  state = setDio2AsRfSwitch(true);
+  state = setDio2AsRfSwitch(false);
   RADIOLIB_ASSERT(state);
 
   state = setCRC(2);
@@ -252,7 +252,7 @@ int16_t LLCC68::packetMode() {
   RADIOLIB_ASSERT(state);
 
   // enable DIO2 RF switch
-  state = setDio2AsRfSwitch(true);
+  state = setDio2AsRfSwitch(false);
   RADIOLIB_ASSERT(state);
 
   return (state);
@@ -330,8 +330,9 @@ int16_t LLCC68::startTransmit(uint8_t *data, size_t len, uint8_t addr) {
   RADIOLIB_ASSERT(state);
 
   // set DIO mapping
-  // state = setDioIrqParams(RADIOLIB_SX126X_IRQ_TX_DONE | RADIOLIB_SX126X_IRQ_TIMEOUT, RADIOLIB_SX126X_IRQ_TX_DONE);
-  // RADIOLIB_ASSERT(state);
+   state = setDioIrqParams(RADIOLIB_SX126X_IRQ_TX_DONE | RADIOLIB_SX126X_IRQ_TIMEOUT, RADIOLIB_SX126X_IRQ_TX_DONE, RADIOLIB_SX126X_IRQ_TX_DONE);
+//  state = setDioIrqParams(RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE);
+   RADIOLIB_ASSERT(state);
 
   // set buffer pointers
   state = setBufferBaseAddress();
@@ -374,12 +375,14 @@ int16_t LLCC68::finishTransmit() {
 }
 
 int16_t LLCC68::startReceive() {
-  return (this->startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF, RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, 0));
+  auto res = this->startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF);
+  // enable DIO1 and DIO2 interrupts
+  setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
+  return res;
 }
 
-int16_t LLCC68::startReceive(uint32_t timeout, uint16_t irqFlags, uint16_t irqMask, size_t len) {
-  (void)len;
-  int16_t state = startReceiveCommon(timeout, irqFlags, irqMask);
+int16_t LLCC68::startReceive(uint32_t timeout) {
+  int16_t state = beforeStartReceive(timeout);
   RADIOLIB_ASSERT(state);
 
   // set RF switch (if present)
@@ -410,7 +413,7 @@ int16_t LLCC68::startReceiveDutyCycle(uint32_t rxPeriod, uint32_t sleepPeriod, u
     return (RADIOLIB_ERR_INVALID_SLEEP_PERIOD);
   }
 
-  int16_t state = startReceiveCommon(RADIOLIB_SX126X_RX_TIMEOUT_INF, irqFlags, irqMask);
+  int16_t state = beforeStartReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF);
   RADIOLIB_ASSERT(state);
 
   uint8_t data[6] = {(uint8_t)((rxPeriodRaw >> 16) & 0xFF), (uint8_t)((rxPeriodRaw >> 8) & 0xFF), (uint8_t)(rxPeriodRaw & 0xFF),
@@ -430,7 +433,7 @@ int16_t LLCC68::startReceiveDutyCycleAuto(uint16_t senderPreambleLength, uint16_
 
   // if we're not to sleep at all, just use the standard startReceive.
   if (2 * minSymbols > senderPreambleLength) {
-    return (startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF, irqFlags, irqMask));
+    return (startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
   }
 
   uint32_t symbolLength = (static_cast<uint32_t>(10 * 1000) << this->spreadingFactor) / static_cast<uint32_t>(fixed_16_16{10} * this->bandwidthKhz);
@@ -450,33 +453,31 @@ int16_t LLCC68::startReceiveDutyCycleAuto(uint16_t senderPreambleLength, uint16_
 
   // If our sleep period is shorter than our transition time, just use the standard startReceive
   if (sleepPeriod < this->tcxoDelay + 1016) {
-    return (startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF, irqFlags, irqMask));
+    return (startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
   }
 
   return (startReceiveDutyCycle(wakePeriod, sleepPeriod, irqFlags, irqMask));
 }
 
-int16_t LLCC68::startReceiveCommon(uint32_t timeout, uint16_t irqFlags, uint16_t irqMask) {
+int16_t LLCC68::beforeStartReceive(uint32_t timeout) {
   // set DIO mapping
-  if (timeout != RADIOLIB_SX126X_RX_TIMEOUT_INF) {
-    irqMask |= RADIOLIB_SX126X_IRQ_TIMEOUT;
-  }
-  int16_t state = setDioIrqParams(irqFlags, irqMask);
-  RADIOLIB_ASSERT(state);
+//  if (timeout != RADIOLIB_SX126X_RX_TIMEOUT_INF) {
+//    irqMask |= RADIOLIB_SX126X_IRQ_TIMEOUT;
+//  }
+//  int16_t state = setDioIrqParams(irqFlags, irqMask);
+//  RADIOLIB_ASSERT(state);
 
   // set buffer pointers
-  state = setBufferBaseAddress();
+  auto state = setBufferBaseAddress();
   RADIOLIB_ASSERT(state);
 
   // clear interrupt flags
-  state = clearIrqStatus();
+  // state = clearIrqStatus();
 
   // restore original packet length
   uint8_t modem = getPacketType();
   if (modem == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
     state = setPacketParams(this->preambleLengthLoRa, this->crcTypeLoRa, this->implicitLen, this->headerType, this->invertIQEnabled);
-  } else if (modem == RADIOLIB_SX126X_PACKET_TYPE_GFSK) {
-    state = setPacketParamsFSK(this->preambleLengthFSK, this->crcTypeFSK, this->syncWordLength, this->addrComp, this->whitening, this->packetType);
   } else {
     return (RADIOLIB_ERR_UNKNOWN);
   }
