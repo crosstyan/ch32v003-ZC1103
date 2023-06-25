@@ -18,9 +18,7 @@
 #include "radio_sx126x.h"
 #include "TypeDef.h"
 #include "Module.h"
-#include <fpm/fixed.hpp>
-
-using namespace fpm;
+#include "cnl_def.h"
 
 // basically LLCC68 is a SX126x
 // LLCC68芯片引脚兼容SX1262,且在设计、驱动代码及应用上与SX1262完全相同
