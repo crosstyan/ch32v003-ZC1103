@@ -1996,10 +1996,6 @@ int16_t LLCC68::setFrequency(float freq, bool calibrate) {
 }
 
 etl::optional<size_t> LLCC68::tryReceive(uint8_t *data) {
-  // Rx Single Mode
-  setRx(RADIOLIB_SX126X_RX_TIMEOUT_NONE);
-  // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_RX);
   auto status     = getIrqStatus();
   auto is_rx_done = (status & RADIOLIB_SX126X_IRQ_RX_DONE) > 0;
   if (is_rx_done) {
@@ -2011,4 +2007,11 @@ etl::optional<size_t> LLCC68::tryReceive(uint8_t *data) {
     // no packet
     return etl::nullopt;
   }
+}
+void LLCC68::rx() {
+  setRx(RADIOLIB_SX126X_RX_TIMEOUT_INF);
+  // enable DIO1 and DIO2 interrupts
+  setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
+  // set RF switch (if present)
+  this->mod->setRfSwitchState(Module::MODE_RX);
 }
