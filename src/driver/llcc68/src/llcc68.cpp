@@ -167,64 +167,6 @@ int16_t LLCC68::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t sync
   return (state);
 }
 
-int16_t LLCC68::receive(uint8_t *data, size_t len) {
-  // set mode to standby
-  int16_t state = standby();
-  RADIOLIB_ASSERT(state);
-
-  uint32_t timeout = 0;
-
-  // get currently active modem
-  uint8_t modem = getPacketType();
-  if (modem == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-    // calculate timeout (100 LoRa symbols, the default for SX127x series)
-    // TODO: eliminate floating point math
-    // use fixed point math instead
-#warning "TODO: eliminate floating point math"
-    // https://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html
-    auto symbolLength = static_cast<fixed_16_16>(uint32_t(1) << this->spreadingFactor) / static_cast<fixed_16_16>(this->bandwidthKhz);
-    timeout           = (uint32_t)(symbolLength * 100 * 1000);
-  } else if (modem == RADIOLIB_SX126X_PACKET_TYPE_GFSK) {
-    // calculate timeout (500 % of expected time-one-air)
-    size_t maxLen = len;
-    if (len == 0) {
-      maxLen = 0xFF;
-    }
-    auto brBps = static_cast<uint32_t>(static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ * 1000000 * 32) / this->bitRate);
-    timeout    = (uint32_t)(((maxLen * 8.0) / brBps) * 1000000.0 * 5.0);
-
-  } else {
-    return (RADIOLIB_ERR_UNKNOWN);
-  }
-
-  RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
-
-  // start reception
-  uint32_t timeoutValue = (uint32_t)(fixed_24_8{timeout} / fixed_24_8{15.625});
-  state                 = startReceive(timeoutValue);
-  RADIOLIB_ASSERT(state);
-
-  // wait for packet reception or timeout
-  uint32_t start = this->mod->hal->millis();
-  while (!this->mod->hal->digitalRead(this->mod->getIrq())) {
-    this->mod->hal->yield();
-    if (this->mod->hal->millis() - start > (timeout / 1000.0)) {
-      fixImplicitTimeout();
-      clearIrqStatus();
-      standby();
-      return (RADIOLIB_ERR_RX_TIMEOUT);
-    }
-  }
-
-  // fix timeout in implicit LoRa mode
-  if (((this->headerType == RADIOLIB_SX126X_LORA_HEADER_IMPLICIT) && (getPacketType() == RADIOLIB_SX126X_PACKET_TYPE_LORA))) {
-    state = fixImplicitTimeout();
-    RADIOLIB_ASSERT(state);
-  }
-
-  // read the received data
-  return (readData(data, len));
-}
 
 int16_t LLCC68::transmitDirect(uint32_t frf) {
   // set RF switch (if present)
@@ -1233,8 +1175,8 @@ uint32_t LLCC68::getTimeOnAir(size_t len) {
   // everything is in microseconds to allow integer arithmetic
   // some constants have .25, these are multiplied by 4, and have _x4 postfix to indicate that fact
   if (getPacketType() == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-    auto ibw                 = static_cast<uint32_t>(this->bandwidthKhz * 10);
-    uint32_t symbolLength_us = (static_cast<uint32_t>(1000 * 10) << this->spreadingFactor) / ibw;
+    auto ubw                 = static_cast<uint32_t>(this->bandwidthKhz * 10);
+    uint32_t symbolLength_us = (static_cast<uint32_t>(1000 * 10) << this->spreadingFactor) / ubw;
     uint8_t sfCoeff1_x4      = 17; // (4.25 * 4)
     uint8_t sfCoeff2         = 8;
     if (this->spreadingFactor == 5 || this->spreadingFactor == 6) {
@@ -1263,8 +1205,8 @@ uint32_t LLCC68::getTimeOnAir(size_t len) {
   } else {
     // don't ask why crazy casting performed here
     // float arithmetics should be eliminated
-    auto numerator = static_cast<uint32_t>( static_cast<uint32_t >(len) * static_cast<uint32_t>(8) * this->bitRate);
-    return static_cast<uint32_t>(numerator / static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ * 32));
+    auto nu = static_cast<uint32_t>( len * 8 * this->bitRate);
+    return static_cast<uint32_t>(nu / static_cast<uint32_t>(RADIOLIB_SX126X_CRYSTAL_FREQ * 32));
   }
 }
 
@@ -1695,12 +1637,12 @@ int16_t LLCC68::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, uint8_t 
     // auto symbolLength = fpm::fixed_16_16 (uint32_t(1) << this->spreadingFactor) / fpm::fixed_16_16(this->bandwidthKhz) ;
     // the conversion from float to fixed point is somehow use float arithmetics...
     // so conversion is necessary
-    auto a = static_cast<uint32_t>(uint32_t(1) << this->spreadingFactor);
+    auto nu = static_cast<fixed_24_8>(1 << this->spreadingFactor);
     // TODO: find out why
-    auto b            = static_cast<uint32_t>(this->bandwidthKhz);
-    auto symbolLength = static_cast<uint32_t>(a / b);
-    RADIOLIB_DEBUG_PRINTLN("Symbol length: %lu ms", symbolLength);
-    if (symbolLength >= 16.0) {
+    auto de           = static_cast<fixed_24_8>(this->bandwidthKhz);
+    auto symbolLength = nu / de;
+    RADIOLIB_DEBUG_PRINTLN("Symbol length: %lu ms", static_cast<uint32_t>(symbolLength));
+    if (symbolLength >= 16) {
       this->ldrOptimize = RADIOLIB_SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_ON;
     } else {
       this->ldrOptimize = RADIOLIB_SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_OFF;
@@ -2050,4 +1992,20 @@ int16_t LLCC68::setFrequency(float freq, bool calibrate) {
 
   // set frequency
   return (setFrequencyRaw(freq));
+}
+
+etl::optional<size_t> LLCC68::tryReceive(uint8_t *data) {
+  // Rx Single Mode
+  setRx(RADIOLIB_SX126X_RX_TIMEOUT_NONE);
+  auto status = getIrqStatus();
+  auto is_rx_done = (status & RADIOLIB_SX126X_IRQ_RX_DONE) > 0;
+  if (is_rx_done) {
+    clearIrqStatus(RADIOLIB_SX126X_IRQ_RX_DONE);
+    auto len = getPacketLength(true);
+    readData(data, 0);
+    return etl::make_optional(len);
+  }  else {
+    // no packet
+    return etl::nullopt;
+  }
 }

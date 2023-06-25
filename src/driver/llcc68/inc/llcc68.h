@@ -19,6 +19,7 @@
 #include "TypeDef.h"
 #include "Module.h"
 #include "cnl_def.h"
+#include <etl/optional.h>
 
 // basically LLCC68 is a SX126x
 // LLCC68芯片引脚兼容SX1262,且在设计、驱动代码及应用上与SX1262完全相同
@@ -76,6 +77,7 @@ public:
   */
   int16_t reset(bool verify = true);
 
+  etl::optional<size_t> tryReceive(uint8_t* data);
 
   /*!
     \brief Blocking binary transmit method.
@@ -85,16 +87,7 @@ public:
     \param addr Address to send the data to. Will only be added if address filtering was enabled.
     \returns \ref status_codes
   */
-  int16_t transmit(uint8_t* data, size_t len, uint8_t addr = 0) ;
-
-  /*!
-    \brief Blocking binary receive method.
-    Overloads for string-based transmissions are implemented in PhysicalLayer.
-    \param data Binary data to be sent.
-    \param len Number of bytes to send.
-    \returns \ref status_codes
-  */
-  int16_t receive(uint8_t* data, size_t len) ;
+  int16_t transmit(uint8_t* data, size_t len, uint8_t addr = 0);
 
   /*!
     \brief Starts direct mode transmission.
@@ -613,6 +606,11 @@ public:
   */
   int16_t setOutputPower(int8_t power);
 
+  /**
+   * @brief The IrqMask masks or unmasks the IRQ which can be triggered by the device. By default, all IRQ are masked (all ‘0’) and the user can enable them one by one (or several at a time) by setting the corresponding mask to ‘1’.
+   */
+  int16_t setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = RADIOLIB_SX126X_IRQ_NONE, uint16_t dio3Mask = RADIOLIB_SX126X_IRQ_NONE);
+
 #if !defined(RADIOLIB_GODMODE)
 protected:
 #endif
@@ -626,7 +624,6 @@ protected:
   int16_t readRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
   int16_t writeBuffer(uint8_t* data, uint8_t numBytes, uint8_t offset = 0x00);
   int16_t readBuffer(uint8_t* data, uint8_t numBytes, uint8_t offset = 0x00);
-  int16_t setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = RADIOLIB_SX126X_IRQ_NONE, uint16_t dio3Mask = RADIOLIB_SX126X_IRQ_NONE);
   int16_t clearIrqStatus(uint16_t clearIrqParams = RADIOLIB_SX126X_IRQ_ALL);
   int16_t setRfFrequency(uint32_t frf);
   int16_t calibrateImage(uint8_t* data);

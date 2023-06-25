@@ -2,6 +2,7 @@
 #include "printf.h"
 #include <inttypes.h>
 #include "cstring"
+#include "utils.h"
 
 Module::Module(RadioLibHal *hal, uint32_t cs, uint32_t irq, uint32_t rst, uint32_t gpio) : csPin(cs), irqPin(irq), rstPin(rst), gpioPin(gpio) {
   this->hal = hal;
@@ -356,8 +357,9 @@ uint32_t Module::reflect(uint32_t in, uint8_t bits) {
 }
 
 void Module::hexdump(uint8_t* data, size_t len, uint32_t offset, uint8_t width, bool be) {
-#warning "memory efficient implementation needed"
-  // TODO: memory efficient implementation
+  // width and endian would be ignored
+  utils::printWithSize(reinterpret_cast<char*>(data + offset), len - offset, true);
+  printf("\n");
 }
 
 #if defined(RADIOLIB_DEBUG) and defined(RADIOLIB_BUILD_ARDUINO)

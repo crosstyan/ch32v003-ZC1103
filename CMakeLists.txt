@@ -39,7 +39,7 @@ include_directories(${CNL_DIRECTORY}/include)
 #        ${RAIDOLIB_DIRECTORY}/src/Module.cpp
 #        ${RAIDOLIB_DIRECTORY}/src/Hal.cpp)
 
-set(APP_SRC src/main.cpp src/system_tick.cpp src/utils.cpp src/exti.cpp src/message_wrapper.cpp)
+set(APP_SRC src/main.cpp src/system_tick.cpp src/utils.cpp src/exti.cpp src/message_wrapper.cpp src/flags.cpp)
 set(GPIO_SRC src/driver/gpio/gpio.cpp)
 include_directories(src/inc src/driver/gpio)
 
