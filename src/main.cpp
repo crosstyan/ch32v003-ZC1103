@@ -155,22 +155,22 @@ int main() {
       rf.rx();
       if (instant_rx.elapsed() >= d_rx) {
         printf("\n");
-        printf("configuring standby\n");
+//        printf("configuring standby\n");
 
-        // enable linex interrupt event
-        EXTI->EVENR |= EXTI_Line0;
-        EXTI->FTENR |= EXTI_Line0;
-
-        // select standby on power-down
-        PWR->CTLR |= PWR_CTLR_PDDS;
-
-        // peripheral interrupt controller send to deep sleep
-        PFIC->SCTLR |= (1 << 2);
-        __WFE();
+//        // enable linex interrupt event
+//        EXTI->EVENR |= EXTI_Line0;
+//        EXTI->FTENR |= EXTI_Line0;
+//
+//        // select standby on power-down
+//        PWR->CTLR |= PWR_CTLR_PDDS;
+//
+//        // peripheral interrupt controller send to deep sleep
+//        PFIC->SCTLR |= (1 << 2);
+//        __WFE();
       }
     }
     // I'm not sure if standby is working...
-    __WFE();
+//    __WFE();
     // See also `exti.cpp`
     if (Flags::getFlag()) {
       SystemInit48HSI();
