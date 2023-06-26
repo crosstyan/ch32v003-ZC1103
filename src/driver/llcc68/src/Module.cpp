@@ -1,39 +1,46 @@
-#include "Module.h"
+#include "llcc68.h"
 #include "printf.h"
 #include <inttypes.h>
 #include "cstring"
 #include "utils.h"
 
-Module::Module(RadioLibHal *hal, uint32_t cs, uint32_t irq, uint32_t rst, uint32_t gpio) : csPin(cs), irqPin(irq), rstPin(rst), gpioPin(gpio) {
-  this->hal = hal;
+//LLCC68::Module(RadioLibHal *hal, uint32_t cs, uint32_t irq, uint32_t rst, uint32_t gpio) : csPin(cs), irqPin(irq), rstPin(rst), gpioPin(gpio) {
+//  this->hal = hal;
+//}
+//
+//LLCC68::Module(const Module& mod) {
+//  *this = mod;
+//}
+//
+//Module& LLCC68::operator=(const Module& mod) {
+//  this->SPIreadCommand = mod.SPIreadCommand;
+//  this->SPIwriteCommand = mod.SPIwriteCommand;
+//  this->csPin = mod.csPin;
+//  this->irqPin = mod.irqPin;
+//  this->rstPin = mod.rstPin;
+//  this->gpioPin = mod.gpioPin;
+//  return(*this);
+//}
+
+void LLCC68::setModule(uint32_t cs, uint32_t irq, uint32_t rst, uint32_t gpio) {
+  this->csPin = cs;
+  this->irqPin = irq;
+  this->rstPin = rst;
+  this->gpioPin = gpio;
 }
 
-Module::Module(const Module& mod) {
-  *this = mod;
+void LLCC68::init() {
+  this->halInit();
+  this->pinMode(csPin, this->GpioModeOutput);
+  this->digitalWrite(csPin, this->GpioLevelHigh);
 }
 
-Module& Module::operator=(const Module& mod) {
-  this->SPIreadCommand = mod.SPIreadCommand;
-  this->SPIwriteCommand = mod.SPIwriteCommand;
-  this->csPin = mod.csPin;
-  this->irqPin = mod.irqPin;
-  this->rstPin = mod.rstPin;
-  this->gpioPin = mod.gpioPin;
-  return(*this);
-}
-
-void Module::init() {
-  this->hal->init();
-  this->hal->pinMode(csPin, this->hal->GpioModeOutput);
-  this->hal->digitalWrite(csPin, this->hal->GpioLevelHigh);
-}
-
-void Module::term() {
+void LLCC68::term() {
   // stop hardware interfaces (if they were initialized by the library)
-  this->hal->term();
+  this->halTerm();
 }
 
-int16_t Module::SPIgetRegValue(uint16_t reg, uint8_t msb, uint8_t lsb) {
+int16_t LLCC68::SPIgetRegValue(uint16_t reg, uint8_t msb, uint8_t lsb) {
   if((msb > 7) || (lsb > 7) || (lsb > msb)) {
     return(RADIOLIB_ERR_INVALID_BIT_RANGE);
   }
@@ -43,7 +50,7 @@ int16_t Module::SPIgetRegValue(uint16_t reg, uint8_t msb, uint8_t lsb) {
   return(maskedValue);
 }
 
-int16_t Module::SPIsetRegValue(uint16_t reg, uint8_t value, uint8_t msb, uint8_t lsb, uint8_t checkInterval, uint8_t checkMask) {
+int16_t LLCC68::SPIsetRegValue(uint16_t reg, uint8_t value, uint8_t msb, uint8_t lsb, uint8_t checkInterval, uint8_t checkMask) {
   if((msb > 7) || (lsb > 7) || (lsb > msb)) {
     return(RADIOLIB_ERR_INVALID_BIT_RANGE);
   }
@@ -56,9 +63,9 @@ int16_t Module::SPIsetRegValue(uint16_t reg, uint8_t value, uint8_t msb, uint8_t
   #if defined(RADIOLIB_SPI_PARANOID)
     // check register value each millisecond until check interval is reached
     // some registers need a bit of time to process the change (e.g. SX127X_REG_OP_MODE)
-    uint32_t start = this->hal->millis();
+    uint32_t start = this->millis();
     uint8_t readValue = 0x00;
-    while(this->hal->millis() - start < checkInterval) {
+    while(this->millis() - start < checkInterval) {
       readValue = SPIreadRegister(reg);
       if((readValue & checkMask) == (newValue & checkMask)) {
         // check passed, we can stop the loop
@@ -82,7 +89,7 @@ int16_t Module::SPIsetRegValue(uint16_t reg, uint8_t value, uint8_t msb, uint8_t
   #endif
 }
 
-void Module::SPIreadRegisterBurst(uint16_t reg, size_t numBytes, uint8_t* inBytes) {
+void LLCC68::SPIreadRegisterBurst(uint16_t reg, size_t numBytes, uint8_t* inBytes) {
   if(!SPIstreamType) {
     SPItransfer(SPIreadCommand, reg, NULL, inBytes, numBytes);
   } else {
@@ -91,7 +98,7 @@ void Module::SPIreadRegisterBurst(uint16_t reg, size_t numBytes, uint8_t* inByte
   }
 }
 
-uint8_t Module::SPIreadRegister(uint16_t reg) {
+uint8_t LLCC68::SPIreadRegister(uint16_t reg) {
   uint8_t resp = 0;
   if(!SPIstreamType) {
     SPItransfer(SPIreadCommand, reg, NULL, &resp, 1);
@@ -102,7 +109,7 @@ uint8_t Module::SPIreadRegister(uint16_t reg) {
   return(resp);
 }
 
-void Module::SPIwriteRegisterBurst(uint16_t reg, uint8_t* data, size_t numBytes) {
+void LLCC68::SPIwriteRegisterBurst(uint16_t reg, uint8_t* data, size_t numBytes) {
   if(!SPIstreamType) {
     SPItransfer(SPIwriteCommand, reg, data, NULL, numBytes);
   } else {
@@ -111,7 +118,7 @@ void Module::SPIwriteRegisterBurst(uint16_t reg, uint8_t* data, size_t numBytes)
   }
 }
 
-void Module::SPIwriteRegister(uint16_t reg, uint8_t data) {
+void LLCC68::SPIwriteRegister(uint16_t reg, uint8_t data) {
   if(!SPIstreamType) {
     SPItransfer(SPIwriteCommand, reg, &data, NULL, 1);
   } else {
@@ -120,19 +127,19 @@ void Module::SPIwriteRegister(uint16_t reg, uint8_t data) {
   }
 }
 
-void Module::SPItransfer(uint8_t cmd, uint16_t reg, uint8_t* dataOut, uint8_t* dataIn, size_t numBytes) {
+void LLCC68::SPItransfer(uint8_t cmd, uint16_t reg, uint8_t* dataOut, uint8_t* dataIn, size_t numBytes) {
   // start SPI transaction
-  this->hal->spiBeginTransaction();
+  this->spiBeginTransaction();
 
   // pull CS low
-  this->hal->digitalWrite(this->csPin, this->hal->GpioLevelLow);
+  this->digitalWrite(this->csPin, this->GpioLevelLow);
 
   // send SPI register address with access command
   if(this->SPIaddrWidth <= 8) {
-    this->hal->spiTransfer(reg | cmd);
+    this->spiTransfer(reg | cmd);
   } else {
-    this->hal->spiTransfer((reg >> 8) | cmd);
-    this->hal->spiTransfer(reg & 0xFF);
+    this->spiTransfer((reg >> 8) | cmd);
+    this->spiTransfer(reg & 0xFF);
   }
 
   #if defined(RADIOLIB_VERBOSE)
@@ -148,14 +155,14 @@ void Module::SPItransfer(uint8_t cmd, uint16_t reg, uint8_t* dataOut, uint8_t* d
   if(cmd == SPIwriteCommand) {
     if(dataOut != NULL) {
       for(size_t n = 0; n < numBytes; n++) {
-        this->hal->spiTransfer(dataOut[n]);
+        this->spiTransfer(dataOut[n]);
         RADIOLIB_VERBOSE_PRINT("%X\t", dataOut[n]);
       }
     }
   } else if (cmd == SPIreadCommand) {
     if(dataIn != NULL) {
       for(size_t n = 0; n < numBytes; n++) {
-        dataIn[n] = this->hal->spiTransfer(0x00);
+        dataIn[n] = this->spiTransfer(0x00);
         RADIOLIB_VERBOSE_PRINT("%X\t", dataIn[n]);
       }
     }
@@ -163,17 +170,17 @@ void Module::SPItransfer(uint8_t cmd, uint16_t reg, uint8_t* dataOut, uint8_t* d
   RADIOLIB_VERBOSE_PRINTLN();
 
   // release CS
-  this->hal->digitalWrite(this->csPin, this->hal->GpioLevelHigh);
+  this->digitalWrite(this->csPin, this->GpioLevelHigh);
 
   // end SPI transaction
-  this->hal->spiEndTransaction();
+  this->spiEndTransaction();
 }
 
-int16_t Module::SPIreadStream(uint8_t cmd, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
+int16_t LLCC68::SPIreadStream(uint8_t cmd, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
   return(this->SPIreadStream(&cmd, 1, data, numBytes, waitForGpio, verify));
 }
 
-int16_t Module::SPIreadStream(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
+int16_t LLCC68::SPIreadStream(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
   // send the command
   int16_t state = this->SPItransferStream(cmd, cmdLen, false, NULL, data, numBytes, waitForGpio, RADIOLIB_MODULE_SPI_TIMEOUT);
   RADIOLIB_ASSERT(state);
@@ -186,11 +193,11 @@ int16_t Module::SPIreadStream(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, size_
   return(state);
 }
 
-int16_t Module::SPIwriteStream(uint8_t cmd, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
+int16_t LLCC68::SPIwriteStream(uint8_t cmd, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
   return(this->SPIwriteStream(&cmd, 1, data, numBytes, waitForGpio, verify));
 }
 
-int16_t Module::SPIwriteStream(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
+int16_t LLCC68::SPIwriteStream(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, size_t numBytes, bool waitForGpio, bool verify) {
   // send the command
   int16_t state = this->SPItransferStream(cmd, cmdLen, true, data, NULL, numBytes, waitForGpio, RADIOLIB_MODULE_SPI_TIMEOUT);
   RADIOLIB_ASSERT(state);
@@ -203,7 +210,7 @@ int16_t Module::SPIwriteStream(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, size
   return(state);
 }
 
-int16_t Module::SPIcheckStream() {
+int16_t LLCC68::SPIcheckStream() {
   int16_t state = RADIOLIB_ERR_NONE;
 
   #if defined(RADIOLIB_SPI_PARANOID)
@@ -222,19 +229,19 @@ int16_t Module::SPIcheckStream() {
   return(state);
 }
 
-int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t* dataOut, uint8_t* dataIn, size_t numBytes, bool waitForGpio, uint32_t timeout) {
+int16_t LLCC68::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t* dataOut, uint8_t* dataIn, size_t numBytes, bool waitForGpio, uint32_t timeout) {
   #if defined(RADIOLIB_VERBOSE)
     uint8_t debugBuff[RADIOLIB_STATIC_ARRAY_SIZE];
   #endif
 
   // ensure GPIO is low
   if(this->gpioPin == RADIOLIB_NC) {
-    this->hal->delay(1);
+    this->delay(1);
   } else {
-    uint32_t start = this->hal->millis();
-    while(this->hal->digitalRead(this->gpioPin)) {
-      // this->hal->yield();
-      if(this->hal->millis() - start >= timeout) {
+    uint32_t start = this->millis();
+    while(this->digitalRead(this->gpioPin)) {
+      // this->yield();
+      if(this->millis() - start >= timeout) {
         RADIOLIB_DEBUG_PRINTLN("Timed out waiting for GPIO pin, is it connected?");
         return(RADIOLIB_ERR_SPI_CMD_TIMEOUT);
       }
@@ -242,14 +249,14 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
   }
 
   // pull NSS low
-  this->hal->digitalWrite(this->csPin, this->hal->GpioLevelLow);
+  this->digitalWrite(this->csPin, this->GpioLevelLow);
 
   // start transfer
-  this->hal->spiBeginTransaction();
+  this->spiBeginTransaction();
 
   // send command byte(s)
   for(uint8_t n = 0; n < cmdLen; n++) {
-    this->hal->spiTransfer(cmd[n]);
+    this->spiTransfer(cmd[n]);
   }
 
   // variable to save error during SPI transfer
@@ -259,7 +266,7 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
   if(write) {
     for(size_t n = 0; n < numBytes; n++) {
       // send byte
-      uint8_t in = this->hal->spiTransfer(dataOut[n]);
+      uint8_t in = this->spiTransfer(dataOut[n]);
       #if defined(RADIOLIB_VERBOSE)
         debugBuff[n] = in;
       #endif
@@ -272,7 +279,7 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
 
   } else {
     // skip the first byte for read-type commands (status-only)
-    uint8_t in = this->hal->spiTransfer(this->SPInopCommand);
+    uint8_t in = this->spiTransfer(this->SPInopCommand);
     #if defined(RADIOLIB_VERBOSE)
       debugBuff[0] = in;
     #endif
@@ -287,31 +294,14 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
     // read the data
     if(state == RADIOLIB_ERR_NONE) {
       for(size_t n = 0; n < numBytes; n++) {
-        dataIn[n] = this->hal->spiTransfer(this->SPInopCommand);
+        dataIn[n] = this->spiTransfer(this->SPInopCommand);
       }
     }
   }
 
   // stop transfer
-  this->hal->spiEndTransaction();
-  this->hal->digitalWrite(this->csPin, this->hal->GpioLevelHigh);
-
-  // wait for GPIO to go high and then low
-//  if(waitForGpio) {
-//    if(this->gpioPin == RADIOLIB_NC) {
-//      this->hal->delay(1);
-//    } else {
-//      // this->hal->delayMicroseconds(1);
-//      uint32_t start = this->hal->millis();
-//      while(this->hal->digitalRead(this->gpioPin)) {
-//        // this->hal->yield();
-//        if(this->hal->millis() - start >= timeout) {
-//          state = RADIOLIB_ERR_SPI_CMD_TIMEOUT;
-//          break;
-//        }
-//      }
-//    }
-//  }
+  this->spiEndTransaction();
+  this->digitalWrite(this->csPin, this->GpioLevelHigh);
 
   // print debug output
   #if defined(RADIOLIB_VERBOSE)
@@ -344,11 +334,11 @@ int16_t Module::SPItransferStream(uint8_t* cmd, uint8_t cmdLen, bool write, uint
   return(state);
 }
 
-void Module::waitForMicroseconds(uint32_t start, uint32_t len) {
+void LLCC68::waitForMicroseconds(uint32_t start, uint32_t len) {
   static_assert(true, "This function is not implemented for this module.");
 }
 
-uint32_t Module::reflect(uint32_t in, uint8_t bits) {
+uint32_t LLCC68::reflect(uint32_t in, uint8_t bits) {
   uint32_t res = 0;
   for(uint8_t i = 0; i < bits; i++) {
     res |= (((in & ((uint32_t)1 << i)) >> i) << (bits - i - 1));
@@ -358,7 +348,7 @@ uint32_t Module::reflect(uint32_t in, uint8_t bits) {
 
 #if defined(RADIOLIB_DEBUG) and defined(RADIOLIB_BUILD_ARDUINO)
 // https://github.com/esp8266/Arduino/blob/65579d29081cb8501e4d7f786747bf12e7b37da2/cores/esp8266/Print.cpp#L50
-size_t Module::serialPrintf(const char* format, ...) {
+size_t LLCC68::serialPrintf(const char* format, ...) {
   va_list arg;
   va_start(arg, format);
   char temp[64];
@@ -382,7 +372,7 @@ size_t Module::serialPrintf(const char* format, ...) {
 }
 #endif
 
-void Module::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
+void LLCC68::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
   // This can be on the stack, setRfSwitchTable copies the contents
   const uint32_t pins[] = {
     rxEn, txEn, RADIOLIB_NC,
@@ -390,22 +380,22 @@ void Module::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
   
   // This must be static, since setRfSwitchTable stores a reference.
   static const RfSwitchMode_t table[] = {
-    { MODE_IDLE,  {this->hal->GpioLevelLow,  this->hal->GpioLevelLow} },
-    { MODE_RX,    {this->hal->GpioLevelHigh, this->hal->GpioLevelLow} },
-    { MODE_TX,    {this->hal->GpioLevelLow,  this->hal->GpioLevelHigh} },
+    { MODE_IDLE,  {this->GpioLevelLow,  this->GpioLevelLow} },
+    { MODE_RX,    {this->GpioLevelHigh, this->GpioLevelLow} },
+    { MODE_TX,    {this->GpioLevelLow,  this->GpioLevelHigh} },
     END_OF_MODE_TABLE,
   };
   setRfSwitchTable(pins, table);
 }
 
-void Module::setRfSwitchTable(const uint32_t (&pins)[3], const RfSwitchMode_t table[]) {
+void LLCC68::setRfSwitchTable(const uint32_t (&pins)[3], const RfSwitchMode_t table[]) {
   memcpy(this->rfSwitchPins, pins, sizeof(this->rfSwitchPins));
   this->rfSwitchTable = table;
   for(size_t i = 0; i < RFSWITCH_MAX_PINS; i++)
-    this->hal->pinMode(pins[i], this->hal->GpioModeOutput);
+    this->pinMode(pins[i], this->GpioModeOutput);
 }
 
-const Module::RfSwitchMode_t *Module::findRfSwitchMode(uint8_t mode) const {
+const LLCC68::RfSwitchMode_t *LLCC68::findRfSwitchMode(uint8_t mode) const {
   const RfSwitchMode_t *row = this->rfSwitchTable;
   while (row && row->mode != MODE_END_OF_TABLE) {
     if (row->mode == mode)
@@ -415,7 +405,7 @@ const Module::RfSwitchMode_t *Module::findRfSwitchMode(uint8_t mode) const {
   return nullptr;
 }
 
-void Module::setRfSwitchState(uint8_t mode) {
+void LLCC68::setRfSwitchState(uint8_t mode) {
   const RfSwitchMode_t *row = findRfSwitchMode(mode);
   if(!row) {
     // RF switch control is disabled or does not have this mode
@@ -427,7 +417,7 @@ void Module::setRfSwitchState(uint8_t mode) {
   for(size_t i = 0; i < RFSWITCH_MAX_PINS; i++) {
     uint32_t pin = this->rfSwitchPins[i];
     if (pin != RADIOLIB_NC)
-      this->hal->digitalWrite(pin, *value);
+      this->digitalWrite(pin, *value);
     ++value;
   }
 }

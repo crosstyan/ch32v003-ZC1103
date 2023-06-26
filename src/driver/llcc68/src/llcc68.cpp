@@ -10,20 +10,20 @@ using namespace GPIO;
 
 int16_t LLCC68::begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO) {
   // set module properties
-  this->mod->init();
-  this->mod->hal->pinMode(this->mod->getIrq(), this->mod->hal->GpioModeInput);
-  this->mod->hal->pinMode(this->mod->getGpio(), this->mod->hal->GpioModeInput);
-  this->mod->SPIreadCommand   = RADIOLIB_SX126X_CMD_READ_REGISTER;
-  this->mod->SPIwriteCommand  = RADIOLIB_SX126X_CMD_WRITE_REGISTER;
-  this->mod->SPInopCommand    = RADIOLIB_SX126X_CMD_NOP;
-  this->mod->SPIstatusCommand = RADIOLIB_SX126X_CMD_GET_STATUS;
-  this->mod->SPIstreamType    = true;
-  this->mod->SPIparseStatusCb = SPIparseStatus;
+  this->init();
+  this->pinMode(this->getIrq(), this->GpioModeInput);
+  this->pinMode(this->getGpio(), this->GpioModeInput);
+  this->SPIreadCommand   = RADIOLIB_SX126X_CMD_READ_REGISTER;
+  this->SPIwriteCommand  = RADIOLIB_SX126X_CMD_WRITE_REGISTER;
+  this->SPInopCommand    = RADIOLIB_SX126X_CMD_NOP;
+  this->SPIstatusCommand = RADIOLIB_SX126X_CMD_GET_STATUS;
+  this->SPIstreamType    = true;
+  this->SPIparseStatusCb = SPIparseStatus;
 
   // try to find the LLCC68 chip
   if (!LLCC68::findChip(this->chipType)) {
     RADIOLIB_DEBUG_PRINTLN("No LLCC68 found!");
-    this->mod->term();
+    this->term();
     return (RADIOLIB_ERR_CHIP_NOT_FOUND);
   }
   RADIOLIB_DEBUG_PRINTLN("M\tLLCC68");
@@ -126,15 +126,15 @@ int16_t LLCC68::transmit(uint8_t *data, size_t len, uint8_t addr) {
   // NOTE: Don't get paranoid...
   //
   //   wait for packet transmission or timeout
-  //  uint32_t start = this->mod->hal->millis();
-  //  while (!this->mod->hal->digitalRead(this->mod->getIrq())) {
-  //    this->mod->hal->yield();
-  //    if (this->mod->hal->millis() - start > timeout) {
+  //  uint32_t start = this->millis();
+  //  while (!this->digitalRead(this->getIrq())) {
+  //    this->yield();
+  //    if (this->millis() - start > timeout) {
   //      finishTransmit();
   //      return (RADIOLIB_ERR_TX_TIMEOUT);
   //    }
   //  }
-  //  uint32_t elapsed = this->mod->hal->millis() - start;
+  //  uint32_t elapsed = this->millis() - start;
 
   // update data rate
   // Why the data rate need to be updated?
@@ -170,7 +170,7 @@ int16_t LLCC68::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t sync
 
 int16_t LLCC68::transmitDirect(uint32_t frf) {
   // set RF switch (if present)
-  this->mod->setRfSwitchState(this->txMode);
+  this->setRfSwitchState(this->txMode);
 
   // user requested to start transmitting immediately (required for RTTY)
   int16_t state = RADIOLIB_ERR_NONE;
@@ -181,12 +181,12 @@ int16_t LLCC68::transmitDirect(uint32_t frf) {
 
   // start transmitting
   uint8_t data[] = {RADIOLIB_SX126X_CMD_NOP};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_TX_CONTINUOUS_WAVE, data, 1));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_TX_CONTINUOUS_WAVE, data, 1));
 }
 
 int16_t LLCC68::receiveDirect() {
   // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_RX);
+  this->setRfSwitchState(MODE_RX);
 
   // LLCC68 is unable to output received data directly
   return (RADIOLIB_ERR_UNKNOWN);
@@ -208,13 +208,13 @@ int16_t LLCC68::directMode() {
 
   // set DIO2 to clock output and DIO3 to data input
   // this is done exclusively by writing magic values to even more magic registers
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_1, RADIOLIB_SX126X_TX_BITBANG_1_ENABLED, 6, 4);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_1, RADIOLIB_SX126X_TX_BITBANG_1_ENABLED, 6, 4);
   RADIOLIB_ASSERT(state);
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_0, RADIOLIB_SX126X_TX_BITBANG_0_ENABLED, 3, 0);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_0, RADIOLIB_SX126X_TX_BITBANG_0_ENABLED, 3, 0);
   RADIOLIB_ASSERT(state);
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_OUT_ENABLE, RADIOLIB_SX126X_DIO3_OUT_DISABLED, 3, 3);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_OUT_ENABLE, RADIOLIB_SX126X_DIO3_OUT_DISABLED, 3, 3);
   RADIOLIB_ASSERT(state);
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_IN_ENABLE, RADIOLIB_SX126X_DIO3_IN_ENABLED, 3, 3);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_IN_ENABLE, RADIOLIB_SX126X_DIO3_IN_ENABLED, 3, 3);
   RADIOLIB_ASSERT(state);
 
   // enable TxDone interrupt
@@ -242,13 +242,13 @@ int16_t LLCC68::packetMode() {
   RADIOLIB_ASSERT(state);
 
   // restore the magic registers
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_IN_ENABLE, RADIOLIB_SX126X_DIO3_IN_DISABLED, 3, 3);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_IN_ENABLE, RADIOLIB_SX126X_DIO3_IN_DISABLED, 3, 3);
   RADIOLIB_ASSERT(state);
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_OUT_ENABLE, RADIOLIB_SX126X_DIO3_OUT_ENABLED, 3, 3);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_DIOX_OUT_ENABLE, RADIOLIB_SX126X_DIO3_OUT_ENABLED, 3, 3);
   RADIOLIB_ASSERT(state);
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_0, RADIOLIB_SX126X_TX_BITBANG_0_DISABLED, 3, 0);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_0, RADIOLIB_SX126X_TX_BITBANG_0_DISABLED, 3, 0);
   RADIOLIB_ASSERT(state);
-  state = this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_1, RADIOLIB_SX126X_TX_BITBANG_1_DISABLED, 6, 4);
+  state = this->SPIsetRegValue(RADIOLIB_SX126X_REG_TX_BITBANG_ENABLE_1, RADIOLIB_SX126X_TX_BITBANG_1_DISABLED, 6, 4);
   RADIOLIB_ASSERT(state);
 
   // enable DIO2 RF switch
@@ -264,8 +264,8 @@ int16_t LLCC68::scanChannel(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin) 
   RADIOLIB_ASSERT(state);
 
   // wait for channel activity detected or timeout
-  while (!this->mod->hal->digitalRead(this->mod->getIrq())) {
-    this->mod->hal->yield();
+  while (!this->digitalRead(this->getIrq())) {
+    this->yield();
   }
 
   // check CAD result
@@ -274,16 +274,16 @@ int16_t LLCC68::scanChannel(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin) 
 
 int16_t LLCC68::sleep(bool retainConfig) {
   // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_IDLE);
+  this->setRfSwitchState(MODE_IDLE);
 
   uint8_t sleepMode = RADIOLIB_SX126X_SLEEP_START_WARM | RADIOLIB_SX126X_SLEEP_RTC_OFF;
   if (!retainConfig) {
     sleepMode = RADIOLIB_SX126X_SLEEP_START_COLD | RADIOLIB_SX126X_SLEEP_RTC_OFF;
   }
-  int16_t state = this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_SLEEP, &sleepMode, 1, false, false);
+  int16_t state = this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_SLEEP, &sleepMode, 1, false, false);
 
   // wait for LLCC68 to safely enter sleep mode
-  this->mod->hal->delay(1);
+  this->delay(1);
 
   return (state);
 }
@@ -294,15 +294,15 @@ int16_t LLCC68::standby() {
 
 int16_t LLCC68::standby(uint8_t mode, bool wakeup) {
   // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_IDLE);
+  this->setRfSwitchState(MODE_IDLE);
 
   if (wakeup) {
     // pull NSS low to wake up
-    this->mod->hal->digitalWrite(this->mod->getCs(), this->mod->hal->GpioLevelLow);
+    this->digitalWrite(this->getCs(), this->GpioLevelLow);
   }
 
   uint8_t data[] = {mode};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_STANDBY, data, 1));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_STANDBY, data, 1));
 }
 
 int16_t LLCC68::startTransmit(uint8_t *data, size_t len, uint8_t addr) {
@@ -351,15 +351,15 @@ int16_t LLCC68::startTransmit(uint8_t *data, size_t len, uint8_t addr) {
   RADIOLIB_ASSERT(state);
 
   // set RF switch (if present)
-  this->mod->setRfSwitchState(this->txMode);
+  this->setRfSwitchState(this->txMode);
 
   // start transmission
   state = setTx(RADIOLIB_SX126X_TX_TIMEOUT_NONE);
   RADIOLIB_ASSERT(state);
 
   // wait for BUSY to go low (= PA ramp up done)
-  while (this->mod->hal->digitalRead(this->mod->getGpio())) {
-    this->mod->hal->yield();
+  while (this->digitalRead(this->getGpio())) {
+    this->yield();
   }
 
   return (state);
@@ -386,7 +386,7 @@ int16_t LLCC68::startReceive(uint32_t timeout) {
   RADIOLIB_ASSERT(state);
 
   // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_RX);
+  this->setRfSwitchState(MODE_RX);
 
   // set mode to receive
   state = setRx(timeout);
@@ -418,7 +418,7 @@ int16_t LLCC68::startReceiveDutyCycle(uint32_t rxPeriod, uint32_t sleepPeriod, u
 
   uint8_t data[6] = {(uint8_t)((rxPeriodRaw >> 16) & 0xFF), (uint8_t)((rxPeriodRaw >> 8) & 0xFF), (uint8_t)(rxPeriodRaw & 0xFF),
                      (uint8_t)((sleepPeriodRaw >> 16) & 0xFF), (uint8_t)((sleepPeriodRaw >> 8) & 0xFF), (uint8_t)(sleepPeriodRaw & 0xFF)};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RX_DUTY_CYCLE, data, 6));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RX_DUTY_CYCLE, data, 6));
 }
 
 int16_t LLCC68::startReceiveDutyCycleAuto(uint16_t senderPreambleLength, uint16_t minSymbols, uint16_t irqFlags, uint16_t irqMask) {
@@ -489,7 +489,7 @@ int16_t LLCC68::readData(uint8_t *data, size_t len) {
   // this method may get called from receive() after Rx timeout
   // if that's the case, the first call will return "SPI command timeout error"
   // check the IRQ to be sure this really originated from timeout event
-  int16_t state = this->mod->SPIcheckStream();
+  int16_t state = this->SPIcheckStream();
   if ((state == RADIOLIB_ERR_SPI_CMD_TIMEOUT) && (getIrqStatus() & RADIOLIB_SX126X_IRQ_TIMEOUT)) {
     // this is definitely Rx timeout
     return (RADIOLIB_ERR_RX_TIMEOUT);
@@ -538,7 +538,7 @@ int16_t LLCC68::startChannelScan(uint8_t symbolNum, uint8_t detPeak, uint8_t det
   RADIOLIB_ASSERT(state);
 
   // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_RX);
+  this->setRfSwitchState(MODE_RX);
 
   // set DIO pin mapping
   state = setDioIrqParams(RADIOLIB_SX126X_IRQ_CAD_DETECTED | RADIOLIB_SX126X_IRQ_CAD_DONE, RADIOLIB_SX126X_IRQ_CAD_DETECTED | RADIOLIB_SX126X_IRQ_CAD_DONE);
@@ -1096,7 +1096,7 @@ float LLCC68::getRSSI(bool packet) {
   } else {
     // get instantaneous RSSI value
     uint8_t data[3] = {0, 0, 0}; // RssiInst, Status, RFU
-    this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_RSSI_INST, data, 3);
+    this->SPIreadStream(RADIOLIB_SX126X_CMD_GET_RSSI_INST, data, 3);
     return ((float)data[0] / (-2.0));
   }
 }
@@ -1159,7 +1159,7 @@ size_t LLCC68::getPacketLength(bool update) {
   }
 
   uint8_t rxBufStatus[2] = {0, 0};
-  this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_RX_BUFFER_STATUS, rxBufStatus, 2);
+  this->SPIreadStream(RADIOLIB_SX126X_CMD_GET_RX_BUFFER_STATUS, rxBufStatus, 2);
   return ((size_t)rxBufStatus[0]);
 }
 
@@ -1230,13 +1230,13 @@ int16_t LLCC68::setEncoding(uint8_t encoding) {
   return (setWhitening(encoding));
 }
 
-void LLCC68::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
-  this->mod->setRfSwitchPins(rxEn, txEn);
-}
-
-void LLCC68::setRfSwitchTable(const uint32_t (&pins)[Module::RFSWITCH_MAX_PINS], const Module::RfSwitchMode_t table[]) {
-  this->mod->setRfSwitchTable(pins, table);
-}
+//void LLCC68::setRfSwitchPins(uint32_t rxEn, uint32_t txEn) {
+//  this->setRfSwitchPins(rxEn, txEn);
+//}
+//
+//void LLCC68::setRfSwitchTable(const uint32_t (&pins)[RFSWITCH_MAX_PINS], const RfSwitchMode_t table[]) {
+//  this->setRfSwitchTable(pins, table);
+//}
 
 int16_t LLCC68::forceLDRO(bool enable) {
   // check active modem
@@ -1261,14 +1261,14 @@ int16_t LLCC68::autoLDRO() {
 
 uint8_t LLCC68::randomByte() {
   // set some magic registers
-  this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_LNA, RADIOLIB_SX126X_LNA_RNG_ENABLED, 0, 0);
-  this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_MIXER, RADIOLIB_SX126X_MIXER_RNG_ENABLED, 0, 0);
+  this->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_LNA, RADIOLIB_SX126X_LNA_RNG_ENABLED, 0, 0);
+  this->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_MIXER, RADIOLIB_SX126X_MIXER_RNG_ENABLED, 0, 0);
 
   // set mode to Rx
   setRx(RADIOLIB_SX126X_RX_TIMEOUT_INF);
 
   // wait a bit for the RSSI reading to stabilise
-  this->mod->hal->delay(10);
+  this->delay(10);
 
   // read RSSI value 8 times, always keep just the least significant bit
   uint8_t randByte = 0x00;
@@ -1282,8 +1282,8 @@ uint8_t LLCC68::randomByte() {
   standby();
 
   // restore the magic registers
-  this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_LNA, RADIOLIB_SX126X_LNA_RNG_DISABLED, 0, 0);
-  this->mod->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_MIXER, RADIOLIB_SX126X_MIXER_RNG_DISABLED, 0, 0);
+  this->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_LNA, RADIOLIB_SX126X_LNA_RNG_DISABLED, 0, 0);
+  this->SPIsetRegValue(RADIOLIB_SX126X_REG_ANA_MIXER, RADIOLIB_SX126X_MIXER_RNG_DISABLED, 0, 0);
 
   return (randByte);
 }
@@ -1308,7 +1308,7 @@ int16_t LLCC68::invertIQ(bool enable) {
 // }
 //
 // void LLCC68::readBit(uint32_t pin) {
-//   updateDirectBuffer((uint8_t)this->mod->hal->digitalRead(pin));
+//   updateDirectBuffer((uint8_t)this->digitalRead(pin));
 // }
 #endif
 
@@ -1320,12 +1320,12 @@ int16_t LLCC68::uploadPatch(const uint32_t *patch, size_t len, bool nonvolatile)
 // check the version
 #if defined(RADIOLIB_DEBUG)
   char ver_pre[16];
-  this->mod->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_VERSION_STRING, 16, (uint8_t *)ver_pre);
+  this->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_VERSION_STRING, 16, (uint8_t *)ver_pre);
   RADIOLIB_DEBUG_PRINTLN("Pre-update version string: %s", ver_pre);
 #endif
 
   // enable patch update
-  this->mod->SPIwriteRegister(RADIOLIB_SX126X_REG_PATCH_UPDATE_ENABLE, RADIOLIB_SX126X_PATCH_UPDATE_ENABLED);
+  this->SPIwriteRegister(RADIOLIB_SX126X_REG_PATCH_UPDATE_ENABLE, RADIOLIB_SX126X_PATCH_UPDATE_ENABLED);
 
   // upload the patch
   uint8_t data[4];
@@ -1340,19 +1340,19 @@ int16_t LLCC68::uploadPatch(const uint32_t *patch, size_t len, bool nonvolatile)
     data[1] = (bin >> 16) & 0xFF;
     data[2] = (bin >> 8) & 0xFF;
     data[3] = bin & 0xFF;
-    this->mod->SPIwriteRegisterBurst(RADIOLIB_SX126X_REG_PATCH_MEMORY_BASE + i * sizeof(uint32_t), data, sizeof(uint32_t));
+    this->SPIwriteRegisterBurst(RADIOLIB_SX126X_REG_PATCH_MEMORY_BASE + i * sizeof(uint32_t), data, sizeof(uint32_t));
   }
 
   // disable patch update
-  this->mod->SPIwriteRegister(RADIOLIB_SX126X_REG_PATCH_UPDATE_ENABLE, RADIOLIB_SX126X_PATCH_UPDATE_DISABLED);
+  this->SPIwriteRegister(RADIOLIB_SX126X_REG_PATCH_UPDATE_ENABLE, RADIOLIB_SX126X_PATCH_UPDATE_DISABLED);
 
   // update
-  this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_PRAM_UPDATE, NULL, 0);
+  this->SPIwriteStream(RADIOLIB_SX126X_CMD_PRAM_UPDATE, NULL, 0);
 
 // check the version again
 #if defined(RADIOLIB_DEBUG)
   char ver_post[16];
-  this->mod->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_VERSION_STRING, 16, (uint8_t *)ver_post);
+  this->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_VERSION_STRING, 16, (uint8_t *)ver_post);
   RADIOLIB_DEBUG_PRINTLN("Post-update version string: %s", ver_post);
 #endif
 
@@ -1364,7 +1364,7 @@ int16_t LLCC68::spectralScanStart(uint16_t numSamples, uint8_t window, uint8_t i
   spectralScanAbort();
 
   // set the RSSI window size
-  this->mod->SPIwriteRegister(RADIOLIB_SX126X_REG_RSSI_AVG_WINDOW, window);
+  this->SPIwriteRegister(RADIOLIB_SX126X_REG_RSSI_AVG_WINDOW, window);
 
   // start Rx with infinite timeout
   int16_t state = setRx(RADIOLIB_SX126X_RX_TIMEOUT_INF);
@@ -1372,15 +1372,15 @@ int16_t LLCC68::spectralScanStart(uint16_t numSamples, uint8_t window, uint8_t i
 
   // now set the actual spectral scan parameters
   uint8_t data[3] = {(uint8_t)((numSamples >> 8) & 0xFF), (uint8_t)(numSamples & 0xFF), interval};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_SPECTR_SCAN_PARAMS, data, 3));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_SPECTR_SCAN_PARAMS, data, 3));
 }
 
 void LLCC68::spectralScanAbort() {
-  this->mod->SPIwriteRegister(RADIOLIB_SX126X_REG_RSSI_AVG_WINDOW, 0x00);
+  this->SPIwriteRegister(RADIOLIB_SX126X_REG_RSSI_AVG_WINDOW, 0x00);
 }
 
 int16_t LLCC68::spectralScanGetStatus() {
-  uint8_t status = this->mod->SPIreadRegister(RADIOLIB_SX126X_REG_SPECTRAL_SCAN_STATUS);
+  uint8_t status = this->SPIreadRegister(RADIOLIB_SX126X_REG_SPECTRAL_SCAN_STATUS);
   if (status == RADIOLIB_SX126X_SPECTRAL_SCAN_COMPLETED) {
     return (RADIOLIB_ERR_NONE);
   }
@@ -1390,7 +1390,7 @@ int16_t LLCC68::spectralScanGetStatus() {
 int16_t LLCC68::spectralScanGetResult(uint16_t *results) {
   // read the raw results
   uint8_t data[2 * RADIOLIB_SX126X_SPECTRAL_SCAN_RES_SIZE];
-  this->mod->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_SPECTRAL_SCAN_RESULT, 2 * RADIOLIB_SX126X_SPECTRAL_SCAN_RES_SIZE, data);
+  this->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_SPECTRAL_SCAN_RESULT, 2 * RADIOLIB_SX126X_SPECTRAL_SCAN_RES_SIZE, data);
 
   // convert it
   for (uint8_t i = 0; i < RADIOLIB_SX126X_SPECTRAL_SCAN_RES_SIZE; i++) {
@@ -1451,7 +1451,7 @@ int16_t LLCC68::setTCXO(float voltage, uint32_t delay) {
   this->tcxoDelay = delay;
 
   // enable TCXO control on DIO3
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, data, 4));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, data, 4));
 }
 
 int16_t LLCC68::setDio2AsRfSwitch(bool enable) {
@@ -1461,21 +1461,21 @@ int16_t LLCC68::setDio2AsRfSwitch(bool enable) {
   } else {
     data = RADIOLIB_SX126X_DIO2_AS_IRQ;
   }
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO2_AS_RF_SWITCH_CTRL, &data, 1));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO2_AS_RF_SWITCH_CTRL, &data, 1));
 }
 
 int16_t LLCC68::setFs() {
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_FS, NULL, 0));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_FS, NULL, 0));
 }
 
 int16_t LLCC68::setTx(uint32_t timeout) {
   uint8_t data[] = {(uint8_t)((timeout >> 16) & 0xFF), (uint8_t)((timeout >> 8) & 0xFF), (uint8_t)(timeout & 0xFF)};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_TX, data, 3));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_TX, data, 3));
 }
 
 int16_t LLCC68::setRx(uint32_t timeout) {
   uint8_t data[] = {(uint8_t)((timeout >> 16) & 0xFF), (uint8_t)((timeout >> 8) & 0xFF), (uint8_t)(timeout & 0xFF)};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RX, data, 3, true, false));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RX, data, 3, true, false));
 }
 
 int16_t LLCC68::setCad(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin) {
@@ -1513,40 +1513,40 @@ int16_t LLCC68::setCad(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin) {
   }
 
   // configure paramaters
-  int16_t state = this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_CAD_PARAMS, data, 7);
+  int16_t state = this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_CAD_PARAMS, data, 7);
   RADIOLIB_ASSERT(state);
 
   // start CAD
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_CAD, NULL, 0));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_CAD, NULL, 0));
 }
 
 int16_t LLCC68::setPaConfig(uint8_t paDutyCycle, uint8_t deviceSel, uint8_t hpMax, uint8_t paLut) {
   uint8_t data[] = {paDutyCycle, hpMax, deviceSel, paLut};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PA_CONFIG, data, 4));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PA_CONFIG, data, 4));
 }
 
 int16_t LLCC68::writeRegister(uint16_t addr, uint8_t *data, uint8_t numBytes) {
-  this->mod->SPIwriteRegisterBurst(addr, data, numBytes);
+  this->SPIwriteRegisterBurst(addr, data, numBytes);
   return (RADIOLIB_ERR_NONE);
 }
 
 int16_t LLCC68::readRegister(uint16_t addr, uint8_t *data, uint8_t numBytes) {
   // send the command
-  this->mod->SPIreadRegisterBurst(addr, numBytes, data);
+  this->SPIreadRegisterBurst(addr, numBytes, data);
 
   // check the status
-  int16_t state = this->mod->SPIcheckStream();
+  int16_t state = this->SPIcheckStream();
   return (state);
 }
 
 int16_t LLCC68::writeBuffer(uint8_t *data, uint8_t numBytes, uint8_t offset) {
   uint8_t cmd[] = {RADIOLIB_SX126X_CMD_WRITE_BUFFER, offset};
-  return (this->mod->SPIwriteStream(cmd, 2, data, numBytes));
+  return (this->SPIwriteStream(cmd, 2, data, numBytes));
 }
 
 int16_t LLCC68::readBuffer(uint8_t *data, uint8_t numBytes, uint8_t offset) {
   uint8_t cmd[] = {RADIOLIB_SX126X_CMD_READ_BUFFER, offset};
-  return (this->mod->SPIreadStream(cmd, 2, data, numBytes));
+  return (this->SPIreadStream(cmd, 2, data, numBytes));
 }
 
 int16_t LLCC68::setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask, uint16_t dio3Mask) {
@@ -1554,27 +1554,27 @@ int16_t LLCC68::setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t di
                      (uint8_t)((dio1Mask >> 8) & 0xFF), (uint8_t)(dio1Mask & 0xFF),
                      (uint8_t)((dio2Mask >> 8) & 0xFF), (uint8_t)(dio2Mask & 0xFF),
                      (uint8_t)((dio3Mask >> 8) & 0xFF), (uint8_t)(dio3Mask & 0xFF)};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO_IRQ_PARAMS, data, 8));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_DIO_IRQ_PARAMS, data, 8));
 }
 
 uint16_t LLCC68::getIrqStatus() {
   uint8_t data[] = {0x00, 0x00};
-  this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_IRQ_STATUS, data, 2);
+  this->SPIreadStream(RADIOLIB_SX126X_CMD_GET_IRQ_STATUS, data, 2);
   return (((uint16_t)(data[0]) << 8) | data[1]);
 }
 
 int16_t LLCC68::clearIrqStatus(uint16_t clearIrqParams) {
   uint8_t data[] = {(uint8_t)((clearIrqParams >> 8) & 0xFF), (uint8_t)(clearIrqParams & 0xFF)};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_CLEAR_IRQ_STATUS, data, 2));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_CLEAR_IRQ_STATUS, data, 2));
 }
 
 int16_t LLCC68::setRfFrequency(uint32_t frf) {
   uint8_t data[] = {(uint8_t)((frf >> 24) & 0xFF), (uint8_t)((frf >> 16) & 0xFF), (uint8_t)((frf >> 8) & 0xFF), (uint8_t)(frf & 0xFF)};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RF_FREQUENCY, data, 4));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RF_FREQUENCY, data, 4));
 }
 
 int16_t LLCC68::calibrateImage(uint8_t *data) {
-  int16_t state = this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_CALIBRATE_IMAGE, data, 2);
+  int16_t state = this->SPIwriteStream(RADIOLIB_SX126X_CMD_CALIBRATE_IMAGE, data, 2);
 
 // if something failed, show the device errors
 #if defined(RADIOLIB_DEBUG)
@@ -1590,13 +1590,13 @@ int16_t LLCC68::calibrateImage(uint8_t *data) {
 
 uint8_t LLCC68::getPacketType() {
   uint8_t data = 0xFF;
-  this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_PACKET_TYPE, &data, 1);
+  this->SPIreadStream(RADIOLIB_SX126X_CMD_GET_PACKET_TYPE, &data, 1);
   return (data);
 }
 
 int16_t LLCC68::setTxParams(uint8_t pwr, uint8_t rampTime) {
   uint8_t data[] = {pwr, rampTime};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_TX_PARAMS, data, 2));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_TX_PARAMS, data, 2));
 }
 
 int16_t LLCC68::setPacketMode(uint8_t mode, uint8_t len) {
@@ -1653,62 +1653,62 @@ int16_t LLCC68::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, uint8_t 
   // 500/9/8  - 0x09 0x04 0x03 0x00 - SF9, BW125, 4/8
   // 500/11/8 - 0x0B 0x04 0x03 0x00 - SF11 BW125, 4/7
   uint8_t data[4] = {sf, bw, cr, this->ldrOptimize};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_MODULATION_PARAMS, data, 4));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_MODULATION_PARAMS, data, 4));
 }
 
 int16_t LLCC68::setModulationParamsFSK(uint32_t br, uint8_t sh, uint8_t rxBw, uint32_t freqDev) {
   uint8_t data[8] = {(uint8_t)((br >> 16) & 0xFF), (uint8_t)((br >> 8) & 0xFF), (uint8_t)(br & 0xFF),
                      sh, rxBw,
                      (uint8_t)((freqDev >> 16) & 0xFF), (uint8_t)((freqDev >> 8) & 0xFF), (uint8_t)(freqDev & 0xFF)};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_MODULATION_PARAMS, data, 8));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_MODULATION_PARAMS, data, 8));
 }
 
 int16_t LLCC68::setPacketParams(uint16_t preambleLen, uint8_t crcType, uint8_t payloadLen, uint8_t hdrType, uint8_t invertIQ) {
   int16_t state = fixInvertedIQ(invertIQ);
   RADIOLIB_ASSERT(state);
   uint8_t data[6] = {(uint8_t)((preambleLen >> 8) & 0xFF), (uint8_t)(preambleLen & 0xFF), hdrType, payloadLen, crcType, invertIQ};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PACKET_PARAMS, data, 6));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PACKET_PARAMS, data, 6));
 }
 
 int16_t LLCC68::setPacketParamsFSK(uint16_t preambleLen, uint8_t crcType, uint8_t syncWordLen, uint8_t addrCmp, uint8_t whiten, uint8_t packType, uint8_t payloadLen, uint8_t preambleDetectorLen) {
   uint8_t data[9] = {(uint8_t)((preambleLen >> 8) & 0xFF), (uint8_t)(preambleLen & 0xFF),
                      preambleDetectorLen, syncWordLen, addrCmp,
                      packType, payloadLen, crcType, whiten};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PACKET_PARAMS, data, 9));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PACKET_PARAMS, data, 9));
 }
 
 int16_t LLCC68::setBufferBaseAddress(uint8_t txBaseAddress, uint8_t rxBaseAddress) {
   uint8_t data[2] = {txBaseAddress, rxBaseAddress};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_BUFFER_BASE_ADDRESS, data, 2));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_BUFFER_BASE_ADDRESS, data, 2));
 }
 
 int16_t LLCC68::setRegulatorMode(uint8_t mode) {
   uint8_t data[1] = {mode};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_REGULATOR_MODE, data, 1));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_REGULATOR_MODE, data, 1));
 }
 
 uint8_t LLCC68::getStatus() {
   uint8_t data = 0;
-  this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_STATUS, &data, 1);
+  this->SPIreadStream(RADIOLIB_SX126X_CMD_GET_STATUS, &data, 1);
   return (data);
 }
 
 uint32_t LLCC68::getPacketStatus() {
   uint8_t data[3] = {0, 0, 0};
-  this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_PACKET_STATUS, data, 3);
+  this->SPIreadStream(RADIOLIB_SX126X_CMD_GET_PACKET_STATUS, data, 3);
   return ((((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | (uint32_t)data[2]);
 }
 
 uint16_t LLCC68::getDeviceErrors() {
   uint8_t data[2] = {0, 0};
-  this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_DEVICE_ERRORS, data, 2);
+  this->SPIreadStream(RADIOLIB_SX126X_CMD_GET_DEVICE_ERRORS, data, 2);
   uint16_t opError = (((uint16_t)data[0] & 0xFF) << 8) | ((uint16_t)data[1]);
   return (opError);
 }
 
 int16_t LLCC68::clearDeviceErrors() {
   uint8_t data[2] = {RADIOLIB_SX126X_CMD_NOP, RADIOLIB_SX126X_CMD_NOP};
-  return (this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_CLEAR_DEVICE_ERRORS, data, 2));
+  return (this->SPIwriteStream(RADIOLIB_SX126X_CMD_CLEAR_DEVICE_ERRORS, data, 2));
 }
 
 int16_t LLCC68::setFrequencyRaw(float freq) {
@@ -1807,12 +1807,12 @@ int16_t LLCC68::config(uint8_t modem) {
   // set modem
   uint8_t data[7];
   data[0] = modem;
-  state   = this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PACKET_TYPE, data, 1);
+  state   = this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_PACKET_TYPE, data, 1);
   RADIOLIB_ASSERT(state);
 
   // set Rx/Tx fallback mode to STDBY_RC
   data[0] = RADIOLIB_SX126X_RX_TX_FALLBACK_MODE_STDBY_RC;
-  state   = this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RX_TX_FALLBACK_MODE, data, 1);
+  state   = this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_RX_TX_FALLBACK_MODE, data, 1);
   RADIOLIB_ASSERT(state);
 
   // set some CAD parameters - will be overwritten whel calling CAD anyway
@@ -1823,7 +1823,7 @@ int16_t LLCC68::config(uint8_t modem) {
   data[4] = 0x00;
   data[5] = 0x00;
   data[6] = 0x00;
-  state   = this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_CAD_PARAMS, data, 7);
+  state   = this->SPIwriteStream(RADIOLIB_SX126X_CMD_SET_CAD_PARAMS, data, 7);
   RADIOLIB_ASSERT(state);
 
   // clear IRQ
@@ -1833,17 +1833,17 @@ int16_t LLCC68::config(uint8_t modem) {
 
   // calibrate all blocks
   data[0] = RADIOLIB_SX126X_CALIBRATE_ALL;
-  state   = this->mod->SPIwriteStream(RADIOLIB_SX126X_CMD_CALIBRATE, data, 1, true, false);
+  state   = this->SPIwriteStream(RADIOLIB_SX126X_CMD_CALIBRATE, data, 1, true, false);
   RADIOLIB_ASSERT(state);
 
   // wait for calibration completion
-  this->mod->hal->delay(5);
-  while (this->mod->hal->digitalRead(this->mod->getGpio())) {
-    this->mod->hal->yield();
+  this->delay(5);
+  while (this->digitalRead(this->getGpio())) {
+    this->yield();
   }
 
   // check calibration result
-  state = this->mod->SPIcheckStream();
+  state = this->SPIcheckStream();
 
 // if something failed, show the device errors
 #if defined(RADIOLIB_DEBUG)
@@ -1880,7 +1880,7 @@ bool LLCC68::findChip(const char *verStr) {
 
     // read the version string
     char version[16];
-    this->mod->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_VERSION_STRING, 16, (uint8_t *)version);
+    this->SPIreadRegisterBurst(RADIOLIB_SX126X_REG_VERSION_STRING, 16, (uint8_t *)version);
 
     // check version register
     if (strncmp(verStr, version, 6) == 0) {
@@ -1895,7 +1895,7 @@ bool LLCC68::findChip(const char *verStr) {
       printf("\n");
       RADIOLIB_DEBUG_PRINTLN("Expected string: %s", verStr);
 #endif
-      this->mod->hal->delay(10);
+      this->delay(10);
       i++;
     }
   }
@@ -1905,10 +1905,10 @@ bool LLCC68::findChip(const char *verStr) {
 
 int16_t LLCC68::reset(bool verify) {
   // run the reset sequence
-  this->mod->hal->pinMode(this->mod->getRst(), this->mod->hal->GpioModeOutput);
-  this->mod->hal->digitalWrite(this->mod->getRst(), this->mod->hal->GpioLevelLow);
-  this->mod->hal->delay(1);
-  this->mod->hal->digitalWrite(this->mod->getRst(), this->mod->hal->GpioLevelHigh);
+  this->pinMode(this->getRst(), this->GpioModeOutput);
+  this->digitalWrite(this->getRst(), this->GpioLevelLow);
+  this->delay(1);
+  this->digitalWrite(this->getRst(), this->GpioLevelHigh);
 
   // return immediately when verification is disabled
   if (!verify) {
@@ -1916,7 +1916,7 @@ int16_t LLCC68::reset(bool verify) {
   }
 
   // set mode to standby - SX126x often refuses first few commands after reset
-  uint32_t start = this->mod->hal->millis();
+  uint32_t start = this->millis();
   while (true) {
     // try to set mode to standby
     int16_t state = standby();
@@ -1926,18 +1926,16 @@ int16_t LLCC68::reset(bool verify) {
     }
 
     // standby command failed, check timeout and try again
-    if (this->mod->hal->millis() - start >= 1000) {
+    if (this->millis() - start >= 1000) {
       // timed out, possibly incorrect wiring
       return (state);
     }
 
     // wait a bit to not spam the module
-    this->mod->hal->delay(100);
+    this->delay(100);
   }
 }
-inline Module *LLCC68::getMod() const {
-  return (this->mod);
-}
+
 int16_t LLCC68::setOutputPower(int8_t power) {
   RADIOLIB_CHECK_RANGE(power, -9, 22, RADIOLIB_ERR_INVALID_OUTPUT_POWER);
 
@@ -1958,9 +1956,8 @@ int16_t LLCC68::setOutputPower(int8_t power) {
   // restore OCP configuration
   return (writeRegister(RADIOLIB_SX126X_REG_OCP_CONFIGURATION, &ocp, 1));
 }
-LLCC68::LLCC68(Module *mod) {
+LLCC68::LLCC68() {
   chipType  = RADIOLIB_LLCC68_CHIP_TYPE;
-  this->mod = mod;
 }
 int16_t LLCC68::setFrequency(float freq) {
   return (setFrequency(freq, true));
@@ -2013,5 +2010,5 @@ void LLCC68::rx() {
   // enable DIO1 and DIO2 interrupts
   setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
   // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_RX);
+  this->setRfSwitchState(MODE_RX);
 }

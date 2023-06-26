@@ -41,10 +41,9 @@ int main() {
   pinMode(LED_pin, GPIO::OUTPUT);
   configureEXTI();
 
-  auto hal = RadioLibHal();
-  hal.spiBegin();
-  auto mod = Module(&hal, CS_PIN, IRQ_PIN, RST_PIN, BUSY_PIN);
-  auto rf  = LLCC68(&mod);
+  auto rf  = LLCC68();
+  rf.spiBegin();
+  rf.setModule(CS_PIN, IRQ_PIN, RST_PIN, BUSY_PIN);
   rf.setDio2AsRfSwitch(false);
   //  rf.setRfSwitchPins(RX_EN_PIN, TX_EN_PIN);
   // TODO: ...
