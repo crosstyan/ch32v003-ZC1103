@@ -330,9 +330,9 @@ int16_t LLCC68::startTransmit(uint8_t *data, size_t len, uint8_t addr) {
   RADIOLIB_ASSERT(state);
 
   // set DIO mapping
-   state = setDioIrqParams(RADIOLIB_SX126X_IRQ_TX_DONE | RADIOLIB_SX126X_IRQ_TIMEOUT, RADIOLIB_SX126X_IRQ_TX_DONE, RADIOLIB_SX126X_IRQ_TX_DONE);
-//  state = setDioIrqParams(RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE);
-   RADIOLIB_ASSERT(state);
+  state = setDioIrqParams(RADIOLIB_SX126X_IRQ_TX_DONE | RADIOLIB_SX126X_IRQ_TIMEOUT, RADIOLIB_SX126X_IRQ_TX_DONE, RADIOLIB_SX126X_IRQ_TX_DONE);
+  //  state = setDioIrqParams(RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE);
+  RADIOLIB_ASSERT(state);
 
   // set buffer pointers
   state = setBufferBaseAddress();
@@ -461,11 +461,11 @@ int16_t LLCC68::startReceiveDutyCycleAuto(uint16_t senderPreambleLength, uint16_
 
 int16_t LLCC68::beforeStartReceive(uint32_t timeout) {
   // set DIO mapping
-//  if (timeout != RADIOLIB_SX126X_RX_TIMEOUT_INF) {
-//    irqMask |= RADIOLIB_SX126X_IRQ_TIMEOUT;
-//  }
-//  int16_t state = setDioIrqParams(irqFlags, irqMask);
-//  RADIOLIB_ASSERT(state);
+  //  if (timeout != RADIOLIB_SX126X_RX_TIMEOUT_INF) {
+  //    irqMask |= RADIOLIB_SX126X_IRQ_TIMEOUT;
+  //  }
+  //  int16_t state = setDioIrqParams(irqFlags, irqMask);
+  //  RADIOLIB_ASSERT(state);
 
   // set buffer pointers
   auto state = setBufferBaseAddress();
