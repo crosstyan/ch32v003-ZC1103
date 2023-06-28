@@ -11,9 +11,6 @@
 #include "message_wrapper.h"
 #include "utils.h"
 #include <printf.h>
-#include <pb_common.h>
-#include <pb_decode.h>
-#include "simple.pb.h"
 #include "led.h"
 #include <etl/random.h>
 #include "flags.h"
@@ -215,35 +212,6 @@ int main() {
         if (res == MessageWrapper::WrapperDecodeResult::Finished) {
           auto payload = decoder.getOutput();
           etl::vector<char, 32> string_payload;
-          pb_istream_t istream         = pb_istream_from_buffer(reinterpret_cast<uint8_t *>(payload.data()), payload.size());
-          Simple message               = Simple_init_zero;
-          message.message.arg          = &string_payload;
-          message.message.funcs.decode = [](pb_istream_t *stream, const pb_field_t *field, void **arg) {
-            auto &payload = *(static_cast<etl::ivector<char> *>(*arg));
-            payload.clear();
-            if (stream->bytes_left > payload.max_size() - 1) {
-              return false;
-            }
-            payload.resize(stream->bytes_left);
-            if (!pb_read(stream, reinterpret_cast<uint8_t *>(payload.data()), stream->bytes_left)) {
-              return false;
-            }
-            payload.push_back('\0');
-            return true;
-          };
-          bool status = pb_decode(&istream, Simple_fields, &message);
-          if (status) {
-            auto c = message.counter;
-            rgb    = message.is_red | (message.is_green << 1) | (message.is_blue << 2);
-            printf("[INFO] counter=%d; message=\"%s\"; rgb=0x%02x\n", c, string_payload.data(), rgb);
-#ifdef DISABLE_LED
-            LED::setColor(false, false, false);
-#else
-            LED::setColor(message.is_red, message.is_green, message.is_blue);
-#endif
-          } else {
-            printf("[ERROR] failed to decode\n");
-          }
         } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
           printf("[INFO] unfinished\n");
         } else {
@@ -254,7 +222,6 @@ int main() {
       digitalWrite(GPIO::D6, GPIO::LOW);
       Flags::setFlag(false);
     }
-
 #endif
   }
 }
