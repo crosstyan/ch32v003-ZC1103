@@ -219,6 +219,16 @@ int main() {
           decoder.reset();
         }
       }
+      // define ATTR_PACKED __attribute__ ((__packed__))
+      // https://linux.die.net/man/3/htonl
+      // https://stackoverflow.com/questions/8568432/is-gccs-attribute-packed-pragma-pack-unsafe
+      // https://www.quora.com/What-is-the-attribute__-packed-variable-attribute-in-C-and-why-and-how-is-it-used
+      // https://dev.to/agudpp/packing-unpacking-data-in-c-3gmh
+      // https://stackoverflow.com/questions/45116212/are-packed-structs-portable
+      // https://capnproto.org
+      // https://news.ycombinator.com/item?id=21874949
+      auto a = __htonl(1);
+      auto b = __ntohl(a);
       digitalWrite(GPIO::D6, GPIO::LOW);
       Flags::setFlag(false);
     }
