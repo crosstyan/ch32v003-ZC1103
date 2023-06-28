@@ -170,7 +170,6 @@ etl::vector<uint16_t, MAX_ENABLED_ID_SIZE> calcEnabledId(const CalcState &state,
 
 class Spot {
 public:
-  uint64_t timestamp;
   SpotState state;
   etl::delegate<void(uint8_t)> setColorCallback = [](uint8_t) {};
 
@@ -181,18 +180,35 @@ private:
 public:
   Spot(SpotConfig config) : config(config) {
     state     = SpotState::STOP;
-    timestamp = millis();
   };
 
+  /// use std::move to avoid copy
+  void setSpotConfig(SpotConfig cfg) {
+    this->config = cfg;
+  }
+
+  /// use std::move to avoid copy
   void addTrack(Track track) {
     auto calcState = CalcState{
-        .startTime                = millis(),
-        .lastIntegralTime         = millis(),
+        .startTime                = 0,
+        .lastIntegralTime         = 0,
         .lastIntegralRelativeTime = 0,
         .lastIntegralDistance     = 0,
         .maxDistance              = track.getMaxKey(),
     };
     tracks.push_back(etl::make_pair(track, calcState));
+  }
+
+  void start(){
+    state = SpotState::START;
+    for (auto &track : tracks) {
+      auto &[t, calc] = track;
+      calc.startTime  = millis();
+      calc.lastIntegralTime = calc.startTime;
+      calc.lastIntegralRelativeTime = 0;
+      calc.lastIntegralDistance = 0;
+      calc.maxDistance = t.getMaxKey();
+    }
   }
 
   decltype(tracks) &getTracks() {
@@ -202,12 +218,13 @@ public:
   void clearTracks() {
     tracks.clear();
   }
+
   void update() {
     if (state != SpotState::START) {
       return;
     }
     bool isChanged = false;
-    std::vector<bool> isAllStop;
+    etl::vector<bool, MAX_TRACK_SIZE> isAllStop;
 
     for (auto &track : tracks) {
       auto &[t, calc] = track;

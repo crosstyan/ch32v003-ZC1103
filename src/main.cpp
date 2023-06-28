@@ -17,6 +17,7 @@
 #include "led.h"
 #include <etl/random.h>
 #include "flags.h"
+#include "spot.h"
 
 #ifdef TX
 #include <pb_encode.h>
@@ -160,10 +161,35 @@ int main() {
       }
     }
     if (Flags::getFlag()) {
-      SystemInit48HSI();
       printf("[INFO] RX flag set\n");
       char rx_buf[256];
       uint16_t rx_size;
+
+      auto t1 = Track();
+      t1.color = 0b00000011;
+      t1.addSpeed(0, 0);
+      t1.addSpeed(50, 1.1);
+      t1.addSpeed(100, 1.5);
+      t1.addSpeed(200, 1.3);
+      t1.addSpeed(300, 1.1);
+      t1.addSpeed(400, 1.0);
+      auto scfg = SpotConfig {
+          .circleLength = 400,
+          .lineLength = 18,
+          .total = 400,
+          .current = 0,
+          .updateInterval = 100,
+      };
+      auto s = Spot(std::move(scfg));
+      s.addTrack(std::move(t1));
+      s.setColorCallback = [](uint8_t c) {
+        auto r = c & 0b00000001;
+        auto g = (c & 0b00000010) >> 1;
+        auto b = (c & 0b00000100) >> 2;
+        LED::setColor(r, g, b);
+      };
+      s.start();
+      s.update();
       // when a valid packet is received the state should be 0xc0
       // (at least the rx_pkt_state would be 0x00)
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
