@@ -9,6 +9,7 @@
 #include <etl/unordered_map.h>
 #include <etl/vector.h>
 #include <etl/delegate.h>
+#include "current.h"
 #include "system_tick.h"
 
 const auto MAX_SPEED_MAP_SIZE = 16;
@@ -49,7 +50,8 @@ struct SpotConfig {
   fixed_16_16 circleLength;
   fixed_16_16 lineLength;
   uint16_t total;
-  uint16_t current;
+  /// when current < 0 the device would read its current from flash
+  int16_t current;
   /// in ms
   uint16_t updateInterval;
 };
@@ -252,7 +254,14 @@ public:
       if (newState.has_value()) {
         auto newCalc    = newState.value();
         auto enabledIds = calcEnabledId(newCalc, config);
-
+        if (config.current < 0){
+          auto c = Current::get();
+          if (c < 0){
+            config.current = 0;
+          } else {
+            config.current = c;
+          }
+        }
         if (etl::find(enabledIds.begin(), enabledIds.end(), config.current) != enabledIds.end()) {
           isChanged = true;
           setColorCallback(t.color);

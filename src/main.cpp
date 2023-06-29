@@ -175,7 +175,7 @@ int main() {
           .circleLength = 400,
           .lineLength = 18,
           .total = 400,
-          .current = 0,
+          .current = -1,
           .updateInterval = 100,
       };
       auto s = Spot(std::move(scfg));

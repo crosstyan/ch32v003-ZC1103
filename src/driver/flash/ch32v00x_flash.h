@@ -17,16 +17,6 @@ extern "C" {
 
 #include <ch32v003fun.h>
 
-/* FLASH Status */
-//typedef enum
-//{
-//    FLASH_BUSY = 1,
-//    FLASH_ERROR_PG,
-//    FLASH_ERROR_WRP,
-//    FLASH_COMPLETE,
-//    FLASH_TIMEOUT
-//} FLASH_Status;
-
 /* Flash_Latency */
 #define FLASH_Latency_0                  ((uint32_t)0x00000000) /* FLASH Zero Latency cycle */
 #define FLASH_Latency_1                  ((uint32_t)0x00000001) /* FLASH One Latency cycle */

@@ -83,8 +83,8 @@ add_compile_definitions(
 set_target_properties(${CMAKE_PROJECT_NAME}.elf PROPERTIES
         CXX_STANDARD 23
         CXX_STANDARD_REQUIRED ON
-        LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/vendor/Ld/Link.ld
-        LINK_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/vendor/Ld/Link.ld")
+        LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Link.ld
+        LINK_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/Link.ld")
 
 target_link_libraries(${CMAKE_PROJECT_NAME}.elf
         PRIVATE

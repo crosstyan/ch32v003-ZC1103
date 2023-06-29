@@ -8,10 +8,11 @@
 #ifndef SIMPLE_FLASH_H
 #define SIMPLE_FLASH_H
 
-#define FLASH_SIZE 16
-#define FLASH_SECTOR_SIZE  64 // in bytes
+// Magic variable provided by the linker script
+extern "C" uint8_t _EEPROM_start;
+extern "C" uint8_t _EEPROM_end;
 
-u16 FlashReadHalfWord(u32 faddr);
+u16 FlashReadHalfWord(u32 addr);
 
 /**
  * @brief read flash
@@ -25,10 +26,10 @@ void FlashRead(u32 ReadAddr, u16 *pBuffer, u16 NumToRead);
  * @brief write flash without check
  * @param WriteAddr
  * @param pBuffer
- * @param NumToWrite
+ * @param size
  */
-void FlashWriteNoCheck(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite);
+FLASH_Status FlashWriteNoCheck(u32 WriteAddr, u16 *pBuffer, u16 size);
 
-void FlashWrite(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite);
+FLASH_Status FlashWrite(u32 WriteAddr, u16 *pBuffer, u16 size);
 
 #endif // SIMPLE_FLASH_H
