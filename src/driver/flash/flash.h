@@ -7,6 +7,7 @@
 #include "ch32v00x_flash.h"
 #ifndef SIMPLE_FLASH_H
 #define SIMPLE_FLASH_H
+
 #define FLASH_SIZE 16
 #define FLASH_SECTOR_SIZE  64 // in bytes
 

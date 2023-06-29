@@ -3,17 +3,16 @@
 //
 #include "flash.h"
 
-u16 STMFLASH_BUF[STM_SECTOR_SIZE / 2]; // 最多是32*2字节
+u16 FLASH_BUF[FLASH_SECTOR_SIZE / 2]; // 最多是 32*2 字节
 
 u16 FlashReadHalfWord(u32 faddr) {
   return *(vu16 *)faddr;
 }
 
 void FlashRead(u32 ReadAddr, u16 *pBuffer, u16 NumToRead) {
-  u16 i;
-  for (i = 0; i < NumToRead; i++) {
-    pBuffer[i] = STMFLASH_ReadHalfWord(ReadAddr); // 读取2个字节.
-    ReadAddr += 2;                                // 偏移2个字节.
+  for (auto i = 0; i < NumToRead; i++) {
+    pBuffer[i] = FlashReadHalfWord(ReadAddr); // 读取2个字节.
+    ReadAddr += 2;                            // 偏移2个字节.
   }
 }
 
@@ -26,47 +25,53 @@ void FlashWriteNoCheck(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite) {
 }
 
 void FlashWrite(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite) {
-  u32 secpos;    // 扇区地址
-  u16 secoff;    // 扇区内偏移地址(16位字计算)
-  u16 secremain; // 扇区内剩余地址(16位字计算)
-  u16 i;
-  u32 offaddr;                                                                                             // 去掉0X08000000后的地址
-  if (WriteAddr < STM32_FLASH_BASE || (WriteAddr >= (STM32_FLASH_BASE + 1024 * STM32_FLASH_SIZE))) return; // 非法地址
-  FLASH_Unlock();                                                                                          // 解锁
-  offaddr   = WriteAddr - STM32_FLASH_BASE;                                                                // 实际偏移地址.
-  secpos    = offaddr / STM_SECTOR_SIZE;                                                                   // 扇区地址  0~127 for STM32F103RBT6
-  secoff    = (offaddr % STM_SECTOR_SIZE) / 2;                                                             // 在扇区内的偏移(2个字节为基本单位.)
-  secremain = STM_SECTOR_SIZE / 2 - secoff;                                                                // 扇区剩余空间大小
-  if (NumToWrite <= secremain) secremain = NumToWrite;                                                     // 不大于该扇区范围
-  while (1) {
-    STMFLASH_Read(secpos * STM_SECTOR_SIZE + STM32_FLASH_BASE, STMFLASH_BUF, STM_SECTOR_SIZE / 2); // 读出整个扇区的内容
-    for (i = 0; i < secremain; i++)                                                                // 校验数据
-    {
-      if (STMFLASH_BUF[secoff + i] != 0XFFFF) break; // 需要擦除
-    }
-    if (i < secremain) // 需要擦除
-    {
-      FLASH_ErasePage(secpos * STM_SECTOR_SIZE + STM32_FLASH_BASE); // 擦除这个扇区
-      for (i = 0; i < secremain; i++)                               // 复制
-      {
-        STMFLASH_BUF[i + secoff] = pBuffer[i];
+  u32 sec_pos;    // 扇区地址
+  u16 sec_off;    // 扇区内偏移地址(16位字计算)
+  u16 sec_remain; // 扇区内剩余地址(16位字计算)
+  u32 off_addr;   // 去掉 0x08000000 后的地址
+  // I'm not sure what this global variable is for.
+  u32 i;
+  if (WriteAddr < FLASH_BASE || (WriteAddr >= (FLASH_BASE + 1024 * FLASH_SIZE))) {
+    return;
+  }
+  FLASH_Unlock();                                                                        // 解锁
+  off_addr   = WriteAddr - FLASH_BASE;                                                   // 实际偏移地址.
+  sec_pos    = off_addr / FLASH_SECTOR_SIZE;                                             // 扇区地址  0~127 for STM32F103RBT6
+  sec_off    = (off_addr % FLASH_SECTOR_SIZE) / 2;                                       // 在扇区内的偏移(2个字节为基本单位.)
+  sec_remain = FLASH_SECTOR_SIZE / 2 - sec_off;                                          // 扇区剩余空间大小
+  if (NumToWrite <= sec_remain) sec_remain = NumToWrite;                                 // 不大于该扇区范围
+  while (true) {
+    // 读出整个扇区的内容
+    FlashRead(sec_pos * FLASH_SECTOR_SIZE + FLASH_BASE, FLASH_BUF, FLASH_SECTOR_SIZE / 2);
+    // 校验数据
+    for (i = 0; i < sec_remain; i++) {
+      if (FLASH_BUF[sec_off + i] != 0XFFFF) {
+        break; // 需要擦除
       }
-      STMFLASH_Write_NoCheck(secpos * STM_SECTOR_SIZE + STM32_FLASH_BASE, STMFLASH_BUF, STM_SECTOR_SIZE / 2); // 写入整个扇区
-    } else
-      STMFLASH_Write_NoCheck(WriteAddr, pBuffer, secremain); // 写已经擦除了的,直接写入扇区剩余区间.
-    if (NumToWrite == secremain)
-      break; // 写入结束了
-    else     // 写入未结束
-    {
-      secpos++;                     // 扇区地址增1
-      secoff = 0;                   // 偏移位置为0
-      pBuffer += secremain;         // 指针偏移
-      WriteAddr += (secremain * 2); // 写地址偏移
-      NumToWrite -= secremain;      // 字节(16位)数递减
-      if (NumToWrite > (STM_SECTOR_SIZE / 2))
-        secremain = STM_SECTOR_SIZE / 2; // 下一个扇区还是写不完
+    }
+    // 需要擦除
+    if (i < sec_remain) {
+      FLASH_ErasePage(sec_pos * FLASH_SECTOR_SIZE + FLASH_BASE); // 擦除这个扇区
+      // 复制
+      for (i = 0; i < sec_remain; i++) {
+        FLASH_BUF[i + sec_off] = pBuffer[i];
+      }
+      FlashWriteNoCheck(sec_pos * FLASH_SECTOR_SIZE + FLASH_BASE, FLASH_BUF, FLASH_SECTOR_SIZE / 2); // 写入整个扇区
+    } else {
+      FlashWriteNoCheck(WriteAddr, pBuffer, sec_remain); // 写已经擦除了的,直接写入扇区剩余区间.
+    }
+    if (NumToWrite == sec_remain) {
+      break;
+    } else {
+      sec_pos++;                     // 扇区地址增1
+      sec_off = 0;                   // 偏移位置为0
+      pBuffer += sec_remain;         // 指针偏移
+      WriteAddr += (sec_remain * 2); // 写地址偏移
+      NumToWrite -= sec_remain;      // 字节(16位)数递减
+      if (NumToWrite > (FLASH_SECTOR_SIZE / 2))
+        sec_remain = FLASH_SECTOR_SIZE / 2; // 下一个扇区还是写不完
       else
-        secremain = NumToWrite; // 下一个扇区可以写完了
+        sec_remain = NumToWrite; // 下一个扇区可以写完了
     }
   };
   FLASH_Lock(); // 上锁
