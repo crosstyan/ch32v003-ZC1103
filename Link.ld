@@ -127,6 +127,7 @@ SECTIONS
       *(.srodata .srodata.*)
       . = ALIGN(4);
       PROVIDE( _edata = .);
+      . = ALIGN(2);
       PROVIDE( _eeprom_start = .);
       /* Give some space after data section */
       PROVIDE(_EEPROM_start = .);

@@ -10,21 +10,21 @@
 /// do not frequently update the EEPROM or you may prematurely wear out the flash.
 namespace Current {
   const auto OFFSET = 1;
-  const auto FLASH_ADDR = FLASH_BASE + OFFSET;
+  const auto CURRENT_ID_ADDR = EEPROM_START + OFFSET;
   /**
    * @brief get current from flash
    * @return int16_t
    */
   int16_t get() {
-    return FlashReadHalfWord(FLASH_ADDR);
+    return FlashReadHalfWord(CURRENT_ID_ADDR);
   }
 
   /**
    * @brief set current to flash
-   * @param current
+   * @param current id
    */
-  void set(int16_t current) {
-    FlashWrite(FLASH_ADDR, (u16 *) &current, 1);
+  FLASH_Status set(int16_t current) {
+    return FlashWrite(CURRENT_ID_ADDR, (u16 *) &current, 1);
   }
 }
 
