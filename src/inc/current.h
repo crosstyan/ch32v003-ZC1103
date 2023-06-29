@@ -6,6 +6,7 @@
 #define SIMPLE_CURRENT_H
 
 #include "flash.h"
+#include "error.h"
 #include "etl/expected.h"
 
 /// do not frequently update the EEPROM or you may prematurely wear out the flash.
@@ -29,31 +30,25 @@ FLASH_Status set(int16_t current) {
   return FlashWrite(CURRENT_ID_ADDR, (u16 *)&current, 1);
 }
 
-enum class CurrentParseStatus {
-  OK,
-  MAGIC_ERROR,
-  VALUE_ERROR,
-};
-
 /**
  * @brief decode
  * @param bytes
  * @return etl::expected<uint16_t, CurrentParseStatus>
- * @see
+ * @see https://github.com/crosstyan/ch32v003-ZC1103/blob/cnl/docs/protocol/set_current.ksy
  */
-etl::expected<uint16_t, CurrentParseStatus> fromBytes(u8 *bytes) {
+etl::expected<uint16_t, ParseResult> fromBytes(u8 *bytes) {
   auto magic = bytes[0];
   if (magic != SET_CURRENT_MAGIC) {
-    auto ue = etl::unexpected<CurrentParseStatus>(CurrentParseStatus::MAGIC_ERROR);
-    return etl::expected<uint16_t, CurrentParseStatus>(std::move(ue));
+    auto ue = etl::unexpected<ParseResult>(ParseResult::MAGIC_ERROR);
+    return etl::expected<uint16_t, ParseResult>(std::move(ue));
   }
   auto current = __ntohs(*(u16 *)(bytes + 1));
   // check for absurd value
   if (current > 400) {
-    auto ue = etl::unexpected<CurrentParseStatus>(CurrentParseStatus::VALUE_ERROR);
-    return etl::expected<uint16_t, CurrentParseStatus>(std::move(ue));
+    auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+    return etl::expected<uint16_t, ParseResult>(std::move(ue));
   }
-  return etl::expected<uint16_t, CurrentParseStatus>(current);
+  return etl::expected<uint16_t, ParseResult>(current);
 }
 
 }

@@ -18,3 +18,5 @@ seq:
   # current spot id
   - id: current
     type: s2
+  - id: update_interval
+    type: u2

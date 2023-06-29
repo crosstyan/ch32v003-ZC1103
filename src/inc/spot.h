@@ -12,9 +12,12 @@
 #include "current.h"
 #include "system_tick.h"
 
-const auto MAX_SPEED_MAP_SIZE = 16;
+const auto SPOT_CONFIG_MAGIC = 0x80;
+const auto SPOT_MAGIC        = 0x76;
+
+const auto MAX_SPEED_MAP_SIZE  = 16;
 const auto MAX_ENABLED_ID_SIZE = 16;
-const auto MAX_TRACK_SIZE     = 3;
+const auto MAX_TRACK_SIZE      = 3;
 
 /**
  * @brief a function retrieve value by the number nearing the key. always move a unit up.
@@ -61,9 +64,42 @@ struct SpotConfig {
  * @param config an empty SpotConfig to be populated
  * @param bytes the bytes to be read
  * @param size the size of bytes
+ * @see https://github.com/crosstyan/ch32v003-ZC1103/blob/cnl/docs/protocol/spot_config.ksy
  */
-void fromBytes(SpotConfig &config, const uint8_t *bytes, size_t size){
-
+ParseResult fromBytes(SpotConfig &config, const uint8_t *bytes) {
+  auto magic  = bytes[0];
+  auto offset = 0;
+  if (magic != SPOT_CONFIG_MAGIC) {
+    return ParseResult::MAGIC_ERROR;
+  }
+  offset += 1;
+  auto circleLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
+  auto fixedCircleLength = cnl::wrap<fixed_16_16>(circleLength);
+  offset += 4;
+  if (fixedCircleLength > 500) {
+    return ParseResult::VALUE_ERROR;
+  }
+  auto lineLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
+  auto fixedLineLength = cnl::wrap<fixed_16_16>(lineLength);
+  offset += 4;
+  if (fixedLineLength > fixedCircleLength) {
+    return ParseResult::VALUE_ERROR;
+  }
+  auto total = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
+  offset += 2;
+  auto current = __ntohs(*reinterpret_cast<const int16_t *>(bytes + offset));
+  offset += 2;
+  auto updateInterval = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
+  offset += 2;
+  if (updateInterval < 50 || updateInterval > 1000) {
+    return ParseResult::VALUE_ERROR;
+  }
+  config.circleLength   = fixedCircleLength;
+  config.lineLength     = fixedLineLength;
+  config.total          = total;
+  config.current        = current;
+  config.updateInterval = updateInterval;
+  return ParseResult::OK;
 };
 
 class Track {
@@ -82,6 +118,11 @@ public:
     maxKey = 0;
   }
 
+  /**
+   * @brief add a speed to the track
+   * @param key the distance
+   * @param speed the speed at the distance
+   */
   void addSpeed(uint16_t key, fixed_16_16 speed) {
     keys.push_back(key);
     etl::sort(keys.begin(), keys.end());
@@ -141,7 +182,6 @@ etl::optional<CalcState> nextState(const CalcState &lastState, uint64_t now, Tra
   return newState;
 }
 
-
 etl::vector<uint16_t, MAX_ENABLED_ID_SIZE> calcEnabledId(const CalcState &state, const SpotConfig &spot) {
   auto headDist                       = state.lastIntegralDistance;
   auto head                           = headDist % spot.circleLength;
@@ -164,23 +204,23 @@ etl::vector<uint16_t, MAX_ENABLED_ID_SIZE> calcEnabledId(const CalcState &state,
 
   if (headDist > state.maxDistance) {
     // range(tailSpotId, spot.total)
-    for (auto i = tailSpotId; i < spot.total; ++i) {
+    for (auto i = tailSpotId; i < spot.total; i++) {
       enabledIds.push_back(i);
     }
   } else if (extra.has_value()) {
     // range(0, headSpotId)
-    for (auto i = 0; i < headSpotId; ++i) {
+    for (auto i = 0; i < headSpotId; i++) {
       enabledIds.push_back(i);
     }
     if (headDist >= spot.circleLength) {
       // range(tailSpotId, spot.total)
-      for (auto i = tailSpotId; i < spot.total; ++i) {
+      for (auto i = tailSpotId; i < spot.total; i++) {
         enabledIds.push_back(i);
       }
     }
   } else {
     // range(tailSpotId, headSpotId)
-    for (auto i = tailSpotId; i < headSpotId; ++i) {
+    for (auto i = tailSpotId; i < headSpotId; i++) {
       enabledIds.push_back(i);
     }
   }
@@ -199,8 +239,49 @@ private:
 
 public:
   Spot(SpotConfig config) : config(config) {
-    state     = SpotState::STOP;
+    state = SpotState::STOP;
   };
+
+  ParseResult fromBytes(uint8_t *bytes) {
+    auto offset = 0;
+    if (bytes[offset] != SPOT_MAGIC) {
+      return ParseResult::MAGIC_ERROR;
+    }
+    offset += 1;
+    auto track_count = bytes[offset];
+    if (track_count > MAX_TRACK_SIZE) {
+      return ParseResult::VALUE_ERROR;
+    }
+    offset += 1;
+    for (auto i = 0; i < track_count; ++i) {
+      auto track = Track();
+      auto id    = bytes[offset];
+      offset += 1;
+      auto color  = bytes[offset];
+      track.color = color;
+      offset += 1;
+      auto speed_count = bytes[offset];
+      if (speed_count > MAX_SPEED_MAP_SIZE) {
+        return ParseResult::VALUE_ERROR;
+      }
+      offset += 1;
+      for (auto j = 0; j < speed_count; ++j) {
+        auto distance = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
+        if (distance > 6000) {
+          return ParseResult::VALUE_ERROR;
+        }
+        offset += 2;
+        auto speed       = __ntohl(*reinterpret_cast<uint32_t *>(bytes + offset));
+        auto fixed_speed = cnl::wrap<fixed_16_16>(speed);
+        if (fixed_speed > 10) {
+          return ParseResult::VALUE_ERROR;
+        }
+        track.addSpeed(distance, fixed_speed);
+        offset += 4;
+      }
+      addTrack(std::move(track));
+    }
+  }
 
   /// use std::move to avoid copy
   void setSpotConfig(SpotConfig cfg) {
@@ -219,15 +300,15 @@ public:
     tracks.push_back(etl::make_pair(track, calcState));
   }
 
-  void start(){
+  void start() {
     state = SpotState::START;
     for (auto &track : tracks) {
-      auto &[t, calc] = track;
-      calc.startTime  = millis();
-      calc.lastIntegralTime = calc.startTime;
+      auto &[t, calc]               = track;
+      calc.startTime                = millis();
+      calc.lastIntegralTime         = calc.startTime;
       calc.lastIntegralRelativeTime = 0;
-      calc.lastIntegralDistance = 0;
-      calc.maxDistance = t.getMaxKey();
+      calc.lastIntegralDistance     = 0;
+      calc.maxDistance              = t.getMaxKey();
     }
   }
 
@@ -254,9 +335,9 @@ public:
       if (newState.has_value()) {
         auto newCalc    = newState.value();
         auto enabledIds = calcEnabledId(newCalc, config);
-        if (config.current < 0){
+        if (config.current < 0) {
           auto c = Current::get();
-          if (c < 0){
+          if (c < 0) {
             config.current = 0;
           } else {
             config.current = c;

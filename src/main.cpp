@@ -213,6 +213,8 @@ int main() {
         if (res == MessageWrapper::WrapperDecodeResult::Finished) {
           auto payload = decoder.getOutput();
           etl::vector<char, 32> string_payload;
+          s.fromBytes(reinterpret_cast<uint8_t *>(payload.data()));
+          fromBytes(scfg, reinterpret_cast<uint8_t *>(payload.data()));
         } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
           printf("[INFO] unfinished\n");
         } else {
