@@ -63,10 +63,10 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # I build for Cortex-M0, so I use -mtune=cortex-m0 -mcpu=cortex-m0
 # https://blog.csdn.net/u011011827/article/details/124197544
 # needs _zicsr or specify misa spec
-set(OBJECT_GEN_FLAGS "-march=rv32ec -misa-spec=2.2 -mabi=ilp32e -msmall-data-limit=8 -mno-save-restore -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -Wunused -Wuninitialized")
+set(OBJECT_GEN_FLAGS "-march=rv32ec -misa-spec=2.2 -mabi=ilp32e -msmall-data-limit=8 -mno-save-restore -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -Wunused -Wuninitialized ")
 
 set(CMAKE_C_FLAGS   "${OBJECT_GEN_FLAGS}" CACHE INTERNAL "C Compiler options")
-set(CMAKE_CXX_FLAGS "${OBJECT_GEN_FLAGS} -MMD -MP" CACHE INTERNAL "C++ Compiler options")
+set(CMAKE_CXX_FLAGS "${OBJECT_GEN_FLAGS} -MMD -MP -fno-use-cxa-atexit -fno-threadsafe-statics -fno-rtti -fno-exceptions" CACHE INTERNAL "C++ Compiler options")
 set(CMAKE_ASM_FLAGS "${OBJECT_GEN_FLAGS} -x assembler-with-cpp -MMD -MP" CACHE INTERNAL "ASM Compiler options")
 
 

@@ -367,7 +367,7 @@ public:
   void scanR();
 
   /// when measuring RSSI, the chip will enter RX mode
-  uint8_t rssi();
+  int rssi();
 
   uint8_t pollTxPktSt();
 
@@ -380,7 +380,7 @@ public:
   void clrRxFifoRdPtr();
   void clrRxFifo();
 
-  PinStatus pollPktFlagPin();
+  GPIO::PinStatus pollPktFlagPin();
 };
 
 

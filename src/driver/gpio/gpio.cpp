@@ -2,6 +2,7 @@
 // Created by Kurosu Chan on 2023/5/19.
 //
 #include "gpio.h"
+using namespace GPIO;
 
 bool statusToBool(PinStatus status) {
   return status == HIGH;
@@ -41,7 +42,7 @@ uint8_t gpioPin(uint8_t gpio, pin_size_t pin) {
   }
 }
 
-void pinMode(pin_size_t pin, PinMode mode) {
+void GPIO::pinMode(pin_size_t pin, PinMode mode) {
   uint8_t gpio = gpioForPin(pin);
   GPIO_TypeDef *port = gpioRegister(gpio);
   uint8_t p = gpioPin(gpio, pin);
@@ -73,7 +74,7 @@ void pinMode(pin_size_t pin, PinMode mode) {
   port->CFGLR |= (pinConfig << (p * 4));
 }
 
-void digitalWrite(pin_size_t pin, PinStatus val) {
+void GPIO::digitalWrite(pin_size_t pin, PinStatus val) {
   uint8_t gpio = gpioForPin(pin);
   GPIO_TypeDef *port = gpioRegister(gpio);
   uint8_t p = gpioPin(gpio, pin);
@@ -85,7 +86,7 @@ void digitalWrite(pin_size_t pin, PinStatus val) {
   }
 }
 
-PinStatus digitalRead(pin_size_t pin) {
+PinStatus GPIO::digitalRead(pin_size_t pin) {
   uint8_t gpio = gpioForPin(pin);
   GPIO_TypeDef *port = gpioRegister(gpio);
   uint8_t p = gpioPin(gpio, pin);

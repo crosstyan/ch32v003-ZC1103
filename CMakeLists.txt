@@ -16,11 +16,30 @@ set(LIB_PRINTF_SRC ${LIB_PRINTF_DIRECTORY}/src/printf/printf.c)
 include_directories(${LIB_PRINTF_DIRECTORY}/src)
 include_directories(${LIB_PRINTF_DIRECTORY}/src/printf)
 
-set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
-set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
-include_directories(${ZC1103_DIRECTORY}/inc)
+#set(ZC1103_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/zc1103)
+#set(ZC1103_SRC ${ZC1103_DIRECTORY}/src/rfsystem.cpp)
+#include_directories(${ZC1103_DIRECTORY}/inc)
 
-set(APP_SRC src/main.cpp src/system_tick.cpp src/utils.cpp src/exti.cpp src/message_wrapper.cpp)
+set(LLCC68_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/driver/llcc68)
+set(LLCC68_SRC
+        ${LLCC68_DIRECTORY}/src/llcc68.cpp
+        ${LLCC68_DIRECTORY}/src/Hal.cpp
+        ${LLCC68_DIRECTORY}/src/Module.cpp)
+include_directories(${LLCC68_DIRECTORY}/inc)
+
+set(CNL_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/cnl)
+include_directories(${CNL_DIRECTORY}/include)
+
+#set(RAIDOLIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/RadioLib)
+#include_directories(${RAIDOLIB_DIRECTORY}/src
+#        ${RAIDOLIB_DIRECTORY}/src/modules/LLCC68)
+#set(RAIDOLIB_SRC
+#        ${RAIDOLIB_DIRECTORY}/src/modules/LLCC68/LLCC68.cpp
+#        ${RAIDOLIB_DIRECTORY}/src/modules/SX126x/SX126x.cpp
+#        ${RAIDOLIB_DIRECTORY}/src/Module.cpp
+#        ${RAIDOLIB_DIRECTORY}/src/Hal.cpp)
+
+set(APP_SRC src/main.cpp src/system_tick.cpp src/utils.cpp src/exti.cpp src/message_wrapper.cpp src/flags.cpp)
 set(GPIO_SRC src/driver/gpio/gpio.cpp)
 include_directories(src/inc src/driver/gpio)
 
@@ -33,20 +52,27 @@ set(NANOPB_DIR libs/nanopb)
 set(NANOPB_SRC ${NANOPB_DIR}/pb_common.c ${NANOPB_DIR}/pb_decode.c ${NANOPB_DIR}/pb_encode.c)
 include_directories(${NANOPB_DIR})
 
+
 set(NANOPB_GEN_DIR libs/pb_gen)
 set(NANOPB_GEN_SRC ${NANOPB_GEN_DIR}/simple.pb.c)
 include_directories(${NANOPB_GEN_DIR})
+
+set(FLASH_DIR src/driver/flash)
+set(FLASH_SRC ${FLASH_DIR}/flash.cpp ${FLASH_DIR}/ch32v00x_flash.c)
+include_directories(${FLASH_DIR})
 
 set(LED_SRC src/driver/led/led.cpp)
 include_directories(src/driver/led)
 
 add_executable(${CMAKE_PROJECT_NAME}.elf
+        ${LLCC68_SRC}
         ${FUN_SRC}
         ${APP_SRC}
         ${LIB_PRINTF_SRC}
         ${NANOPB_SRC}
         ${LED_SRC}
         ${GPIO_SRC}
+        ${FLASH_SRC}
         ${NANOPB_GEN_SRC}
         ${ZC1103_SRC})
 add_compile_definitions(
@@ -57,8 +83,8 @@ add_compile_definitions(
 set_target_properties(${CMAKE_PROJECT_NAME}.elf PROPERTIES
         CXX_STANDARD 23
         CXX_STANDARD_REQUIRED ON
-        LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/vendor/Ld/Link.ld
-        LINK_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/vendor/Ld/Link.ld")
+        LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Link.ld
+        LINK_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/Link.ld")
 
 target_link_libraries(${CMAKE_PROJECT_NAME}.elf
         PRIVATE
