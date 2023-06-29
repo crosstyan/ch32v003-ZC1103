@@ -11,6 +11,7 @@
 #include "system_tick.h"
 
 const auto MAX_SPEED_MAP_SIZE = 16;
+const auto MAX_ENABLED_ID_SIZE = 16;
 const auto MAX_TRACK_SIZE     = 3;
 
 /**
@@ -94,6 +95,14 @@ struct CalcState {
   uint16_t maxDistance;
 };
 
+/**
+ * @brief calculate the next state
+ * @param lastState last state
+ * @param now current timestamp in millis
+ * @param track Track
+ * @param spot SpotConfig
+ * @return optional<CalcState> if the next state is valid, return the next state, otherwise return nullopt
+ */
 etl::optional<CalcState> nextState(const CalcState &lastState, uint64_t now, Track &track, const SpotConfig &spot) {
   /// deltaT in ms (millis)
   auto deltaT = static_cast<fixed_16_16>(static_cast<uint32_t>(now - lastState.lastIntegralTime));
@@ -120,7 +129,6 @@ etl::optional<CalcState> nextState(const CalcState &lastState, uint64_t now, Tra
   return newState;
 }
 
-const auto MAX_ENABLED_ID_SIZE = 16;
 
 etl::vector<uint16_t, MAX_ENABLED_ID_SIZE> calcEnabledId(const CalcState &state, const SpotConfig &spot) {
   auto headDist                       = state.lastIntegralDistance;

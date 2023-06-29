@@ -63,8 +63,10 @@ etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> Messag
   output.push_back(header.pkt_id);
   output.push_back(header.pkt_cur_count);
   header.total_payload_size = total_message_size;
-  auto total_payload_size_high = static_cast<char>(header.total_payload_size >> 8);
-  auto total_payload_size_low = static_cast<char>(header.total_payload_size & 0xff);
+  auto network_total_payload_size = __htons(header.total_payload_size);
+  // should be encoded in big endian
+  auto total_payload_size_high = reinterpret_cast<uint8_t *>(&network_total_payload_size)[0];
+  auto total_payload_size_low = reinterpret_cast<uint8_t *>(&network_total_payload_size)[1];
   output.push_back(total_payload_size_high);
   output.push_back(total_payload_size_low);
   auto current_payload_size = std::min(cur_left, MAX_PAYLOAD_SIZE);
@@ -102,7 +104,11 @@ etl::optional<MessageWrapper::WrapperHeader> MessageWrapper::Decoder::decodeHead
   memcpy(header.dst, message + 3, 3);
   header.pkt_id = message[6];
   header.pkt_cur_count = message[7];
-  header.total_payload_size = message[8] << 8 | message[9];
+  // total_payload_size is big endian with 2 bytes
+  auto total_payload_size_high = message[8];
+  auto total_payload_size_low = message[9];
+  auto host_total_payload_size = __ntohs(total_payload_size_high << 8 | total_payload_size_low);
+  header.total_payload_size = host_total_payload_size;
   header.cur_payload_size = message[10];
   return etl::make_optional(header);
 }

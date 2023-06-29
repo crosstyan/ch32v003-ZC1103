@@ -226,6 +226,8 @@ int main() {
       // https://dev.to/agudpp/packing-unpacking-data-in-c-3gmh
       // https://stackoverflow.com/questions/45116212/are-packed-structs-portable
       // https://capnproto.org
+      // https://github.com/dloss/binary-parsing
+      // https://construct.readthedocs.io/en/latest/
       // https://news.ycombinator.com/item?id=21874949
       auto a = __htonl(1);
       auto b = __ntohl(a);
