@@ -5,6 +5,7 @@
 #ifndef SIMPLE_SPOT_H
 #define SIMPLE_SPOT_H
 #include "cnl_def.h"
+#include "cnl/num_traits.h"
 #include <etl/unordered_map.h>
 #include <etl/vector.h>
 #include <etl/delegate.h>
@@ -51,6 +52,16 @@ struct SpotConfig {
   uint16_t current;
   /// in ms
   uint16_t updateInterval;
+};
+
+/**
+ * @brief populate a SpotConfig from bytes
+ * @param config an empty SpotConfig to be populated
+ * @param bytes the bytes to be read
+ * @param size the size of bytes
+ */
+void fromBytes(SpotConfig &config, const uint8_t *bytes, size_t size){
+
 };
 
 class Track {
@@ -110,7 +121,6 @@ etl::optional<CalcState> nextState(const CalcState &lastState, uint64_t now, Tra
     return etl::nullopt;
   }
 
-  //  int speed = getNearestSpeed(speeds, lastState.lastIntegralDistance);
   auto speed  = track.getSpeed(static_cast<uint16_t>(lastState.lastIntegralDistance));
   auto deltaL = speed * deltaT;
   auto d      = lastState.lastIntegralDistance + deltaL;

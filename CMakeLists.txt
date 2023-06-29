@@ -52,11 +52,16 @@ set(NANOPB_DIR libs/nanopb)
 set(NANOPB_SRC ${NANOPB_DIR}/pb_common.c ${NANOPB_DIR}/pb_decode.c ${NANOPB_DIR}/pb_encode.c)
 include_directories(${NANOPB_DIR})
 
+
 set(NANOPB_GEN_DIR libs/pb_gen)
 set(NANOPB_GEN_SRC ${NANOPB_GEN_DIR}/simple.pb.c)
 include_directories(${NANOPB_GEN_DIR})
 
-set(LED_SRC src/driver/led/led.cpp src/driver/llcc68/src/llcc68.cpp src/driver/llcc68/inc/radio_sx126x.h)
+set(FLASH_DIR src/driver/flash)
+set(FLASH_SRC ${FLASH_DIR}/flash.cpp ${FLASH_DIR}/ch32v00x_flash.c)
+include_directories(${FLASH_DIR})
+
+set(LED_SRC src/driver/led/led.cpp)
 include_directories(src/driver/led)
 
 add_executable(${CMAKE_PROJECT_NAME}.elf
@@ -67,6 +72,7 @@ add_executable(${CMAKE_PROJECT_NAME}.elf
         ${NANOPB_SRC}
         ${LED_SRC}
         ${GPIO_SRC}
+        ${FLASH_SRC}
         ${NANOPB_GEN_SRC}
         ${ZC1103_SRC})
 add_compile_definitions(

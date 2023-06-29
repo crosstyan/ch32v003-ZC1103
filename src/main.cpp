@@ -14,6 +14,7 @@
 #include "led.h"
 #include <etl/random.h>
 #include "flags.h"
+#include "flash.h"
 #include "spot.h"
 
 #ifdef TX
