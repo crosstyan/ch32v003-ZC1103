@@ -13,7 +13,7 @@ include_directories(${CNL_DIRECTORY}/include)
 
 include_directories(include)
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp message_wrapper.cpp)
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${CMAKE_PROJECT_NAME}
         PRIVATE

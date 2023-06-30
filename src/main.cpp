@@ -1,5 +1,5 @@
-//#define TX
-//#define DISABLE_LED
+// #define TX
+// #define DISABLE_LED
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -73,9 +73,9 @@ int main() {
 #ifdef TX
   auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
 #else
-  auto decoder = MessageWrapper::Decoder();
+  auto decoder    = MessageWrapper::Decoder();
   auto instant_rx = Instant();
-  auto d_rx           = std::chrono::duration<uint16_t, std::milli>(1);
+  auto d_rx       = std::chrono::duration<uint16_t, std::milli>(1);
 
 #endif
   while (true) {
@@ -163,7 +163,7 @@ int main() {
       char rx_buf[256];
       uint16_t rx_size;
 
-      auto t1 = Track();
+      auto t1  = Track();
       t1.color = 0b00000011;
       t1.addSpeed(0, 0);
       t1.addSpeed(50, 1.1);
@@ -171,12 +171,12 @@ int main() {
       t1.addSpeed(200, 1.3);
       t1.addSpeed(300, 1.1);
       t1.addSpeed(400, 1.0);
-      auto scfg = SpotConfig {
-          .circleLength = 400,
-          .lineLength = 18,
-          .total = 400,
-          .current = -1,
-          .updateInterval = 100,
+      auto scfg = SpotConfig{
+                .circleLength   = 400,
+                .lineLength     = 18,
+                .total          = 400,
+                .current        = -1,
+                .updateInterval = 100,
       };
       auto s = Spot(std::move(scfg));
       s.addTrack(std::move(t1));
