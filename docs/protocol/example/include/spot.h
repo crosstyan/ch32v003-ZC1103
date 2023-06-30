@@ -236,9 +236,19 @@ size_t toBytes(const Track &track, uint8_t *bytes) {
     auto k = __htons(key);
     memcpy(bytes + offset, &k, 2);
     offset += 2;
-    auto s = __htonl(cnl::unwrap(speed));
-    memcpy(bytes + offset, &s, 4);
-    offset += 4;
+    if constexpr (sizeof(speed) == 2) {
+      const auto sz = sizeof(speed);
+      auto s        = __htons(cnl::unwrap(speed));
+      memcpy(bytes + offset, &s, sz);
+      offset += sz;
+    } else if constexpr (sizeof(speed) == 4) {
+      const auto sz = sizeof(speed);
+      auto s        = __htonl(cnl::unwrap(speed));
+      memcpy(bytes + offset, &s, sz);
+      offset += sz;
+    } else {
+      static_assert(sizeof(speed) == 2 || sizeof(speed) == 4);
+    }
   }
   return offset;
 }
