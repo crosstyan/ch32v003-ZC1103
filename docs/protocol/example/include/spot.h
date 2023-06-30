@@ -125,7 +125,7 @@ public:
 
 private:
   etl::vector<uint16_t, MAX_SPEED_MAP_SIZE> keys;
-  etl::unordered_map<uint16_t, fixed_8_8, MAX_SPEED_MAP_SIZE> speeds;
+  etl::unordered_map<uint16_t, speed_type, MAX_SPEED_MAP_SIZE> speeds;
   uint16_t maxKey;
 
 public:
