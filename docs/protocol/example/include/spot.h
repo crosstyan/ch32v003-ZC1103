@@ -21,6 +21,8 @@ const auto MAX_SPEED_MAP_SIZE  = 16;
 const auto MAX_ENABLED_ID_SIZE = 16;
 const auto MAX_TRACK_SIZE      = 3;
 
+// could choose fixed_8_8 or fixed_16_16
+using speed_type = fixed_8_8;
 using namespace inet;
 
 /**
@@ -123,7 +125,7 @@ public:
 
 private:
   etl::vector<uint16_t, MAX_SPEED_MAP_SIZE> keys;
-  etl::unordered_map<uint16_t, fixed_16_16, MAX_SPEED_MAP_SIZE> speeds;
+  etl::unordered_map<uint16_t, fixed_8_8, MAX_SPEED_MAP_SIZE> speeds;
   uint16_t maxKey;
 
 public:
@@ -137,7 +139,7 @@ public:
    * @param key the distance
    * @param speed the speed at the distance
    */
-  void addSpeed(uint16_t key, fixed_16_16 speed) {
+  void addSpeed(uint16_t key, speed_type speed) {
     keys.push_back(key);
     etl::sort(keys.begin(), keys.end());
     speeds.insert(etl::make_pair(key, speed));
@@ -158,8 +160,8 @@ public:
     return maxKey;
   }
 
-  fixed_16_16 getSpeed(uint16_t key) {
-    return retrieveByVal<uint16_t, fixed_16_16>(keys, speeds, key);
+  speed_type getSpeed(uint16_t key) {
+    return retrieveByVal<uint16_t, speed_type>(keys, speeds, key);
   }
 
   /**
@@ -168,7 +170,7 @@ public:
    */
   [[nodiscard]] size_t sizeNeeded() const {
     // id, color, speed count, keys, speeds
-    return 1 + 1 + 1 + keys.size() * 2 + keys.size() * 4;
+    return 1 + 1 + 1 + keys.size() * 2 + keys.size() * sizeof(speed_type);
   }
 
   static etl::expected<Track, ParseResult> fromBytes(uint8_t *bytes) {
@@ -193,14 +195,26 @@ public:
         return etl::expected<Track, ParseResult>(ue);
       }
       offset += 2;
-      auto speed       = __ntohl(*reinterpret_cast<uint32_t *>(bytes + offset));
-      auto fixed_speed = cnl::wrap<fixed_16_16>(speed);
-      if (fixed_speed > 10) {
-        auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
-        return etl::expected<Track, ParseResult>(ue);
+      if constexpr (sizeof(speed_type) == 2) {
+        auto speed       = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
+        auto fixed_speed = cnl::wrap<speed_type>(speed);
+        if (fixed_speed > 10) {
+          auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+          return etl::expected<Track, ParseResult>(ue);
+        }
+        track.addSpeed(distance, fixed_speed);
+      } else if constexpr (sizeof(speed_type) == 4) {
+        auto speed       = __ntohl(*reinterpret_cast<uint32_t *>(bytes + offset));
+        auto fixed_speed = cnl::wrap<speed_type>(speed);
+        if (fixed_speed > 10) {
+          auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+          return etl::expected<Track, ParseResult>(ue);
+        }
+        track.addSpeed(distance, fixed_speed);
+      } else {
+        static_assert(sizeof(speed_type) == 2 || sizeof(speed_type) == 4);
       }
-      track.addSpeed(distance, fixed_speed);
-      offset += 4;
+      offset += sizeof(speed_type);
     }
     return etl::expected<Track, ParseResult>(track);
   }
