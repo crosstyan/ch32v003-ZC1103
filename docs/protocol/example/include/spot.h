@@ -14,8 +14,8 @@
 #include "error.h"
 #include "millis.h"
 
-const auto SPOT_CONFIG_MAGIC = 0x80;
-const auto SPOT_MAGIC        = 0x76;
+const uint8_t SPOT_CONFIG_MAGIC = 0x80;
+const uint8_t SPOT_MAGIC        = 0x76;
 
 const auto MAX_SPEED_MAP_SIZE  = 16;
 const auto MAX_ENABLED_ID_SIZE = 16;
@@ -66,7 +66,14 @@ struct SpotConfig {
   uint16_t updateInterval;
   static size_t sizeNeeded() {
     // magic, circleLength, lineLength, total, current, updateInterval
-    return 1 + 4 + 4 + 2 + 2 + 2;
+    size_t sz = 0;
+    sz += sizeof SPOT_CONFIG_MAGIC;
+    sz += sizeof circleLength;
+    sz += sizeof lineLength;
+    sz += sizeof total;
+    sz += sizeof current;
+    sz += sizeof updateInterval;
+    return sz;
   }
 
   /**
@@ -84,27 +91,31 @@ struct SpotConfig {
       auto ue = etl::unexpected<ParseResult>(ParseResult::MAGIC_ERROR);
       return etl::expected<SpotConfig, ParseResult>(ue);
     }
-    offset += 1;
+    offset += sizeof SPOT_CONFIG_MAGIC;
     auto circleLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
     auto fixedCircleLength = cnl::wrap<fixed_16_16>(circleLength);
-    offset += 4;
+    offset += sizeof circleLength;
     if (fixedCircleLength > 500) {
       auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
       return etl::expected<SpotConfig, ParseResult>(ue);
     }
     auto lineLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
     auto fixedLineLength = cnl::wrap<fixed_16_16>(lineLength);
-    offset += 4;
+    offset += sizeof lineLength;
     if (fixedLineLength > fixedCircleLength) {
       auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
       return etl::expected<SpotConfig, ParseResult>(ue);
     }
     auto total = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
-    offset += 2;
-    auto current = __ntohs(*reinterpret_cast<const int16_t *>(bytes + offset));
-    offset += 2;
+    offset += sizeof total;
+    auto current = static_cast<int16_t>(__ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset)));
+    if (current > total) {
+      auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+      return etl::expected<SpotConfig, ParseResult>(ue);
+    }
+    offset += sizeof current;
     auto updateInterval = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
-    offset += 2;
+    offset += sizeof updateInterval;
     if (updateInterval < 50 || updateInterval > 1000) {
       auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
       return etl::expected<SpotConfig, ParseResult>(ue);
@@ -179,23 +190,23 @@ public:
     auto track    = Track();
     auto id       = bytes[offset];
     track.id      = id;
-    offset += 1;
+    offset += sizeof id;
     auto color  = bytes[offset];
     track.color = color;
-    offset += 1;
+    offset += sizeof color;
     auto speed_count = bytes[offset];
     if (speed_count > MAX_SPEED_MAP_SIZE) {
       auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
       return etl::expected<Track, ParseResult>(ue);
     }
-    offset += 1;
+    offset += sizeof speed_count;
     for (auto j = 0; j < speed_count; ++j) {
       auto distance = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
       if (distance > 6000) {
         auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
         return etl::expected<Track, ParseResult>(ue);
       }
-      offset += 2;
+      offset += sizeof distance;
       if constexpr (sizeof(speed_type) == 2) {
         auto speed       = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
         auto fixed_speed = cnl::wrap<speed_type>(speed);
@@ -429,7 +440,7 @@ public:
     size_t offset = 0;
     bytes[offset] = SPOT_MAGIC;
     offset += 1;
-    bytes[offset] = tracks.size();
+    bytes[offset] = static_cast<uint8_t>(tracks.size());
     offset += 1;
     for (auto &track : tracks) {
       auto &[t, calc] = track;
