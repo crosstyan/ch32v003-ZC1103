@@ -13,7 +13,27 @@ and handwrite the encoder and decoder in C++.
 
 ### [Spot](spot.ksy)
 
+magic: `0x76`
+
 ![Spot](figures/spot.png)
+
+## [SpotConfig](spot_config.ksy)
+
+magic: `0x80`
+
+![SpotConfig](figures/spot_config.png)
+
+## [SetCurrent](set_current.ksy)
+
+magic: `0x86`
+
+![SetCurrent](figures/set_current.png)
+
+## [MessageWrapper](message_wrapper.ksy)
+
+![MessageWrapper](figures/message_wrapper.png)
+
+Don't do CRC since the RF chip already does it.
 
 ## Compile the protocol
 
