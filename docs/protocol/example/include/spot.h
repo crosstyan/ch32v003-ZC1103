@@ -225,18 +225,18 @@ namespace serd {
 size_t toBytes(const Track &track, uint8_t *bytes) {
   auto offset = 0;
   bytes[0]    = track.id;
-  offset += 1;
+  offset += sizeof track.id;
   bytes[1] = track.color;
-  offset += 1;
+  offset += sizeof track.color;
   const auto &m = track.getSpeeds();
   auto count    = static_cast<uint8_t>(m.size());
   bytes[2]      = count;
-  offset += 1;
+  offset += sizeof count;
   // https://stackoverflow.com/questions/22880431/iterate-through-unordered-map-c
   for (const auto &[key, speed] : m) {
     auto k = __htons(key);
-    memcpy(bytes + offset, &k, 2);
-    offset += 2;
+    memcpy(bytes + offset, &k, sizeof k);
+    offset += sizeof k;
     if constexpr (sizeof(speed) == 2) {
       const auto sz = sizeof(speed);
       auto s        = __htons(cnl::unwrap(speed));
@@ -259,21 +259,21 @@ size_t toBytes(const SpotConfig &config, uint8_t *bytes) {
   offset += 1;
   auto unwrapped_circleLength = cnl::unwrap(config.circleLength);
   auto circleLength           = __htonl(unwrapped_circleLength);
-  memcpy(bytes + offset, &circleLength, 4);
-  offset += 4;
+  memcpy(bytes + offset, &circleLength, sizeof circleLength);
+  offset += sizeof circleLength;
   auto unwrapped_lineLength = cnl::unwrap(config.lineLength);
   auto lineLength           = __htonl(unwrapped_lineLength);
-  memcpy(bytes + offset, &lineLength, 4);
-  offset += 4;
+  memcpy(bytes + offset, &lineLength, sizeof lineLength);
+  offset += sizeof lineLength;
   auto total = __htons(config.total);
-  memcpy(bytes + offset, &total, 2);
-  offset += 2;
+  memcpy(bytes + offset, &total, sizeof total);
+  offset += sizeof total;
   auto current = __htons(static_cast<uint16_t>(config.current));
-  memcpy(bytes + offset, &current, 2);
-  offset += 2;
+  memcpy(bytes + offset, &current, sizeof current);
+  offset += sizeof current;
   auto updateInterval = __htons(config.updateInterval);
-  memcpy(bytes + offset, &updateInterval, 2);
-  offset += 2;
+  memcpy(bytes + offset, &updateInterval, sizeof updateInterval);
+  offset += sizeof updateInterval;
   return offset;
 }
 }
