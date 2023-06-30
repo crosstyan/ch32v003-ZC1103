@@ -57,55 +57,65 @@ struct SpotConfig {
   int16_t current;
   /// in ms
   uint16_t updateInterval;
-};
+  static size_t sizeNeeded() {
+    // magic, circleLength, lineLength, total, current, updateInterval
+    return 1 + 4 + 4 + 2 + 2 + 2;
+  }
 
-/**
- * @brief populate a SpotConfig from bytes
- * @param config an empty SpotConfig to be populated
- * @param bytes the bytes to be read
- * @param size the size of bytes
- * @see https://github.com/crosstyan/ch32v003-ZC1103/blob/cnl/docs/protocol/spot_config.ksy
- */
-ParseResult fromBytes(SpotConfig &config, const uint8_t *bytes) {
-  auto magic  = bytes[0];
-  auto offset = 0;
-  if (magic != SPOT_CONFIG_MAGIC) {
-    return ParseResult::MAGIC_ERROR;
-  }
-  offset += 1;
-  auto circleLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
-  auto fixedCircleLength = cnl::wrap<fixed_16_16>(circleLength);
-  offset += 4;
-  if (fixedCircleLength > 500) {
-    return ParseResult::VALUE_ERROR;
-  }
-  auto lineLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
-  auto fixedLineLength = cnl::wrap<fixed_16_16>(lineLength);
-  offset += 4;
-  if (fixedLineLength > fixedCircleLength) {
-    return ParseResult::VALUE_ERROR;
-  }
-  auto total = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
-  offset += 2;
-  auto current = __ntohs(*reinterpret_cast<const int16_t *>(bytes + offset));
-  offset += 2;
-  auto updateInterval = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
-  offset += 2;
-  if (updateInterval < 50 || updateInterval > 1000) {
-    return ParseResult::VALUE_ERROR;
-  }
-  config.circleLength   = fixedCircleLength;
-  config.lineLength     = fixedLineLength;
-  config.total          = total;
-  config.current        = current;
-  config.updateInterval = updateInterval;
-  return ParseResult::OK;
+  /**
+   * @brief populate a SpotConfig from bytes
+   * @param config an empty SpotConfig to be populated
+   * @param bytes the bytes to be read
+   * @param size the size of bytes
+   * @see https://github.com/crosstyan/ch32v003-ZC1103/blob/cnl/docs/protocol/spot_config.ksy
+   */
+  static etl::expected<SpotConfig, ParseResult> fromBytes(const uint8_t *bytes) {
+    auto config = SpotConfig();
+    auto magic  = bytes[0];
+    auto offset = 0;
+    if (magic != SPOT_CONFIG_MAGIC) {
+      auto ue = etl::unexpected<ParseResult>(ParseResult::MAGIC_ERROR);
+      return etl::expected<SpotConfig, ParseResult>(ue);
+    }
+    offset += 1;
+    auto circleLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
+    auto fixedCircleLength = cnl::wrap<fixed_16_16>(circleLength);
+    offset += 4;
+    if (fixedCircleLength > 500) {
+      auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+      return etl::expected<SpotConfig, ParseResult>(ue);
+    }
+    auto lineLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
+    auto fixedLineLength = cnl::wrap<fixed_16_16>(lineLength);
+    offset += 4;
+    if (fixedLineLength > fixedCircleLength) {
+      auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+      return etl::expected<SpotConfig, ParseResult>(ue);
+    }
+    auto total = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
+    offset += 2;
+    auto current = __ntohs(*reinterpret_cast<const int16_t *>(bytes + offset));
+    offset += 2;
+    auto updateInterval = __ntohs(*reinterpret_cast<const uint16_t *>(bytes + offset));
+    offset += 2;
+    if (updateInterval < 50 || updateInterval > 1000) {
+      auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+      return etl::expected<SpotConfig, ParseResult>(ue);
+    }
+    config.circleLength   = fixedCircleLength;
+    config.lineLength     = fixedLineLength;
+    config.total          = total;
+    config.current        = current;
+    config.updateInterval = updateInterval;
+    return etl::expected<SpotConfig, ParseResult>(config);
+  };
 };
 
 class Track {
 public:
   /// only need 3 bits
   uint8_t color;
+  uint8_t id;
 
 private:
   etl::vector<uint16_t, MAX_SPEED_MAP_SIZE> keys;
@@ -113,7 +123,7 @@ private:
   uint16_t maxKey;
 
 public:
-  Track() {
+  explicit Track(uint8_t identifier = 0) : id(identifier) {
     color  = 0;
     maxKey = 0;
   }
@@ -132,6 +142,14 @@ public:
     }
   }
 
+  [[nodiscard]] const auto &getSpeeds() const {
+    return speeds;
+  }
+
+  [[nodiscard]] const auto &getKeys() const {
+    return keys;
+  }
+
   uint16_t getMaxKey() const {
     return maxKey;
   }
@@ -139,7 +157,97 @@ public:
   fixed_16_16 getSpeed(uint16_t key) {
     return retrieveByVal<uint16_t, fixed_16_16>(keys, speeds, key);
   }
+
+  /**
+   * @brief get the size needed to serialize the track
+   * @return the size needed
+   */
+  [[nodiscard]] size_t sizeNeeded() const {
+    // id, color, speed count, keys, speeds
+    return 1 + 1 + 1 + keys.size() * 2 + keys.size() * 4;
+  }
+
+  static etl::expected<Track, ParseResult> fromBytes(uint8_t *bytes) {
+    size_t offset = 0;
+    auto track    = Track();
+    auto id       = bytes[offset];
+    track.id      = id;
+    offset += 1;
+    auto color  = bytes[offset];
+    track.color = color;
+    offset += 1;
+    auto speed_count = bytes[offset];
+    if (speed_count > MAX_SPEED_MAP_SIZE) {
+      auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+      return etl::expected<Track, ParseResult>(ue);
+    }
+    offset += 1;
+    for (auto j = 0; j < speed_count; ++j) {
+      auto distance = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
+      if (distance > 6000) {
+        auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+        return etl::expected<Track, ParseResult>(ue);
+      }
+      offset += 2;
+      auto speed       = __ntohl(*reinterpret_cast<uint32_t *>(bytes + offset));
+      auto fixed_speed = cnl::wrap<fixed_16_16>(speed);
+      if (fixed_speed > 10) {
+        auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
+        return etl::expected<Track, ParseResult>(ue);
+      }
+      track.addSpeed(distance, fixed_speed);
+      offset += 4;
+    }
+    return etl::expected<Track, ParseResult>(track);
+  }
 };
+
+namespace serd {
+size_t toBytes(const Track &track, uint8_t *bytes) {
+  auto offset = 0;
+  bytes[0]    = track.id;
+  offset += 1;
+  bytes[1] = track.color;
+  offset += 1;
+  const auto &m = track.getSpeeds();
+  auto count    = static_cast<uint8_t>(m.size());
+  bytes[2]      = count;
+  offset += 1;
+  // https://stackoverflow.com/questions/22880431/iterate-through-unordered-map-c
+  for (const auto &[key, speed] : m) {
+    auto k = __htons(key);
+    memcpy(bytes + offset, &k, 2);
+    offset += 2;
+    auto s = __htonl(cnl::unwrap(speed));
+    memcpy(bytes + offset, &s, 4);
+    offset += 4;
+  }
+  return offset;
+}
+size_t toBytes(const SpotConfig &config, uint8_t *bytes) {
+  auto offset = 0;
+  bytes[0]    = SPOT_CONFIG_MAGIC;
+  offset += 1;
+  auto unwrapped_circleLength = cnl::unwrap(config.circleLength);
+  auto circleLength           = __htonl(unwrapped_circleLength);
+  memcpy(bytes + offset, &circleLength, 4);
+  offset += 4;
+  auto unwrapped_lineLength = cnl::unwrap(config.lineLength);
+  auto lineLength           = __htonl(unwrapped_lineLength);
+  memcpy(bytes + offset, &lineLength, 4);
+  offset += 4;
+  auto total = __htons(config.total);
+  memcpy(bytes + offset, &total, 2);
+  offset += 2;
+  auto current = __htons(static_cast<uint16_t>(config.current));
+  memcpy(bytes + offset, &current, 2);
+  offset += 2;
+  auto updateInterval = __htons(config.updateInterval);
+  memcpy(bytes + offset, &updateInterval, 2);
+  offset += 2;
+  return offset;
+}
+}
 
 struct CalcState {
   uint64_t startTime;
@@ -238,9 +346,17 @@ private:
   SpotConfig config;
 
 public:
-  Spot(SpotConfig config) : config(config) {
+  explicit Spot(SpotConfig config) : config(config) {
     state = SpotState::STOP;
   };
+
+  [[nodiscard]] const auto &getConfig() const {
+    return config;
+  }
+
+  [[nodiscard]] const auto &getTracks() const {
+    return tracks;
+  }
 
   ParseResult fromBytes(uint8_t *bytes) {
     auto offset = 0;
@@ -254,33 +370,44 @@ public:
     }
     offset += 1;
     for (auto i = 0; i < track_count; ++i) {
-      auto track = Track();
-      auto id    = bytes[offset];
-      offset += 1;
-      auto color  = bytes[offset];
-      track.color = color;
-      offset += 1;
-      auto speed_count = bytes[offset];
-      if (speed_count > MAX_SPEED_MAP_SIZE) {
-        return ParseResult::VALUE_ERROR;
+      auto track = Track::fromBytes(bytes + offset);
+      if (!track.has_value()) {
+        return track.error();
+      } else {
+        offset += track.value().sizeNeeded();
+        addTrack(std::move(track.value()));
       }
-      offset += 1;
-      for (auto j = 0; j < speed_count; ++j) {
-        auto distance = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
-        if (distance > 6000) {
-          return ParseResult::VALUE_ERROR;
-        }
-        offset += 2;
-        auto speed       = __ntohl(*reinterpret_cast<uint32_t *>(bytes + offset));
-        auto fixed_speed = cnl::wrap<fixed_16_16>(speed);
-        if (fixed_speed > 10) {
-          return ParseResult::VALUE_ERROR;
-        }
-        track.addSpeed(distance, fixed_speed);
-        offset += 4;
-      }
-      addTrack(std::move(track));
     }
+    return ParseResult::OK;
+  }
+
+  /**
+   * @brief return size needed to serialize
+   */
+  size_t sizeNeeded() {
+    size_t size = 0;
+    size += 1; // magic
+    size += 1; // track count
+    for (auto &track : tracks) {
+      auto &[t, calc] = track;
+      auto tSize      = t.sizeNeeded();
+      size += tSize;
+    }
+    return size;
+  }
+
+  size_t toBytes(uint8_t *bytes) {
+    size_t offset = 0;
+    bytes[offset] = SPOT_MAGIC;
+    offset += 1;
+    bytes[offset] = tracks.size();
+    offset += 1;
+    for (auto &track : tracks) {
+      auto &[t, calc] = track;
+      auto tSize      = serd::toBytes(t, bytes + offset);
+      offset += tSize;
+    }
+    return offset;
   }
 
   /// use std::move to avoid copy
@@ -347,7 +474,6 @@ public:
           isChanged = true;
           setColorCallback(t.color);
         }
-
         calc = newCalc;
         isAllStop.push_back(false);
       } else {
