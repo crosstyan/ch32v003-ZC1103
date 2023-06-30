@@ -52,7 +52,6 @@ set(NANOPB_DIR libs/nanopb)
 set(NANOPB_SRC ${NANOPB_DIR}/pb_common.c ${NANOPB_DIR}/pb_decode.c ${NANOPB_DIR}/pb_encode.c)
 include_directories(${NANOPB_DIR})
 
-
 set(NANOPB_GEN_DIR libs/pb_gen)
 set(NANOPB_GEN_SRC ${NANOPB_GEN_DIR}/simple.pb.c)
 include_directories(${NANOPB_GEN_DIR})

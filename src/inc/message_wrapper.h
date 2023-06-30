@@ -5,8 +5,6 @@
 #ifndef SIMPLE_MESSAGE_WRAPPER_H
 #define SIMPLE_MESSAGE_WRAPPER_H
 
-#include "ch32v003fun.h"
-#include "unit.h"
 #include <etl/optional.h>
 #include <etl/variant.h>
 #include <etl/vector.h>
