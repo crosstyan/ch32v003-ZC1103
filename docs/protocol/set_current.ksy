@@ -1,9 +1,11 @@
 meta:
   id: set_current
-  title: SetCurrent
+  title: Set Current Position Command
   endian: be
-  imports:
-    - spot
+doc: |
+  `set_current` is a command to set the current position of the Spot.
+  The `current_id` should be less than `total` (refer to `spot_config`).
+  `current_id` would be written to EEPROM.
 seq:
   - id: magic
     contents: [0x86]
