@@ -5,7 +5,7 @@
 #ifndef SIMPLE_CNL_DEF_H
 #define SIMPLE_CNL_DEF_H
 
-#include <cnl/scaled_integer.h>
+#include <cnl/all.h>
 
 // https://chummersone.github.io/qformat.html#
 // used to store speed...

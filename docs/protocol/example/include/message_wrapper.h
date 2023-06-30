@@ -8,7 +8,6 @@
 #include <etl/optional.h>
 #include <etl/variant.h>
 #include <etl/vector.h>
-#include <printf.h>
 
 /// TODO: unit test
 namespace MessageWrapper {
