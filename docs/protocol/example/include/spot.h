@@ -21,9 +21,10 @@ const auto MAX_SPEED_MAP_SIZE  = 16;
 const auto MAX_ENABLED_ID_SIZE = 16;
 const auto MAX_TRACK_SIZE      = 3;
 
+using namespace inet;
+
 // could choose fixed_8_8 or fixed_16_16
 using speed_type = fixed_8_8;
-using namespace inet;
 
 /**
  * @brief a function retrieve value by the number nearing the key. always move a unit up.
