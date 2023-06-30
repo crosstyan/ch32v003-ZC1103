@@ -41,6 +41,7 @@ int main() {
   } else {
     printf("t0_ is empty\n");
   }
+  printf("Track serialized/deserialized successfully\n");
 
   auto m1 = std::map<int, float>{
       {0, 0.0},
@@ -91,6 +92,8 @@ int main() {
   } else {
     printf("scfg_ is empty\n");
   }
+  printf("SpotConfig serialized/deserialized successfully\n");
+
   auto s = Spot(scfg);
   s.addTrack(std::move(t1));
   s.addTrack(std::move(t2));
@@ -114,5 +117,7 @@ int main() {
   for(auto const &[k, v] : t2_.getSpeeds()){
     assert(t2.getSpeeds().at(k) == v);
   }
+  printf("Spot serialized/deserialized successfully\n");
+
   return 0;
 }
