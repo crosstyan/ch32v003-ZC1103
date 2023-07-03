@@ -4,6 +4,12 @@ meta:
   endian: be
   imports:
     - fixed_16_16
+
+doc: |
+  `spot` is a **setter** to set parameters on tracks.  Might be rename to
+  `TrackConfig`. You get the idea.  See also `spot_config` for the config
+  **setter**.
+
 seq:
   - id: magic
     # Enum is another option

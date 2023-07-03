@@ -27,7 +27,7 @@ types:
       - id: pkt_id
         type: u1
         doc: |
-          The packet id of the message. The packet id won't change for a continuous message
+          The packet id of the message. Basically it's just a counter. The packet id won't change for a continuous message
           but the `pkt_cur_count` will increase.
       - id: pkt_cur_count
         type: u1

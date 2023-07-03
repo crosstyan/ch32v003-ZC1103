@@ -5,10 +5,9 @@ meta:
   imports:
     - fixed_16_16
 doc: |
-  `spot_config` is a configuration file for the Spot.
-  When `current` field is negative the device would read
-  its current position from EEPROM (emulated).
-  `current` should always be less than `total`.
+  `spot_config` is a configuration parameters **setter** for the Spot.  When
+  `current` field is negative the device would read its current position from
+  EEPROM (emulated).  `current` should always be less than `total`.
 seq:
   - id: magic
     contents: [0x80]
