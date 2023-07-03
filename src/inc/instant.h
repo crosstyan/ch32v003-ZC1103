@@ -11,28 +11,29 @@
 
 class Instant {
   uint64_t time;
+
 public:
   Instant() {
     this->time = millis();
   }
 
   auto elapsed() {
-    auto now = millis();
-    auto diff = now - this->time;
+    auto now      = millis();
+    auto diff     = now - this->time;
     auto duration = std::chrono::duration<uint64_t, std::milli>(diff);
     return duration;
   }
 
   void reset() {
-    auto now = millis();
+    auto now   = millis();
     this->time = std::move(now);
   }
 
   auto elapsed_and_reset() {
-    auto now = millis();
-    auto diff = now - this->time;
+    auto now      = millis();
+    auto diff     = now - this->time;
     auto duration = std::chrono::duration<uint64_t, std::milli>(diff);
-    this->time = now;
+    this->time    = now;
     return duration;
   }
 
@@ -40,13 +41,16 @@ public:
     return this->time;
   }
 
-  template<typename T>
-  void try_run(etl::delegate<T> f, std::chrono::duration<uint64_t, std::milli> d) {
+  template <typename T>
+  bool try_run(etl::delegate<T> f, std::chrono::duration<uint64_t, std::milli> d) {
     if (this->elapsed() > d) {
       f();
       this->reset();
+      return true;
+    } else {
+      return false;
     }
   }
 };
 
-#endif //SIMPLE_INSTANT_H
+#endif // SIMPLE_INSTANT_H
