@@ -5,9 +5,9 @@
 #include "led.h"
 
 // just a reminder. won't be used.
-//static const pin_size_t LED_B_PIN = GPIO::D4;
-//static const pin_size_t LED_G_PIN = GPIO::D3;
-//static const pin_size_t LED_R_PIN = GPIO::D2;
+// static const pin_size_t LED_B_PIN = GPIO::D4;
+// static const pin_size_t LED_G_PIN = GPIO::D3;
+// static const pin_size_t LED_R_PIN = GPIO::D2;
 
 static constexpr uint8_t CNF_AND_MODE_WIDTH = 4; // 4 bytes for each pin.
 
@@ -41,5 +41,9 @@ void LED::setColor(bool r, bool g, bool b) {
   }
 
   GPIOD->BSHR = colorBits;
-  GPIOD->BCR = ~colorBits;
+  GPIOD->BCR  = ~colorBits;
+}
+
+void LED::setColor(uint8_t rgb) {
+  LED::setColor(rgb & 0b100, rgb & 0b010, rgb & 0b001);
 }

@@ -1,4 +1,4 @@
-// #define TX
+//#define TX
 // #define DISABLE_LED
 
 #include "clock.h"
@@ -16,6 +16,7 @@
 #include "flags.h"
 #include "flash.h"
 #include "spot.h"
+#include "boring.h"
 
 #ifdef TX
 #include <pb_encode.h>
@@ -29,6 +30,7 @@ static const pin_size_t CS_PIN    = GPIO::C4;
 static const pin_size_t RST_PIN   = GPIO::C0;
 static const pin_size_t RX_EN_PIN = GPIO::C1;
 static const pin_size_t TX_EN_PIN = GPIO::C2;
+static const uint8_t PING_MAGIC   = 0x06;
 
 int main() {
   SystemInit48HSI();
@@ -60,12 +62,11 @@ int main() {
   printf("RX mode\n");
 #endif
 
-  char src[3]      = {0x01, 0x02, 0x03};
-  char dst[3]      = {0x04, 0x05, 0x06};
-  uint8_t pkt_id   = 0;
-  uint32_t counter = 0;
-  auto instant     = Instant();
-  auto d           = std::chrono::duration<uint16_t, std::milli>(250);
+  uint8_t src[3] = {0x01, 0x02, 0x03};
+  uint8_t dst[3] = {0xff, 0xff, 0xff};
+  uint8_t pkt_id = 0;
+  auto instant   = Instant();
+  auto d         = std::chrono::duration<uint16_t, std::milli>(500);
   LED::begin();
   auto rng = etl::random_xorshift();
   rng.initialise(0);
@@ -81,8 +82,10 @@ int main() {
   while (true) {
 #ifdef TX
     if (instant.elapsed() >= d) {
-      uint8_t buf[256];
-      Simple message = Simple_init_zero;
+      // Channel Activity Detection
+      // https://github.com/jgromes/RadioLib/blob/bea5e70d0ad4f6df74a4eb2a3d1bdb683014d6c1/examples/SX126x/SX126x_Channel_Activity_Detection_Interrupt/SX126x_Channel_Activity_Detection_Interrupt.ino#L4
+      // https://github.com/jgromes/RadioLib/blob/bea5e70d0ad4f6df74a4eb2a3d1bdb683014d6c1/examples/SX128x/SX128x_Channel_Activity_Detection_Blocking/SX128x_Channel_Activity_Detection_Blocking.ino#L54
+      // basic do an IRQ status check
       bool random_r;
       bool random_g;
       bool random_b;
@@ -91,61 +94,43 @@ int main() {
         random_r = rng.range(0, 1);
         random_g = rng.range(0, 1);
         random_b = rng.range(0, 1);
-        temp     = random_r | (random_g << 1) | (random_b << 2);
-      } while (!(temp != 0) || !(temp != rgb)); // refresh until at least one color is on and the color is different from the previous one
-      rgb                          = temp;
-      message.is_red               = random_r;
-      message.is_green             = random_g;
-      message.is_blue              = random_b;
-      pb_ostream_t stream          = pb_ostream_from_buffer(buf, sizeof(buf));
-      message.counter              = counter;
-      message.message.funcs.encode = [](pb_ostream_t *stream, const pb_field_t *field, void *const *arg) {
-        auto message = static_cast<char *>(*arg);
-        // zero terminated string (zero sentinel is not included)
-        if (!pb_encode_tag_for_field(stream, field)) {
-          return false;
-        } else {
-          bool res = pb_encode_string(stream, reinterpret_cast<uint8_t *>(message), strlen(message));
-          if (!res) {
-            return false;
-          }
-        }
-        return true;
-      };
-      const char *payload = "test";
-      message.message.arg = const_cast<char *>(payload);
-      bool status         = pb_encode(&stream, Simple_fields, &message);
-      if (status) {
-        encoder.reset(src, dst, pkt_id);
-        encoder.setPayload(buf, stream.bytes_written);
-        auto res = encoder.next();
-        while (res.has_value()) {
-          auto &v = res.value();
-          printf("counter:%d; size=%d; payload_size=%d; \n", message.counter, v.size(), stream.bytes_written);
-          auto r = rf.transmit(reinterpret_cast<uint8_t *>(v.data()), v.size());
-          if (r != RADIOLIB_ERR_NONE) {
-            printf("[ERROR] failed to transmit, code %d\n", r);
-          }
-          digitalWrite(GPIO::D6, GPIO::HIGH);
-          Delay_Ms(10);
-          digitalWrite(GPIO::D6, GPIO::LOW);
-          res = encoder.next();
-        }
-      } else {
-        printf("[ERROR] failed to encode\n");
+        temp     = random_b | (random_g << 1) | (random_r << 2);
       }
-#ifndef DISABLE_LED
-      LED::setColor(random_r, random_g, random_b);
-#else
-      LED::setColor(false, false, false);
-#endif
-      pkt_id++;
-      counter++;
-      instant.reset();
+      // refresh until at least one color is on and the color is different from the previous one
+      while (!(temp != 0) || !(temp != rgb));
+      rgb                 = temp;
+      auto b              = boring::Boring();
+      b.led               = rgb;
+      const char *payload = "test";
+      for (auto i = 0; i < strlen(payload); i++) {
+        b.comments.emplace_back(payload[i]);
+      }
+      uint8_t buf[256];
+
+      auto st = rf.scanChannel();
+      while (st != RADIOLIB_CHANNEL_FREE) {
+        st = rf.scanChannel();
+      }
+      auto sz = boring::toBytes(b, buf);
+      encoder.setPayload(buf, sz);
+      auto maybe = encoder.next();
+      while (maybe.has_value()) {
+        auto &v = maybe.value();
+        auto r  = rf.transmit(reinterpret_cast<uint8_t *>(v.data()), v.size());
+        if (r != RADIOLIB_ERR_NONE) {
+          printf("[ERROR] failed to transmit, code %d\n", r);
+        }
+        maybe = encoder.next();
+      }
+      printf("[INFO] Boring rgb=%d\n", rgb);
+      LED::setColor(rgb);
       if (Flags::getFlag()) {
-        printf("[INFO] TX flag set\n");
+//        printf("[INFO] TX flag set\n");
         Flags::setFlag(false);
       }
+      instant.reset();
+      pkt_id++;
+      encoder.reset(src, dst, pkt_id);
     }
 #else // RX
     // I guess some reorder magic is happening here
@@ -153,7 +138,7 @@ int main() {
     // See also `exti.cpp`
     while (instant_rx.elapsed() < d_rx) {
       printf("*");
-      rf.rx();
+      rf.startReceive();
       if (instant_rx.elapsed() >= d_rx) {
         printf("\n");
       }
@@ -163,31 +148,6 @@ int main() {
       char rx_buf[256];
       uint16_t rx_size;
 
-      auto t1  = Track();
-      t1.color = 0b00000011;
-      t1.addSpeed(0, 0);
-      t1.addSpeed(50, 1.1);
-      t1.addSpeed(100, 1.5);
-      t1.addSpeed(200, 1.3);
-      t1.addSpeed(300, 1.1);
-      t1.addSpeed(400, 1.0);
-      auto scfg = SpotConfig{
-                .circleLength   = 400,
-                .lineLength     = 18,
-                .total          = 400,
-                .current        = -1,
-                .updateInterval = 100,
-      };
-      auto s = Spot(std::move(scfg));
-      s.addTrack(std::move(t1));
-      s.setColorCallback = [](uint8_t c) {
-        auto r = c & 0b00000001;
-        auto g = (c & 0b00000010) >> 1;
-        auto b = (c & 0b00000100) >> 2;
-        LED::setColor(r, g, b);
-      };
-      s.start();
-      s.update();
       // when a valid packet is received the state should be 0xc0
       // (at least the rx_pkt_state would be 0x00)
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
@@ -201,6 +161,7 @@ int main() {
         rx_size = maybe_len.value();
         auto h  = decoder.decodeHeader(rx_buf, rx_size);
         if (h.has_value()) {
+          printf("[INFO] ");
           decoder.printHeader(h.value());
         }
         auto end_padding = rx_buf + rx_size - 3;
@@ -212,6 +173,22 @@ int main() {
         auto res = decoder.decode(rx_buf, rx_size);
         if (res == MessageWrapper::WrapperDecodeResult::Finished) {
           auto payload = decoder.getOutput();
+          auto b       = boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
+          if (b.has_value()) {
+            auto &v = b.value();
+            printf("[INFO] boring: led=%d, comments=\"", v.led);
+            for (auto c : v.comments) {
+              printf("%c", c);
+            }
+            printf("\"\n");
+#ifdef DISABLE_LED
+            LED::setColr(false, false, false);
+#else
+            LED::setColor(b->led);
+#endif
+          } else {
+            printf("[ERROR] failed to decode boring\n");
+          }
           etl::vector<char, 32> string_payload;
         } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
           printf("[INFO] unfinished\n");
@@ -220,18 +197,6 @@ int main() {
           decoder.reset();
         }
       }
-      // define ATTR_PACKED __attribute__ ((__packed__))
-      // https://linux.die.net/man/3/htonl
-      // https://stackoverflow.com/questions/8568432/is-gccs-attribute-packed-pragma-pack-unsafe
-      // https://www.quora.com/What-is-the-attribute__-packed-variable-attribute-in-C-and-why-and-how-is-it-used
-      // https://dev.to/agudpp/packing-unpacking-data-in-c-3gmh
-      // https://stackoverflow.com/questions/45116212/are-packed-structs-portable
-      // https://capnproto.org
-      // https://github.com/dloss/binary-parsing
-      // https://construct.readthedocs.io/en/latest/
-      // https://news.ycombinator.com/item?id=21874949
-      auto a = __htonl(1);
-      auto b = __ntohl(a);
       digitalWrite(GPIO::D6, GPIO::LOW);
       Flags::setFlag(false);
     }

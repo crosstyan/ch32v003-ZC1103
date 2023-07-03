@@ -64,4 +64,6 @@ kaitai-struct-compiler -t graphviz set_current.ksy
 dot -Tpng set_current.dot > figures/set_current.png
 kaitai-struct-compiler -t graphviz ping.ksy
 dot -Tpng ping.dot > figures/ping.png
+kaitai-struct-compiler -t graphviz boring.ksy
+dot -Tpng boring.dot > figures/boring.png
 ```

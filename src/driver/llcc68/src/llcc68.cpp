@@ -263,13 +263,23 @@ int16_t LLCC68::scanChannel(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin) 
   int state = startChannelScan(symbolNum, detPeak, detMin);
   RADIOLIB_ASSERT(state);
 
+  // prefer polling by SPI instead of waiting for interrupt
   // wait for channel activity detected or timeout
-  while (!this->mod->hal->digitalRead(this->mod->getIrq())) {
-    this->mod->hal->yield();
+  //  while (!this->mod->hal->digitalRead(this->mod->getIrq())) {
+  //    this->mod->hal->yield();
+  //  }
+  auto st = getIrqStatus();
+  while (!(st & RADIOLIB_SX126X_IRQ_CAD_DONE)) {
+    this->mod->hal->delay(5);
+    st = getIrqStatus();
   }
 
   // check CAD result
-  return (getChannelScanResult());
+  if (st & RADIOLIB_SX126X_IRQ_CAD_DETECTED) {
+    return RADIOLIB_LORA_DETECTED;
+  } else {
+    return RADIOLIB_CHANNEL_FREE;
+  }
 }
 
 int16_t LLCC68::sleep(bool retainConfig) {
@@ -369,16 +379,20 @@ int16_t LLCC68::finishTransmit() {
   // clear interrupt flags
   clearIrqStatus();
 
-  // set mode to standby to disable transmitter/RF switch
+  // set mode to stand by to disable transmitter/RF switch
   // standby();
   return RADIOLIB_ERR_NONE;
 }
 
 int16_t LLCC68::startReceive() {
-  auto res = this->startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF);
+  auto ret = setRx(RADIOLIB_SX126X_RX_TIMEOUT_INF);
+  RADIOLIB_ASSERT(ret);
   // enable DIO1 and DIO2 interrupts
-  setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
-  return res;
+  ret = setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
+  RADIOLIB_ASSERT(ret);
+  // set RF switch (if present)
+  this->mod->setRfSwitchState(Module::MODE_RX);
+  return ret;
 }
 
 int16_t LLCC68::startReceive(uint32_t timeout) {
@@ -461,28 +475,26 @@ int16_t LLCC68::startReceiveDutyCycleAuto(uint16_t senderPreambleLength, uint16_
 
 int16_t LLCC68::beforeStartReceive(uint32_t timeout) {
   // set DIO mapping
-  //  if (timeout != RADIOLIB_SX126X_RX_TIMEOUT_INF) {
-  //    irqMask |= RADIOLIB_SX126X_IRQ_TIMEOUT;
-  //  }
-  //  int16_t state = setDioIrqParams(irqFlags, irqMask);
-  //  RADIOLIB_ASSERT(state);
+  auto irqMask = RADIOLIB_SX126X_IRQ_RX_DEFAULT;
+  if (timeout != RADIOLIB_SX126X_RX_TIMEOUT_INF) {
+    irqMask |= RADIOLIB_SX126X_IRQ_TIMEOUT;
+  }
+  auto st = setDioIrqParams(irqMask, irqMask, irqMask);
+  RADIOLIB_ASSERT(st);
 
   // set buffer pointers
-  auto state = setBufferBaseAddress();
-  RADIOLIB_ASSERT(state);
-
-  // clear interrupt flags
-  // state = clearIrqStatus();
+  st = setBufferBaseAddress();
+  RADIOLIB_ASSERT(st);
 
   // restore original packet length
   uint8_t modem = getPacketType();
   if (modem == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-    state = setPacketParams(this->preambleLengthLoRa, this->crcTypeLoRa, this->implicitLen, this->headerType, this->invertIQEnabled);
+    st = setPacketParams(this->preambleLengthLoRa, this->crcTypeLoRa, this->implicitLen, this->headerType, this->invertIQEnabled);
   } else {
     return (RADIOLIB_ERR_UNKNOWN);
   }
 
-  return (state);
+  return (st);
 }
 
 int16_t LLCC68::readData(uint8_t *data, size_t len) {
@@ -555,9 +567,9 @@ int16_t LLCC68::startChannelScan(uint8_t symbolNum, uint8_t detPeak, uint8_t det
 
 int16_t LLCC68::getChannelScanResult() {
   // check active modem
-  if (getPacketType() != RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-    return (RADIOLIB_ERR_WRONG_MODEM);
-  }
+  //  if (getPacketType() != RADIOLIB_SX126X_PACKET_TYPE_LORA) {
+  //    return (RADIOLIB_ERR_WRONG_MODEM);
+  //  }
 
   // check CAD result
   uint16_t cadResult = getIrqStatus();
@@ -2007,11 +2019,4 @@ etl::optional<size_t> LLCC68::tryReceive(uint8_t *data) {
     // no packet
     return etl::nullopt;
   }
-}
-void LLCC68::rx() {
-  setRx(RADIOLIB_SX126X_RX_TIMEOUT_INF);
-  // enable DIO1 and DIO2 interrupts
-  setDioIrqParams(RADIOLIB_SX126X_IRQ_RX_DEFAULT, RADIOLIB_SX126X_IRQ_RX_DONE, RADIOLIB_SX126X_IRQ_RX_DONE);
-  // set RF switch (if present)
-  this->mod->setRfSwitchState(Module::MODE_RX);
 }

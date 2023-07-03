@@ -60,6 +60,7 @@ namespace MessageWrapper {
     /*
      * @brief iterator like. return `etl::nullopt` when finished, otherwise return the next encoded packet.
      */
+    [[nodiscard]]
     etl::optional<etl::vector<char, MAX_ENCODER_OUTPUT_SIZE>> next();
 
     /*
@@ -67,9 +68,9 @@ namespace MessageWrapper {
      * @param dst 3 bytes
      * @param pkt_id 1 byte
      */
-    Encoder(const char *src, const char *dst, uint8_t pkt_id);
+    Encoder(const uint8_t *src, const uint8_t *dst, uint8_t pkt_id);
 
-    void reset(const char *src, const char *dst, uint8_t pkt_id);
+    void reset(const uint8_t *src, const uint8_t *dst, uint8_t pkt_id);
   };
 
   class Decoder {

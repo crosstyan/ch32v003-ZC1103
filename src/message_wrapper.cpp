@@ -2,20 +2,21 @@
 // Created by Kurosu Chan on 2023/5/29.
 //
 #include "message_wrapper.h"
+#include "utils.h"
 
-MessageWrapper::Encoder::Encoder(const char *src, const char *dst, uint8_t pkt_id) {
+MessageWrapper::Encoder::Encoder(const uint8_t *src, const uint8_t *dst, uint8_t pkt_id) {
   reset(src, dst, pkt_id);
 }
 
-void MessageWrapper::Encoder::reset(const char *src, const char *dst, uint8_t pkt_id) {
+void MessageWrapper::Encoder::reset(const uint8_t *src, const uint8_t *dst, uint8_t pkt_id) {
   output.clear();
   header = {
-      .src = {0},
-      .dst = {0},
-      .pkt_id = 0,
-      .pkt_cur_count = 0,
+      .src                = {0},
+      .dst                = {0},
+      .pkt_id             = 0,
+      .pkt_cur_count      = 0,
       .total_payload_size = 0,
-      .cur_payload_size = 0,
+      .cur_payload_size   = 0,
   };
   memcpy(header.src, src, 3);
   memcpy(header.dst, dst, 3);
@@ -42,9 +43,9 @@ inline void static add_padding(etl::ivector<char> &vec, size_t size) {
 }
 
 void MessageWrapper::Encoder::setPayload(const char *payload, size_t size) {
-  this->message = const_cast<char *>(payload);
+  this->message            = const_cast<char *>(payload);
   this->total_message_size = size;
-  this->cur_left = size;
+  this->cur_left           = size;
 }
 
 void MessageWrapper::Encoder::setPayload(const uint8_t *payload, size_t size) {
@@ -62,29 +63,27 @@ etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> Messag
   push_back_many(output, header.dst, 3);
   output.push_back(header.pkt_id);
   output.push_back(header.pkt_cur_count);
-  header.total_payload_size = total_message_size;
+  header.total_payload_size       = total_message_size;
   auto network_total_payload_size = __htons(header.total_payload_size);
-  // should be encoded in big endian
-  auto total_payload_size_high = reinterpret_cast<uint8_t *>(&network_total_payload_size)[0];
-  auto total_payload_size_low = reinterpret_cast<uint8_t *>(&network_total_payload_size)[1];
-  output.push_back(total_payload_size_high);
-  output.push_back(total_payload_size_low);
+  for (auto i = 0; i < 2; i++) {
+    output.push_back(*(reinterpret_cast<uint8_t *>(&network_total_payload_size) + i));
+  }
   auto current_payload_size = std::min(cur_left, MAX_PAYLOAD_SIZE);
-  header.cur_payload_size = current_payload_size;
+  header.cur_payload_size   = current_payload_size;
   output.push_back(header.cur_payload_size);
   push_back_many(output, message, header.cur_payload_size);
   add_padding(output, ENDING_PAD_SIZE);
   cur_left -= current_payload_size;
   if (cur_left < 0) [[unlikely]] {
-    this->message = nullptr;
+    this->message            = nullptr;
     this->total_message_size = 0;
-    this->cur_left = 0;
+    this->cur_left           = 0;
     return etl::nullopt;
     // last packet
   } else if (cur_left == 0) {
-    this->message = nullptr;
+    this->message            = nullptr;
     this->total_message_size = 0;
-    this->cur_left = 0;
+    this->cur_left           = 0;
     return etl::make_optional(output);
   } else {
     message += current_payload_size;
@@ -102,14 +101,12 @@ etl::optional<MessageWrapper::WrapperHeader> MessageWrapper::Decoder::decodeHead
   WrapperHeader header{};
   memcpy(header.src, message, 3);
   memcpy(header.dst, message + 3, 3);
-  header.pkt_id = message[6];
+  header.pkt_id        = message[6];
   header.pkt_cur_count = message[7];
-  // total_payload_size is big endian with 2 bytes
-  auto total_payload_size_high = message[8];
-  auto total_payload_size_low = message[9];
-  auto host_total_payload_size = __ntohs(total_payload_size_high << 8 | total_payload_size_low);
-  header.total_payload_size = host_total_payload_size;
-  header.cur_payload_size = message[10];
+  // decode 8 & 9
+  auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
+  header.total_payload_size    = host_total_payload_size;
+  header.cur_payload_size      = message[10];
   return etl::make_optional(header);
 }
 
@@ -121,7 +118,7 @@ MessageWrapper::WrapperDecodeResult MessageWrapper::Decoder::decode(const char *
   // first packet
   if (!_decoding) {
     this->header = h.value();
-    _decoding = true;
+    _decoding    = true;
     if (header.total_payload_size > MAX_DECODER_OUTPUT_SIZE) {
       return WrapperDecodeResult::TotalPayloadSizeTooLarge;
     }
@@ -196,7 +193,7 @@ const char *MessageWrapper::decodeResultToString(MessageWrapper::WrapperDecodeRe
     case WrapperDecodeResult::TotalPayloadSizeTooLarge:
       return "TotalPayloadSizeTooLarge";
     default:
-      std::unreachable();
+      return "Unknown";
   }
 };
 

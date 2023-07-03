@@ -108,6 +108,7 @@ public:
     \param symbolNum Number of symbols for CAD detection. Defaults to the value recommended by AN1200.48.
     \param detPeak Peak value for CAD detection. Defaults to the value recommended by AN1200.48.
     \param detMin Minimum value for CAD detection. Defaults to the value recommended by AN1200.48.
+    \effects call `startChannelScan()` so `setDioIrqParams(RADIOLIB_SX126X_IRQ_CAD_DETECTED | RADIOLIB_SX126X_IRQ_CAD_DONE, RADIOLIB_SX126X_IRQ_CAD_DETECTED | RADIOLIB_SX126X_IRQ_CAD_DONE)` is called.
     \returns \ref status_codes
   */
   int16_t scanChannel(uint8_t symbolNum = RADIOLIB_SX126X_CAD_PARAM_DEFAULT, uint8_t detPeak = RADIOLIB_SX126X_CAD_PARAM_DEFAULT, uint8_t detMin = RADIOLIB_SX126X_CAD_PARAM_DEFAULT);
@@ -610,11 +611,6 @@ public:
    * @brief The IrqMask masks or unmasks the IRQ which can be triggered by the device. By default, all IRQ are masked (all ‘0’) and the user can enable them one by one (or several at a time) by setting the corresponding mask to ‘1’.
    */
   int16_t setDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = RADIOLIB_SX126X_IRQ_NONE, uint16_t dio3Mask = RADIOLIB_SX126X_IRQ_NONE);
-
-  /**
-   * @brief `startReceive` but infinite timeout
-   */
-  void rx();
 
 #if !defined(RADIOLIB_GODMODE)
 protected:

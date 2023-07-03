@@ -16,6 +16,8 @@ namespace LED {
   void begin();
 
   void setColor(bool r, bool g, bool b);
+  /// low 3 bits are used. (rgb)
+  void setColor(uint8_t rgb);
 }
 
 #endif //SIMPLE_LED_H
