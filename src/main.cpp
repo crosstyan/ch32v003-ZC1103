@@ -1,5 +1,5 @@
-//#define TX
-// #define DISABLE_LED
+// #define TX
+//  #define DISABLE_LED
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -125,7 +125,7 @@ int main() {
       printf("[INFO] Boring rgb=%d\n", rgb);
       LED::setColor(rgb);
       if (Flags::getFlag()) {
-//        printf("[INFO] TX flag set\n");
+        //        printf("[INFO] TX flag set\n");
         Flags::setFlag(false);
       }
       instant.reset();
@@ -189,7 +189,6 @@ int main() {
           } else {
             printf("[ERROR] failed to decode boring\n");
           }
-          etl::vector<char, 32> string_payload;
         } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
           printf("[INFO] unfinished\n");
         } else {

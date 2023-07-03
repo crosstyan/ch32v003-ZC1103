@@ -36,7 +36,7 @@ size_t toBytes(Boring &boring, uint8_t *buffer) {
   }
   return offset;
 }
-static etl::optional<Boring> fromBytes(const uint8_t *buffer) {
+etl::optional<Boring> fromBytes(const uint8_t *buffer) {
   if (buffer[0] != BORING_MAGIC) {
     return etl::nullopt;
   }
