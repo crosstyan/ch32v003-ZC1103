@@ -163,6 +163,10 @@ int main() {
         if (h.has_value()) {
           printf("[INFO] ");
           decoder.printHeader(h.value());
+        } else {
+          printf("[ERROR] dump: ");
+          utils::printWithSize(rx_buf, rx_size, true);
+          printf("\n");
         }
         auto end_padding = rx_buf + rx_size - 3;
         if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {

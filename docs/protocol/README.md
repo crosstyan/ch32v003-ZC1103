@@ -66,4 +66,6 @@ kaitai-struct-compiler -t graphviz ping.ksy
 dot -Tpng ping.dot > figures/ping.png
 kaitai-struct-compiler -t graphviz boring.ksy
 dot -Tpng boring.dot > figures/boring.png
+kaitai-struct-compiler -t graphviz proto/simple_wrapper.ksy
+dot -Tpng simple_wrapper.dot > figures/simple_wrapper.png
 ```

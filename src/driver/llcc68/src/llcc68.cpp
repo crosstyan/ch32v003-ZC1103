@@ -540,11 +540,6 @@ int16_t LLCC68::readData(uint8_t *data, size_t len) {
 }
 
 int16_t LLCC68::startChannelScan(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin) {
-  // check active modem
-  if (getPacketType() != RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-    return (RADIOLIB_ERR_WRONG_MODEM);
-  }
-
   // set mode to standby
   int16_t state = standby();
   RADIOLIB_ASSERT(state);
