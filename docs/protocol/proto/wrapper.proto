@@ -15,7 +15,7 @@ message BleMessage {
     SpotConfig config = 3;
     Spot spot = 4;
     // with payload
-    uint32 setCurrent = 5;
+    uint32 set_current = 5;
     // just a magic
     uint32 ping = 6;
   }
