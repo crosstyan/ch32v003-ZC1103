@@ -27,12 +27,3 @@ types:
         doc: | 
           The current payload size of the message. 
           The size of all the packets for same `pkt_id` must add up to `total_payload_size`.
-      - id: payload_type
-        type: u1
-        enum: payload_type
-
-enums:
-  payload_type:
-    0x01: protobuf
-    0x86: set_current
-    0x06: ping
