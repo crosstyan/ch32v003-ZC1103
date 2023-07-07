@@ -21,7 +21,7 @@ extern "C" void EXTI7_0_IRQHandler(){
  * @see https://github.com/cnlohr/ch32v003fun/blob/master/examples/exti_pin_change_isr/exti_pin_change_isr.c
  */
 void configureEXTI(){
-  constexpr uint8_t CNF_AND_MODE_WIDTH = 4; // 4 bytes for each pin.
+  constexpr uint8_t CNF_AND_MODE_WIDTH = 4; // 4 bits for each pin.
   constexpr uint8_t EXTICR_EXTIx_WIDTH = 2;
 
   asm volatile(

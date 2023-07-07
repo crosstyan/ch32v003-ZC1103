@@ -2,154 +2,79 @@
 // Created by Kurosu Chan on 2023/5/29.
 //
 #include "message_wrapper.h"
-#include "utils.h"
-
-MessageWrapper::Encoder::Encoder(const uint8_t *src, const uint8_t *dst, uint8_t pkt_id) {
-  reset(src, dst, pkt_id);
-}
-
-void MessageWrapper::Encoder::reset(const uint8_t *src, const uint8_t *dst, uint8_t pkt_id) {
-  output.clear();
-  header = {
-      .src                = {0},
-      .dst                = {0},
-      .pkt_id             = 0,
-      .pkt_cur_count      = 0,
-      .total_payload_size = 0,
-      .cur_payload_size   = 0,
-  };
-  memcpy(header.src, src, 3);
-  memcpy(header.dst, dst, 3);
-  header.pkt_id = pkt_id;
-}
-
-inline void static push_back_many(etl::ivector<char> &vec, const char *data, size_t size) {
-  for (size_t i = 0; i < size; i++) {
-    vec.push_back(data[i]);
-  }
-}
-
-inline void static push_back_many(etl::ivector<char> &vec, const uint8_t *data, size_t size) {
-  auto d = reinterpret_cast<const char *>(data);
-  for (size_t i = 0; i < size; i++) {
-    vec.push_back(d[i]);
-  }
-}
-
-inline void static add_padding(etl::ivector<char> &vec, size_t size) {
-  for (size_t i = 0; i < size; i++) {
-    vec.push_back(0);
-  }
-}
-
-void MessageWrapper::Encoder::setPayload(const char *payload, size_t size) {
-  this->message            = const_cast<char *>(payload);
-  this->total_message_size = size;
-  this->cur_left           = size;
-}
-
-void MessageWrapper::Encoder::setPayload(const uint8_t *payload, size_t size) {
-  setPayload(reinterpret_cast<const char *>(payload), size);
-}
-
-// TODO: optimize this
-// eats 256 bytes of Flash
-etl::optional<etl::vector<char, MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>> MessageWrapper::Encoder::next() {
-  if (this->message == nullptr) {
-    return etl::nullopt;
-  }
-  output.clear();
-  push_back_many(output, header.src, 3);
-  push_back_many(output, header.dst, 3);
-  output.push_back(header.pkt_id);
-  output.push_back(header.pkt_cur_count);
-  header.total_payload_size       = total_message_size;
-  auto network_total_payload_size = __htons(header.total_payload_size);
-  for (auto i = 0; i < 2; i++) {
-    output.push_back(*(reinterpret_cast<uint8_t *>(&network_total_payload_size) + i));
-  }
-  auto current_payload_size = std::min(cur_left, MAX_PAYLOAD_SIZE);
-  header.cur_payload_size   = current_payload_size;
-  output.push_back(header.cur_payload_size);
-  push_back_many(output, message, header.cur_payload_size);
-  add_padding(output, ENDING_PAD_SIZE);
-  cur_left -= current_payload_size;
-  if (cur_left < 0) [[unlikely]] {
-    this->message            = nullptr;
-    this->total_message_size = 0;
-    this->cur_left           = 0;
-    return etl::nullopt;
-    // last packet
-  } else if (cur_left == 0) {
-    this->message            = nullptr;
-    this->total_message_size = 0;
-    this->cur_left           = 0;
-    return etl::make_optional(output);
-  } else {
-    message += current_payload_size;
-    header.pkt_cur_count++;
-    return etl::make_optional(output);
-  }
-}
 
 // TODO: optimize this
 // eats 132 bytes of Flash
-etl::optional<MessageWrapper::WrapperHeader> MessageWrapper::Decoder::decodeHeader(const char *message, size_t size) {
+etl::optional<MessageWrapper::WrapperHeader> MessageWrapper::Decoder::decodeHeader(const uint8_t *message, size_t size, bool is_simple) {
   if (size < HEADER_SIZE) {
     return etl::nullopt;
   }
   WrapperHeader header{};
-  memcpy(header.src, message, 3);
-  memcpy(header.dst, message + 3, 3);
-  header.pkt_id        = message[6];
-  header.pkt_cur_count = message[7];
-  // decode 8 & 9
-  auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
-  header.total_payload_size    = host_total_payload_size;
-  header.cur_payload_size      = message[10];
+  if (!is_simple) {
+    memcpy(header.src, message, 3);
+    memcpy(header.dst, message + 3, 3);
+    header.pkt_id        = message[6];
+    header.pkt_cur_count = message[7];
+    // decode 8 & 9
+    auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
+    header.total_payload_size    = host_total_payload_size;
+    header.cur_payload_size      = message[10];
+  } else {
+    size_t offset        = 0;
+    header.pkt_cur_count = message[offset];
+    offset += 1;
+    // decode 8 & 9
+    auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + offset));
+    header.total_payload_size    = host_total_payload_size;
+    offset += 2;
+    header.cur_payload_size = message[offset];
+  }
   return etl::make_optional(header);
 }
 
-MessageWrapper::WrapperDecodeResult MessageWrapper::Decoder::decode(const char *message, size_t size) {
-  auto h = decodeHeader(message, size);
+etl::pair<MessageWrapper::WrapperDecodeResult, MessageWrapper::WrapperHeader>
+MessageWrapper::Decoder::decode(const uint8_t *message, size_t size, bool is_simple) {
+  auto h = decodeHeader(message, size, is_simple);
   if (!h.has_value()) {
-    return WrapperDecodeResult::BadHeader;
+    return etl::pair(WrapperDecodeResult::BadHeader, WrapperHeader{});
   }
   // first packet
   if (!_decoding) {
     this->header = h.value();
     _decoding    = true;
     if (header.total_payload_size > MAX_DECODER_OUTPUT_SIZE) {
-      return WrapperDecodeResult::TotalPayloadSizeTooLarge;
+      return etl::pair(WrapperDecodeResult::TotalPayloadSizeTooLarge, header);
     }
     output.clear();
     push_back_many(output, message + HEADER_SIZE, header.cur_payload_size);
     if (header.total_payload_size == header.cur_payload_size) {
       _decoding = false;
-      return WrapperDecodeResult::Finished;
+      return etl::pair(WrapperDecodeResult::Finished, header);
     } else {
-      return WrapperDecodeResult::Unfinished;
+      return etl::pair(WrapperDecodeResult::Unfinished, header);
     }
     // following packets
   } else {
-    if (header.pkt_id != h.value().pkt_id) {
-      return WrapperDecodeResult::UnexpectedPktId;
+    if (!is_simple) {
+      if (header.pkt_id != h.value().pkt_id) {
+        return etl::pair(WrapperDecodeResult::UnexpectedPktId, header);
+      }
+      if (memcmp(header.src, h.value().src, 3) != 0) {
+        return etl::pair(WrapperDecodeResult::UnexpectedSrc, header);
+      }
     }
     if (header.total_payload_size != h.value().total_payload_size) {
-      return WrapperDecodeResult::UnexpectedTotalPayloadSize;
+      return etl::pair(WrapperDecodeResult::UnexpectedTotalPayloadSize, header);
     }
     if ((header.pkt_cur_count + 1) != h.value().pkt_cur_count) {
-      return WrapperDecodeResult::UnexpectedPktCount;
-    }
-    if (memcmp(header.src, h.value().src, 3) != 0) {
-      return WrapperDecodeResult::UnexpectedSrc;
+      return etl::pair(WrapperDecodeResult::UnexpectedPktCount, header);
     }
     push_back_many(output, message + HEADER_SIZE, header.cur_payload_size);
     if (output.size() >= header.total_payload_size) {
       _decoding = false;
-      return WrapperDecodeResult::Finished;
+      return etl::pair(WrapperDecodeResult::Finished, header);
     } else {
-      return WrapperDecodeResult::Unfinished;
+      return etl::pair(WrapperDecodeResult::Unfinished, header);
     }
   }
 }
@@ -160,7 +85,7 @@ void MessageWrapper::Decoder::reset() {
   _decoding = false;
 }
 
-const etl::vector<char, MessageWrapper::MAX_DECODER_OUTPUT_SIZE> &MessageWrapper::Decoder::getOutput() const {
+const etl::vector<uint8_t, MessageWrapper::MAX_DECODER_OUTPUT_SIZE> &MessageWrapper::Decoder::getOutput() const {
   return output;
 }
 

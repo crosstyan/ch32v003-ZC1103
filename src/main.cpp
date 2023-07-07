@@ -1,5 +1,5 @@
-// #define TX
-//  #define DISABLE_LED
+#define TX
+// #define DISABLE_LED
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -16,11 +16,14 @@
 #include "flags.h"
 #include "flash.h"
 #include "spot.h"
+#include "adc.h"
 #include "boring.h"
 
 #ifdef TX
 #include <pb_encode.h>
 #endif
+
+using namespace RfMessage;
 
 // TODO: what's the IRQ pin?
 // DIO2 is connected to IRQ (at PD1)
@@ -30,12 +33,28 @@ static const pin_size_t CS_PIN    = GPIO::C4;
 static const pin_size_t RST_PIN   = GPIO::C0;
 static const pin_size_t RX_EN_PIN = GPIO::C1;
 static const pin_size_t TX_EN_PIN = GPIO::C2;
-static const uint8_t PING_MAGIC   = 0x06;
+
+static const auto ADDR_BYTES                     = 3;
+static const uint8_t MY_ADDR[ADDR_BYTES]         = {0x01, 0x02, 0x03};
+static const uint8_t BROAD_CAST_ADDR[ADDR_BYTES] = {0xFF, 0xFF, 0xFF};
+
+bool isValidAddr(const uint8_t *addr) {
+  auto is_bc_addr = memcmp(addr, BROAD_CAST_ADDR, ADDR_BYTES) == 0;
+  if (is_bc_addr) {
+    return true;
+  }
+  auto is_my_addr = memcmp(addr, MY_ADDR, ADDR_BYTES) == 0;
+  if (is_my_addr) {
+    return true;
+  }
+  return false;
+}
 
 int main() {
   SystemInit48HSI();
   SysTick_init();
   SetupDebugPrintf();
+  adc_init();
   printf("[INFO] booting\n");
 
   pin_size_t LED_pin = GPIO::D6;
@@ -49,7 +68,7 @@ int main() {
   rf.setDio2AsRfSwitch(false);
   //  rf.setRfSwitchPins(RX_EN_PIN, TX_EN_PIN);
   // TODO: ...
-  auto res = rf.begin(434);
+  auto res = rf.begin();
   if (res != RADIOLIB_ERR_NONE) {
     printf("[ERROR] failed to initialize radio, code %d\n", res);
   }
@@ -61,7 +80,6 @@ int main() {
 #else
   printf("RX mode\n");
 #endif
-
   uint8_t src[3] = {0x01, 0x02, 0x03};
   uint8_t dst[3] = {0xff, 0xff, 0xff};
   uint8_t pkt_id = 0;
@@ -72,12 +90,13 @@ int main() {
   rng.initialise(0);
   uint8_t rgb;
 #ifdef TX
-  auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
+  auto encoder = MessageWrapper::Encoder<MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>(src, dst, pkt_id);
 #else
-  auto decoder    = MessageWrapper::Decoder();
-  auto instant_rx = Instant();
-  auto d_rx       = std::chrono::duration<uint16_t, std::milli>(1);
-
+  auto decoder      = MessageWrapper::Decoder();
+  auto instant_rx   = Instant();
+  auto d_rx         = std::chrono::duration<uint16_t, std::milli>(1);
+  auto instant_spot = Instant();
+  auto spot         = Spot();
 #endif
   while (true) {
 #ifdef TX
@@ -99,7 +118,7 @@ int main() {
       // refresh until at least one color is on and the color is different from the previous one
       while (!(temp != 0) || !(temp != rgb));
       rgb                 = temp;
-      auto b              = boring::Boring();
+      auto b              = RfMessage::Boring();
       b.led               = rgb;
       const char *payload = "test";
       for (auto i = 0; i < strlen(payload); i++) {
@@ -124,10 +143,6 @@ int main() {
       }
       printf("[INFO] Boring rgb=%d\n", rgb);
       LED::setColor(rgb);
-      if (Flags::getFlag()) {
-        //        printf("[INFO] TX flag set\n");
-        Flags::setFlag(false);
-      }
       instant.reset();
       pkt_id++;
       encoder.reset(src, dst, pkt_id);
@@ -143,11 +158,11 @@ int main() {
         printf("\n");
       }
     }
+    // decode task
     if (Flags::getFlag()) {
       printf("[INFO] RX flag set\n");
-      char rx_buf[256];
+      uint8_t rx_buf[256];
       uint16_t rx_size;
-
       // when a valid packet is received the state should be 0xc0
       // (at least the rx_pkt_state would be 0x00)
       // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
@@ -174,25 +189,91 @@ int main() {
           utils::printWithSize(rx_buf + rx_size - 3, 3, true);
           printf("\"\n");
         }
-        auto res = decoder.decode(rx_buf, rx_size);
+        // TODO: check the header of the packet
+        auto [res, header] = decoder.decode(rx_buf, rx_size);
+        if (!isValidAddr(header.dst)) {
+          printf("[ERROR] invalid dst address: ");
+          utils::printWithSize(header.dst, ADDR_BYTES, true);
+          printf("\n");
+          continue;
+        }
         if (res == MessageWrapper::WrapperDecodeResult::Finished) {
           auto payload = decoder.getOutput();
-          auto b       = boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
-          if (b.has_value()) {
-            auto &v = b.value();
-            printf("[INFO] boring: led=%d, comments=\"", v.led);
-            for (auto c : v.comments) {
-              printf("%c", c);
-            }
-            printf("\"\n");
+          auto magic   = payload.at(0);
+          switch (magic) {
+            case RfMessage::BORING_MAGIC: {
+              auto b = RfMessage::boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
+              if (b.has_value()) {
+                auto &v = b.value();
+                printf("[INFO] boring: led=%d, comments=\"", v.led);
+                for (auto c : v.comments) {
+                  printf("%c", c);
+                }
+                printf("\"\n");
 #ifdef DISABLE_LED
-            LED::setColr(false, false, false);
+                LED::setColr(false, false, false);
 #else
-            LED::setColor(b->led);
+                LED::setColor(b->led);
 #endif
-          } else {
-            printf("[ERROR] failed to decode boring\n");
+              } else {
+                printf("[ERROR] failed to decode boring\n");
+              }
+              break;
+            }
+            case RfMessage::COMMAND_MAGIC: {
+              auto c = RfMessage::CommandMessage::fromBytes(payload.data());
+              if (c.has_value()) {
+                auto command = c.value();
+                switch (command) {
+                  case RfMessage::Command::START: {
+                    spot.start();
+                  }
+                  case RfMessage::Command::STOP: {
+                    spot.stop();
+                  }
+                  case RfMessage::Command::Ping: {
+                    auto val = adc_get();
+                    printf("[INFO] ping: %d\n", val);
+                    // TODO: write a encode function to encode the value (pong)
+                    // directly into the buffer to avoid the creation of Encoder object
+                    uint8_t b[4] = {0};
+                    // would switch to RX mode after transmission
+                    auto st = rf.transmit(b, 4);
+                    if (st != RADIOLIB_ERR_NONE) {
+                      printf("[ERROR] failed to transmit, code %d\n", st);
+                    }
+                  }
+                }
+              } else {
+                printf("[ERROR] failed to decode command\n");
+              }
+              break;
+            }
+            case RfMessage::SPOT_CONFIG_MAGIC: {
+              auto maybe = RfMessage::SpotConfig::fromBytes(payload.data());
+              if (maybe.has_value()) {
+                auto config = maybe.value();
+                spot.setConfig(config);
+                printf("[INFO] spot config set\n");
+              }
+              break;
+            }
+            case RfMessage::SPOT_MAGIC: {
+              spot.fromBytes(payload.data());
+              printf("[INFO] spot set\n");
+              break;
+            }
+            case RfMessage::SET_CURRENT_MAGIC: {
+              auto maybe = RfMessage::SetCurrent::fromBytes(payload.data());
+              if (maybe.has_value()) {
+                auto current = maybe.value().current_id;
+                printf("[INFO] set current to %d\n", current);
+                Current::set(current);
+              }
+              break;
+            }
           }
+          decoder.reset();
         } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
           printf("[INFO] unfinished\n");
         } else {
@@ -202,6 +283,15 @@ int main() {
       }
       digitalWrite(GPIO::D6, GPIO::LOW);
       Flags::setFlag(false);
+    }
+    // update spot task
+    if (spot.state() == RfMessage::SpotState::START) {
+      auto &cfg     = spot.config();
+      auto interval = std::chrono::duration<decltype(cfg.updateInterval), std::milli>(cfg.updateInterval);
+      if (instant_spot.elapsed() >= interval) {
+        spot.update();
+        instant_spot.reset();
+      }
     }
 #endif
   }
