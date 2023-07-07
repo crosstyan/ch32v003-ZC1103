@@ -32,9 +32,9 @@ enums:
         Only the base (server) could initiate a `ping` message with the `dst` set to
         broadcast address.  The Spot would reply with a `ping` message with the `src`
         set to its own address and `dst` set to the server address.
-    0x07:
+    0x00:
       id: start
       doc: start the track
-    0x08:
+    0x01:
       id: stop
       doc: stop the track

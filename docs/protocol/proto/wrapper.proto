@@ -22,7 +22,7 @@ message BleMessage {
 }
 
 enum Command {
+  Start = 0x00;
+  Stop = 0x01;
   Ping = 0x06;
-  Start = 0x07;
-  Stop = 0x08;
 }
