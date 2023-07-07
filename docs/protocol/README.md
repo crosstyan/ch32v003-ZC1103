@@ -40,11 +40,11 @@ magic: `0x86`
 
 ![SetCurrent](figures/set_current.png)
 
-### [Ping](ping.ksy)
+### [Command](command.ksy)
 
-magic `0x06`
+magic `0x11`
 
-![Ping](figures/ping.png)
+![Command](figures/command.png)
 
 Only a magic nothing else.
 
@@ -62,10 +62,10 @@ kaitai-struct-compiler -t graphviz spot_config.ksy
 dot -Tpng spot_config.dot > figures/spot_config.png
 kaitai-struct-compiler -t graphviz set_current.ksy
 dot -Tpng set_current.dot > figures/set_current.png
-kaitai-struct-compiler -t graphviz ping.ksy
-dot -Tpng ping.dot > figures/ping.png
 kaitai-struct-compiler -t graphviz boring.ksy
 dot -Tpng boring.dot > figures/boring.png
 kaitai-struct-compiler -t graphviz proto/simple_wrapper.ksy
 dot -Tpng simple_wrapper.dot > figures/simple_wrapper.png
+kaitai-struct-compiler -t graphviz command.ksy
+dot -Tpng command.dot > figures/command.png
 ```
