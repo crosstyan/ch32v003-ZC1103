@@ -28,7 +28,6 @@ inline void static add_padding(etl::ivector<uint8_t> &vec, size_t size) {
   }
 }
 
-
 /// TODO: unit test
 namespace MessageWrapper {
 // total size = 3 + 3 + 1 + 1 + 2 + 1 = 11
@@ -75,13 +74,17 @@ class Encoder {
   size_t cur_left           = 0;
 
 public:
-  void setPayload(const char *payload, size_t size) {
-    setPayload(reinterpret_cast<const uint8_t *>(payload), size);
+  bool setPayload(const char *payload, size_t size) {
+    return setPayload(reinterpret_cast<const uint8_t *>(payload), size);
   };
-  void setPayload(const uint8_t *payload, size_t size) {
+  bool setPayload(const uint8_t *payload, size_t size) {
+    if (size > MAX_PAYLOAD_SIZE) {
+      return false;
+    }
     this->message            = const_cast<uint8_t *>(payload);
     this->total_message_size = size;
     this->cur_left           = size;
+    return true;
   };
 
   /*
@@ -98,7 +101,7 @@ public:
     output.push_back(header.pkt_cur_count);
     header.total_payload_size       = total_message_size;
     auto network_total_payload_size = __htons(header.total_payload_size);
-    for (auto i = 0; i < 2; i++) {
+    for (auto i = 0; i < sizeof network_total_payload_size; i++) {
       output.push_back(*(reinterpret_cast<uint8_t *>(&network_total_payload_size) + i));
     }
     auto current_payload_size = std::min(cur_left, MAX_PAYLOAD_SIZE);
@@ -107,18 +110,15 @@ public:
     push_back_many(output, message, header.cur_payload_size);
     add_padding(output, ENDING_PAD_SIZE);
     cur_left -= current_payload_size;
-    if (cur_left < 0) [[unlikely]] {
-      this->message            = nullptr;
-      this->total_message_size = 0;
-      this->cur_left           = 0;
+    if (cur_left < 0) [[unlikely]] { // should not happen
+      reset(header.pkt_id);
       return etl::nullopt;
-      // last packet
-    } else if (cur_left == 0) {
+    } else if (cur_left == 0) { // last packet
       this->message            = nullptr;
       this->total_message_size = 0;
       this->cur_left           = 0;
       return etl::make_optional(output);
-    } else {
+    } else { // continue
       message += current_payload_size;
       header.pkt_cur_count++;
       return etl::make_optional(output);
@@ -140,20 +140,23 @@ public:
   }
   void reset(uint8_t pkt_id) {
     output.clear();
+    this->message             = nullptr;
     header.pkt_cur_count      = 0;
     header.total_payload_size = 0;
     header.cur_payload_size   = 0;
     header.pkt_id             = pkt_id;
   }
+
   void reset(const uint8_t *src, const uint8_t *dst, uint8_t pkt_id) {
     output.clear();
-    header = {
-        .src                = {0},
-        .dst                = {0},
-        .pkt_id             = 0,
-        .pkt_cur_count      = 0,
-        .total_payload_size = 0,
-        .cur_payload_size   = 0,
+    this->message = nullptr;
+    header        = {
+               .src                = {0},
+               .dst                = {0},
+               .pkt_id             = 0,
+               .pkt_cur_count      = 0,
+               .total_payload_size = 0,
+               .cur_payload_size   = 0,
     };
     memcpy(header.src, src, 3);
     memcpy(header.dst, dst, 3);

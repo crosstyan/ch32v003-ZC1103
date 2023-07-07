@@ -1,4 +1,4 @@
-#define TX
+//#define TX
 // #define DISABLE_LED
 
 #include "clock.h"
