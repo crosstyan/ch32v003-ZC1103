@@ -1,6 +1,5 @@
-#define TX
-//#define DISABLE_LED
-# define DISABLE_STANDBY
+// #define TX
+#define DISABLE_STANDBY
 
 #include "funconfig.h"
 #include "clock.h"
@@ -53,14 +52,14 @@ bool isValidAddr(const uint8_t *addr) {
 }
 
 int main() {
+restart:
   SystemInit();
   SysTick_init();
-  adc_init();
+  // adc_init();
   printf("[INFO] booting\n");
-
-  pin_size_t LED_pin = GPIO::D6;
-  pinMode(LED_pin, GPIO::OUTPUT);
+  printf("[INFO] dumb\n");
   configureEXTI();
+  printf("[INFO] EXTI configured\n");
 
   auto hal = RadioLibHal();
   hal.spiBegin();
@@ -72,7 +71,10 @@ int main() {
   auto res = rf.begin();
   if (res != RADIOLIB_ERR_NONE) {
     printf("[ERROR] failed to initialize radio, code %d\n", res);
+    Delay_Ms(1000);
+    goto restart;
   }
+  printf("[INFO] radio initialized\n");
   // Won't change as long as startTransmit() is not called
   // expect to be 0x03
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
@@ -98,7 +100,7 @@ int main() {
   auto d_rx         = std::chrono::duration<uint16_t, std::milli>(1);
   auto instant_spot = Instant();
   auto spot         = Spot();
-  auto counter = 0;
+  auto counter      = 0;
 #endif
 
 #ifndef DISABLE_STANDBY
@@ -129,7 +131,7 @@ int main() {
   // peripheral interrupt controller send to deep sleep
   PFIC->SCTLR |= (1 << 2);
 #endif
-  while (true) {
+  for (;;) {
 #ifndef DISABLE_STANDBY
     __WFE();
     // restore clock to full speed
@@ -188,16 +190,16 @@ int main() {
     // I guess some reorder magic is happening here
     // I'm not sure if standby is working...
     // See also `exti.cpp`
-    while (instant_rx.elapsed() < d_rx) {
-      printf("*");
-      rf.startReceive();
-      if (instant_rx.elapsed() >= d_rx) {
-        printf("\n");
-      }
-    }
+//    while (instant_rx.elapsed() < d_rx) {
+//      printf("*");
+//      rf.startReceive();
+//      if (instant_rx.elapsed() >= d_rx) {
+//        printf("\n");
+//      }
+//    }
     // decode task
-    if (Flags::getFlag()) {
-      printf("[INFO] RX flag set\n");
+//    if (Flags::getFlag()) {
+//      printf("[INFO] RX flag set\n");
 //      uint8_t rx_buf[256];
 //      uint16_t rx_size;
 //      // when a valid packet is received the state should be 0xc0
@@ -247,11 +249,7 @@ int main() {
 //                  printf("%c", c);
 //                }
 //                printf("\"\n");
-//#ifdef DISABLE_LED
-//                LED::setColr(false, false, false);
-//#else
 //                LED::setColor(b->led);
-//#endif
 //              } else {
 //                printf("[ERROR] failed to decode boring\n");
 //              }
@@ -329,7 +327,7 @@ int main() {
 //        spot.update();
 //        instant_spot.reset();
 //      }
-    }
+//    }
 #endif
   }
 }

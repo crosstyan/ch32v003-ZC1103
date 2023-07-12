@@ -2,6 +2,7 @@
 // Created by Kurosu Chan on 2023/5/23.
 //
 #include "exti.h"
+#include "printf.h"
 #include "flags.h"
 
 constexpr uint8_t EXTICR_PC = 0b10;
@@ -16,7 +17,7 @@ extern "C" void EXTI7_0_IRQHandler(){
   EXTI->INTFR = 1<<PIN_NUM;
 }
 
-/*
+/**
  * @brief Configure the EXTI for GPIO pin C3
  * @see https://github.com/cnlohr/ch32v003fun/blob/master/examples/exti_pin_change_isr/exti_pin_change_isr.c
  */

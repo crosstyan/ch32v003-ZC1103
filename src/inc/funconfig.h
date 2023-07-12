@@ -10,5 +10,6 @@
 // TINYVECTOR now saves like another 120 bytes of space.
 //#define FUNCONF_TINYVECTOR       1
 #define FUNCONF_SYSTICK_USE_HCLK 1
+//#define CPLUSPLUS                 1
 
 #endif // SIMPLE_FUNCONFIG_H

@@ -26,7 +26,7 @@ int16_t LLCC68::begin(uint8_t cr, uint8_t syncWord, uint16_t preambleLength, flo
     this->mod->term();
     return (RADIOLIB_ERR_CHIP_NOT_FOUND);
   }
-  RADIOLIB_DEBUG_PRINTLN("M\tLLCC68");
+  RADIOLIB_DEBUG_PRINTLN("Find LLCC68");
 
   // BW in kHz and SF are required in order to calculate LDRO for setModulationParams
   // set the defaults, this will get overwritten later anyway
@@ -1571,6 +1571,9 @@ int16_t LLCC68::calibrateImage(uint8_t *data) {
 uint8_t LLCC68::getPacketType() {
   uint8_t data = 0xFF;
   this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_PACKET_TYPE, &data, 1);
+  if (data != RADIOLIB_SX126X_PACKET_TYPE_LORA || data != RADIOLIB_SX126X_PACKET_TYPE_GFSK || data != RADIOLIB_SX126X_PACKET_TYPE_LR_FHSS){
+    printf("[WARNING] LLCC68::getPacketType() gets %d\n", data);
+  }
   return (data);
 }
 
@@ -1871,7 +1874,7 @@ bool LLCC68::findChip(const char *verStr) {
     } else {
 #if defined(RADIOLIB_DEBUG)
       RADIOLIB_DEBUG_PRINTLN("LLCC68 not found! (%d of 10 tries) RADIOLIB_SX126X_REG_VERSION_STRING:", i + 1);
-      utils::printWithSize(version, 6, true);
+      utils::printWithSize(reinterpret_cast<const uint8_t *>(version), 6, true);
       printf("\n");
       RADIOLIB_DEBUG_PRINTLN("Expected string: %s", verStr);
 #endif
