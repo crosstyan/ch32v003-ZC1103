@@ -1,5 +1,6 @@
-//#define TX
-// #define DISABLE_LED
+// #define TX
+//  #define DISABLE_LED
+# define DISABLE_STANDBY
 
 #include "clock.h"
 #include "ch32v003fun.h"
@@ -97,8 +98,44 @@ int main() {
   auto d_rx         = std::chrono::duration<uint16_t, std::milli>(1);
   auto instant_spot = Instant();
   auto spot         = Spot();
+  auto counter = 0;
+#endif
+
+#ifndef DISABLE_STANDBY
+  // enable power interface module clock
+  RCC->APB1PCENR |= RCC_APB1Periph_PWR;
+
+  // enable low speed oscillator (LSI)
+  RCC->RSTSCKR |= RCC_LSION;
+  while ((RCC->RSTSCKR & RCC_LSIRDY) == 0) {}
+
+  // enable AutoWakeUp event
+  EXTI->EVENR |= EXTI_Line9;
+  EXTI->FTENR |= EXTI_Line9;
+
+  // configure AWU prescaler
+  PWR->AWUPSC |= PWR_AWU_Prescaler_4096;
+
+  // configure AWU window comparison value
+  PWR->AWUWR &= ~0x3f;
+  PWR->AWUWR |= 63;
+
+  // enable AWU
+  PWR->AWUCSR |= (1 << 1);
+
+  // select standby on power-down
+  PWR->CTLR |= PWR_CTLR_PDDS;
+
+  // peripheral interrupt controller send to deep sleep
+  PFIC->SCTLR |= (1 << 2);
 #endif
   while (true) {
+#ifndef DISABLE_STANDBY
+    __WFE();
+    // restore clock to full speed
+    SystemInit48HSI();
+    printf("[INFO] wake up with %d\n", counter++);
+#endif
 #ifdef TX
     if (instant.elapsed() >= d) {
       // Channel Activity Detection

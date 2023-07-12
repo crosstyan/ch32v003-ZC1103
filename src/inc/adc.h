@@ -74,6 +74,7 @@ uint16_t adc_get() {
   }
 
   // get result
+  // ADC regular data register
   return ADC1->RDATAR;
 }
 
