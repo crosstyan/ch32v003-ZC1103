@@ -9,7 +9,7 @@
 
 // need to include this before `ch32v003.h` is included
 #define SYSTEM_CORE_CLOCK 48000000
-#define SYSTICK_USE_HCLK
-#define APB_CLOCK SYSTEM_CORE_CLOCK
+//#define SYSTICK_USE_HCLK
+ #define APB_CLOCK SYSTEM_CORE_CLOCK
 
 #endif //SIMPLE_CLOCK_H
