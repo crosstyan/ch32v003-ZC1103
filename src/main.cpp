@@ -21,10 +21,6 @@
 #include <etl/map.h>
 #include "boring.h"
 
-#ifdef TX
-#include <pb_encode.h>
-#endif
-
 // TODO: what's the IRQ pin?
 // DIO2 is connected to IRQ (at PD1)
 static const pin_size_t IRQ_PIN   = GPIO::D1;
@@ -49,29 +45,6 @@ bool isValidAddr(const uint8_t *addr) {
   }
   return false;
 }
-
-class Track {
-public:
-  /// only need 3 bits
-  uint8_t color;
-  uint8_t id;
-
-private:
-//  etl::vector<uint16_t, MAX_SPEED_MAP_SIZE> keys;
-  etl::map<uint16_t, fixed_8_8 , 10> speeds;
-  uint16_t maxKey;
-
-public:
-  explicit Track(){
-    id = 0;
-    color = 0;
-    maxKey = 0;
-  };
-  explicit Track(uint8_t identifier) : id(identifier) {
-    color  = 0;
-    maxKey = 0;
-  }
-};
 
 int main() {
 restart:
