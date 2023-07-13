@@ -1,6 +1,7 @@
 // #define TX
 //  #define DISABLE_LED
 
+#include "funconfig.h"
 #include "clock.h"
 #include "ch32v003fun.h"
 #include "system_tick.h"
@@ -33,9 +34,8 @@ static const pin_size_t TX_EN_PIN = GPIO::C2;
 static const uint8_t PING_MAGIC   = 0x06;
 
 int main() {
-  SystemInit48HSI();
+  SystemInit();
   SysTick_init();
-  SetupDebugPrintf();
   printf("[INFO] booting\n");
 
   pin_size_t LED_pin = GPIO::D6;

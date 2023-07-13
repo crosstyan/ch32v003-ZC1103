@@ -16,9 +16,6 @@
 [submodule "libs/RadioLib"]
 	path = libs/RadioLib
 	url = https://github.com/jgromes/RadioLib
-[submodule "libs/--force"]
-	path = libs/--force
-	url = https://github.com/MikeLankamp/fpm
 [submodule "libs/cnl"]
 	path = libs/cnl
 	url = https://github.com/johnmcfarlane/cnl

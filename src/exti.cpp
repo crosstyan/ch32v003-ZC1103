@@ -35,7 +35,7 @@ void configureEXTI(){
   // AFIOEN: I/O auxiliary function module clock enable bit.
   RCC->APB2PCENR = RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO;
   // GPIO C3 for input pin change.
-  GPIOC->CFGLR |= (GPIO_SPEED_IN | GPIO_CNF_IN_PUPD)<<(CNF_AND_MODE_WIDTH * PIN_NUM);
+  GPIOC->CFGLR |= (GPIO_Speed_In | GPIO_CNF_IN_PUPD)<<(CNF_AND_MODE_WIDTH * PIN_NUM);
   GPIOC->CFGLR |= (GPIO_CNF_IN_PUPD)<<(CNF_AND_MODE_WIDTH * 1);  // Keep SWIO enabled.
   // GPIO and Alternate function (AFIO)
   // Configure the IO as an interrupt.
