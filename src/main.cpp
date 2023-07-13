@@ -74,6 +74,7 @@ public:
 };
 
 int main() {
+restart:
   SystemInit();
   SysTick_init();
   printf("[INFO] booting\n");
@@ -92,7 +93,10 @@ int main() {
   auto res = rf.begin(434);
   if (res != RADIOLIB_ERR_NONE) {
     printf("[ERROR] failed to initialize radio, code %d\n", res);
+    Delay_Ms(1000);
+    goto restart;
   }
+
   // Won't change as long as startTransmit() is not called
   // expect to be 0x03
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);

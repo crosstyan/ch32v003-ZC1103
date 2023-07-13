@@ -30,7 +30,7 @@ namespace RfMessage {
  * @return T
  */
 template <typename U, typename T>
-static T retrieveByVal(etl::ivector<U> const &keys, etl::iflat_map<U, T> const &m, int val) {
+static T retrieveByVal(etl::ivector<U> const &keys, etl::ivector<etl::pair<U, T>> const &m, int val) {
   size_t idx = 0;
   // since keys is sorted we can get result easily
   for (auto key : keys) {
@@ -42,7 +42,14 @@ static T retrieveByVal(etl::ivector<U> const &keys, etl::iflat_map<U, T> const &
   if (idx >= keys.size()) {
     idx = keys.size() - 1;
   }
-  return m.at(keys[idx]);
+  auto k  = keys[idx];
+  auto pv = etl::find_if(m.begin(), m.end(), [k](etl::pair<U, T> const &p) { return p.first == k; });
+  // should not enter this branch
+  if (pv == m.end()) [[unlikely]] {
+    return T();
+  } else {
+    return pv->second;
+  }
 }
 
 const auto MAX_SPEED_MAP_SIZE  = 16;
@@ -60,11 +67,16 @@ public:
 
 private:
   etl::vector<uint16_t, MAX_SPEED_MAP_SIZE> keys;
-  etl::flat_map<uint16_t, speed_type, MAX_SPEED_MAP_SIZE> speeds;
+  etl::vector<etl::pair<uint16_t, speed_type>, MAX_SPEED_MAP_SIZE> speeds;
   uint16_t maxKey;
 
 public:
-  explicit Track(uint8_t identifier = 0) : id(identifier) {
+  explicit Track() {
+    id     = 0;
+    color  = 0;
+    maxKey = 0;
+  };
+  explicit Track(uint8_t identifier) : id(identifier) {
     color  = 0;
     maxKey = 0;
   }
@@ -77,7 +89,7 @@ public:
   void addSpeed(uint16_t key, speed_type speed) {
     keys.push_back(key);
     etl::sort(keys.begin(), keys.end());
-    speeds.insert(etl::make_pair(key, speed));
+    speeds.emplace_back(etl::make_pair(key, speed));
     if (key > maxKey) {
       maxKey = key;
     }
