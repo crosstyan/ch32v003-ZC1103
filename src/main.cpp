@@ -1,4 +1,4 @@
-// #define TX
+ #define TX
 #define DISABLE_STANDBY
 
 #include "funconfig.h"
@@ -190,144 +190,144 @@ restart:
     // I guess some reorder magic is happening here
     // I'm not sure if standby is working...
     // See also `exti.cpp`
-//    while (instant_rx.elapsed() < d_rx) {
-//      printf("*");
-//      rf.startReceive();
-//      if (instant_rx.elapsed() >= d_rx) {
-//        printf("\n");
-//      }
-//    }
+    while (instant_rx.elapsed() < d_rx) {
+      printf("*");
+      rf.startReceive();
+      if (instant_rx.elapsed() >= d_rx) {
+        printf("\n");
+      }
+    }
     // decode task
-//    if (Flags::getFlag()) {
-//      printf("[INFO] RX flag set\n");
-//      uint8_t rx_buf[256];
-//      uint16_t rx_size;
-//      // when a valid packet is received the state should be 0xc0
-//      // (at least the rx_pkt_state would be 0x00)
-//      // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
-//      // one should only use interrupt to detect the packet
-//
-//      // TODO: sleep and duty cycle (see `startReceiveDutyCycleAuto`)
-//      // polling for now... interrupt is not working
-//      // check `setDioIrqParams`
-//      if (auto maybe_len = rf.tryReceive(reinterpret_cast<uint8_t *>(rx_buf))) {
-//        digitalWrite(GPIO::D6, GPIO::HIGH);
-//        rx_size = maybe_len.value();
-//        auto h  = decoder.decodeHeader(rx_buf, rx_size);
-//        if (h.has_value()) {
-//          printf("[INFO] ");
-//          decoder.printHeader(h.value());
-//        } else {
-//          printf("[ERROR] dump: ");
-//          utils::printWithSize(rx_buf, rx_size, true);
-//          printf("\n");
-//        }
-//        auto end_padding = rx_buf + rx_size - 3;
-//        if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
-//          printf("[ERROR] end padding is not correct. gets \"");
-//          utils::printWithSize(rx_buf + rx_size - 3, 3, true);
-//          printf("\"\n");
-//        }
-//        // TODO: check the header of the packet
-//        auto [res, header] = decoder.decode(rx_buf, rx_size);
-//        if (!isValidAddr(header.dst)) {
-//          printf("[ERROR] invalid dst address: ");
-//          utils::printWithSize(header.dst, ADDR_BYTES, true);
-//          printf("\n");
-//          continue;
-//        }
-//        if (res == MessageWrapper::WrapperDecodeResult::Finished) {
-//          auto payload = decoder.getOutput();
-//          auto magic   = payload.at(0);
-//          switch (magic) {
-//            case RfMessage::BORING_MAGIC: {
-//              auto b = RfMessage::boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
-//              if (b.has_value()) {
-//                auto &v = b.value();
-//                printf("[INFO] boring: led=%d, comments=\"", v.led);
-//                for (auto c : v.comments) {
-//                  printf("%c", c);
-//                }
-//                printf("\"\n");
-//                LED::setColor(b->led);
-//              } else {
-//                printf("[ERROR] failed to decode boring\n");
-//              }
-//              break;
-//            }
-//            case RfMessage::COMMAND_MAGIC: {
-//              auto c = RfMessage::CommandMessage::fromBytes(payload.data());
-//              if (c.has_value()) {
-//                auto command = c.value();
-//                switch (command) {
-//                  case RfMessage::Command::START: {
-//                    spot.start();
-//                  }
-//                  case RfMessage::Command::STOP: {
-//                    spot.stop();
-//                  }
-//                  case RfMessage::Command::Ping: {
-//                    auto val = adc_get();
-//                    printf("[INFO] ping: %d\n", val);
-//                    // TODO: write a encode function to encode the value (pong)
-//                    // directly into the buffer to avoid the creation of Encoder object
-//                    uint8_t b[4] = {0};
-//                    // would switch to RX mode after transmission
-//                    auto st = rf.transmit(b, 4);
-//                    if (st != RADIOLIB_ERR_NONE) {
-//                      printf("[ERROR] failed to transmit, code %d\n", st);
-//                    }
-//                  }
-//                }
-//              } else {
-//                printf("[ERROR] failed to decode command\n");
-//              }
-//              break;
-//            }
-//            case RfMessage::SPOT_CONFIG_MAGIC: {
-//              auto maybe = RfMessage::SpotConfig::fromBytes(payload.data());
-//              if (maybe.has_value()) {
-//                auto config = maybe.value();
-//                spot.setConfig(config);
-//                printf("[INFO] spot config set\n");
-//              }
-//              break;
-//            }
-//            case RfMessage::SPOT_MAGIC: {
-//              spot.fromBytes(payload.data());
-//              printf("[INFO] spot set\n");
-//              break;
-//            }
-//            case RfMessage::SET_CURRENT_MAGIC: {
-//              auto maybe = RfMessage::SetCurrent::fromBytes(payload.data());
-//              if (maybe.has_value()) {
-//                auto current = maybe.value().current_id;
-//                printf("[INFO] set current to %d\n", current);
-//                Current::set(current);
-//              }
-//              break;
-//            }
-//          }
-//          decoder.reset();
-//        } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
-//          printf("[INFO] unfinished\n");
-//        } else {
-//          printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
-//          decoder.reset();
-//        }
-//      }
-//      digitalWrite(GPIO::D6, GPIO::LOW);
-//      Flags::setFlag(false);
-//    }
-//    // update spot task
-//    if (spot.state() == RfMessage::SpotState::START) {
-//      auto &cfg     = spot.config();
-//      auto interval = std::chrono::duration<decltype(cfg.updateInterval), std::milli>(cfg.updateInterval);
-//      if (instant_spot.elapsed() >= interval) {
-//        spot.update();
-//        instant_spot.reset();
-//      }
-//    }
+    if (Flags::getFlag()) {
+      printf("[INFO] RX flag set\n");
+      uint8_t rx_buf[256];
+      uint16_t rx_size;
+      // when a valid packet is received the state should be 0xc0
+      // (at least the rx_pkt_state would be 0x00)
+      // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
+      // one should only use interrupt to detect the packet
+
+      // TODO: sleep and duty cycle (see `startReceiveDutyCycleAuto`)
+      // polling for now... interrupt is not working
+      // check `setDioIrqParams`
+      if (auto maybe_len = rf.tryReceive(reinterpret_cast<uint8_t *>(rx_buf))) {
+        digitalWrite(GPIO::D6, GPIO::HIGH);
+        rx_size = maybe_len.value();
+        auto h  = decoder.decodeHeader(rx_buf, rx_size);
+        if (h.has_value()) {
+          printf("[INFO] ");
+          decoder.printHeader(h.value());
+        } else {
+          printf("[ERROR] dump: ");
+          utils::printWithSize(rx_buf, rx_size, true);
+          printf("\n");
+        }
+        auto end_padding = rx_buf + rx_size - 3;
+        if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
+          printf("[ERROR] end padding is not correct. gets \"");
+          utils::printWithSize(rx_buf + rx_size - 3, 3, true);
+          printf("\"\n");
+        }
+        // TODO: check the header of the packet
+        auto [res, header] = decoder.decode(rx_buf, rx_size);
+        if (!isValidAddr(header.dst)) {
+          printf("[ERROR] invalid dst address: ");
+          utils::printWithSize(header.dst, ADDR_BYTES, true);
+          printf("\n");
+          continue;
+        }
+        if (res == MessageWrapper::WrapperDecodeResult::Finished) {
+          auto payload = decoder.getOutput();
+          auto magic   = payload.at(0);
+          switch (magic) {
+            case RfMessage::BORING_MAGIC: {
+              auto b = RfMessage::boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
+              if (b.has_value()) {
+                auto &v = b.value();
+                printf("[INFO] boring: led=%d, comments=\"", v.led);
+                for (auto c : v.comments) {
+                  printf("%c", c);
+                }
+                printf("\"\n");
+                LED::setColor(b->led);
+              } else {
+                printf("[ERROR] failed to decode boring\n");
+              }
+              break;
+            }
+            case RfMessage::COMMAND_MAGIC: {
+              auto c = RfMessage::CommandMessage::fromBytes(payload.data());
+              if (c.has_value()) {
+                auto command = c.value();
+                switch (command) {
+                  case RfMessage::Command::START: {
+                    spot.start();
+                  }
+                  case RfMessage::Command::STOP: {
+                    spot.stop();
+                  }
+                  case RfMessage::Command::Ping: {
+                    auto val = adc_get();
+                    printf("[INFO] ping: %d\n", val);
+                    // TODO: write a encode function to encode the value (pong)
+                    // directly into the buffer to avoid the creation of Encoder object
+                    uint8_t b[4] = {0};
+                    // would switch to RX mode after transmission
+                    auto st = rf.transmit(b, 4);
+                    if (st != RADIOLIB_ERR_NONE) {
+                      printf("[ERROR] failed to transmit, code %d\n", st);
+                    }
+                  }
+                }
+              } else {
+                printf("[ERROR] failed to decode command\n");
+              }
+              break;
+            }
+            case RfMessage::SPOT_CONFIG_MAGIC: {
+              auto maybe = RfMessage::SpotConfig::fromBytes(payload.data());
+              if (maybe.has_value()) {
+                auto config = maybe.value();
+                spot.setConfig(config);
+                printf("[INFO] spot config set\n");
+              }
+              break;
+            }
+            case RfMessage::SPOT_MAGIC: {
+              spot.fromBytes(payload.data());
+              printf("[INFO] spot set\n");
+              break;
+            }
+            case RfMessage::SET_CURRENT_MAGIC: {
+              auto maybe = RfMessage::SetCurrent::fromBytes(payload.data());
+              if (maybe.has_value()) {
+                auto current = maybe.value().current_id;
+                printf("[INFO] set current to %d\n", current);
+                Current::set(current);
+              }
+              break;
+            }
+          }
+          decoder.reset();
+        } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
+          printf("[INFO] unfinished\n");
+        } else {
+          printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
+          decoder.reset();
+        }
+      }
+      digitalWrite(GPIO::D6, GPIO::LOW);
+      Flags::setFlag(false);
+    }
+    // update spot task
+    if (spot.state() == RfMessage::SpotState::START) {
+      auto &cfg     = spot.config();
+      auto interval = std::chrono::duration<decltype(cfg.updateInterval), std::milli>(cfg.updateInterval);
+      if (instant_spot.elapsed() >= interval) {
+        spot.update();
+        instant_spot.reset();
+      }
+    }
 #endif
   }
 }

@@ -1571,7 +1571,8 @@ int16_t LLCC68::calibrateImage(uint8_t *data) {
 uint8_t LLCC68::getPacketType() {
   uint8_t data = 0xFF;
   this->mod->SPIreadStream(RADIOLIB_SX126X_CMD_GET_PACKET_TYPE, &data, 1);
-  if (data != RADIOLIB_SX126X_PACKET_TYPE_LORA || data != RADIOLIB_SX126X_PACKET_TYPE_GFSK || data != RADIOLIB_SX126X_PACKET_TYPE_LR_FHSS){
+  auto is_any = data == RADIOLIB_SX126X_PACKET_TYPE_LORA || data == RADIOLIB_SX126X_PACKET_TYPE_GFSK || data == RADIOLIB_SX126X_PACKET_TYPE_LR_FHSS;
+  if (!is_any){
     printf("[WARNING] LLCC68::getPacketType() gets %d\n", data);
   }
   return (data);
