@@ -52,9 +52,9 @@ static T retrieveByVal(etl::ivector<U> const &keys, etl::ivector<etl::pair<U, T>
   }
 }
 
-const auto MAX_SPEED_MAP_SIZE  = 16;
+const auto MAX_SPEED_MAP_SIZE  = 1;
 const auto MAX_ENABLED_ID_SIZE = 16;
-const auto MAX_TRACK_SIZE      = 3;
+const auto MAX_TRACK_SIZE      = 1;
 
 // could choose fixed_8_8 or fixed_16_16
 using speed_type = fixed_8_8;

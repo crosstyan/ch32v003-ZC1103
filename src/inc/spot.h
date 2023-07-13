@@ -328,6 +328,7 @@ public:
   etl::delegate<void(uint8_t)> setColorCallback = [](uint8_t) {};
 
 private:
+  etl::vector<uint8_t, 40> reserved;
   SpotState state_;
   etl::vector<etl::pair<Track, CalcState>, MAX_TRACK_SIZE> tracks_;
   SpotConfig config_;

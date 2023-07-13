@@ -123,14 +123,13 @@ restart:
   auto d_rx       = std::chrono::duration<uint16_t, std::milli>(1);
   auto instant_spot = Instant();
   // auto spot_cfg = RfMessage::SpotConfig::defaultValue();
-  // auto spot         = RfMessage::Spot();
   auto counter = 0;
   // track is the problem here
   // and the execution would get stuck
   // swap etl::map with std::map could solve the problem
   // I'm not sure if it will appear later... Let's hope not
-  auto s = RfMessage::Track();
-  printf("[INFO] s.color=%d\n", s.color);
+  auto spot         = RfMessage::Spot();
+  auto v = etl::vector<uint8_t, 128>();
 #endif
 
 #ifndef DISABLE_STANDBY
