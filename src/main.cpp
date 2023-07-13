@@ -1,5 +1,6 @@
 // #define TX
 //  #define DISABLE_LED
+# define DISABLE_STANDBY
 
 #include "funconfig.h"
 #include "clock.h"
@@ -17,6 +18,7 @@
 #include "flags.h"
 #include "flash.h"
 #include "spot.h"
+#include <etl/map.h>
 #include "boring.h"
 
 #ifdef TX
@@ -31,7 +33,45 @@ static const pin_size_t CS_PIN    = GPIO::C4;
 static const pin_size_t RST_PIN   = GPIO::C0;
 static const pin_size_t RX_EN_PIN = GPIO::C1;
 static const pin_size_t TX_EN_PIN = GPIO::C2;
-static const uint8_t PING_MAGIC   = 0x06;
+
+static const auto ADDR_BYTES                     = 3;
+static const uint8_t MY_ADDR[ADDR_BYTES]         = {0x01, 0x02, 0x03};
+static const uint8_t BROAD_CAST_ADDR[ADDR_BYTES] = {0xFF, 0xFF, 0xFF};
+
+bool isValidAddr(const uint8_t *addr) {
+  auto is_bc_addr = memcmp(addr, BROAD_CAST_ADDR, ADDR_BYTES) == 0;
+  if (is_bc_addr) {
+    return true;
+  }
+  auto is_my_addr = memcmp(addr, MY_ADDR, ADDR_BYTES) == 0;
+  if (is_my_addr) {
+    return true;
+  }
+  return false;
+}
+
+class Track {
+public:
+  /// only need 3 bits
+  uint8_t color;
+  uint8_t id;
+
+private:
+//  etl::vector<uint16_t, MAX_SPEED_MAP_SIZE> keys;
+  etl::map<uint16_t, fixed_8_8 , 10> speeds;
+  uint16_t maxKey;
+
+public:
+  explicit Track(){
+    id = 0;
+    color = 0;
+    maxKey = 0;
+  };
+  explicit Track(uint8_t identifier) : id(identifier) {
+    color  = 0;
+    maxKey = 0;
+  }
+};
 
 int main() {
   SystemInit();
@@ -72,12 +112,50 @@ int main() {
   rng.initialise(0);
   uint8_t rgb;
 #ifdef TX
-  auto encoder = MessageWrapper::Encoder(src, dst, pkt_id);
+  auto encoder = MessageWrapper::Encoder<MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>(src, dst, pkt_id);
 #else
   auto decoder    = MessageWrapper::Decoder();
   auto instant_rx = Instant();
   auto d_rx       = std::chrono::duration<uint16_t, std::milli>(1);
+  auto instant_spot = Instant();
+  // auto spot_cfg = RfMessage::SpotConfig::defaultValue();
+  // auto spot         = RfMessage::Spot();
+  auto counter = 0;
+  // track is the problem here
+  // and the execution would get stuck
+  // swap etl::map with std::map could solve the problem
+  // I'm not sure if it will appear later... Let's hope not
+  auto s = RfMessage::Track();
+  printf("[INFO] s.color=%d\n", s.color);
+#endif
 
+#ifndef DISABLE_STANDBY
+  // enable power interface module clock
+  RCC->APB1PCENR |= RCC_APB1Periph_PWR;
+
+  // enable low speed oscillator (LSI)
+  RCC->RSTSCKR |= RCC_LSION;
+  while ((RCC->RSTSCKR & RCC_LSIRDY) == 0) {}
+
+  // enable AutoWakeUp event
+  EXTI->EVENR |= EXTI_Line9;
+  EXTI->FTENR |= EXTI_Line9;
+
+  // configure AWU prescaler
+  PWR->AWUPSC |= PWR_AWU_Prescaler_4096;
+
+  // configure AWU window comparison value
+  PWR->AWUWR &= ~0x3f;
+  PWR->AWUWR |= 63;
+
+  // enable AWU
+  PWR->AWUCSR |= (1 << 1);
+
+  // select standby on power-down
+  PWR->CTLR |= PWR_CTLR_PDDS;
+
+  // peripheral interrupt controller send to deep sleep
+  PFIC->SCTLR |= (1 << 2);
 #endif
   while (true) {
 #ifdef TX
@@ -143,6 +221,12 @@ int main() {
         printf("\n");
       }
     }
+#ifndef DISABLE_STANDBY
+    __WFE();
+    // restore clock to full speed
+    SystemInit48HSI();
+    printf("[INFO] wake up with %d\n", counter++);
+#endif
     if (Flags::getFlag()) {
       printf("[INFO] RX flag set\n");
       uint8_t rx_buf[256];
@@ -163,6 +247,10 @@ int main() {
         if (h.has_value()) {
           printf("[INFO] ");
           decoder.printHeader(h.value());
+        } else {
+          printf("[ERROR] dump: ");
+          utils::printWithSize(rx_buf, rx_size, true);
+          printf("\n");
         }
         auto end_padding = rx_buf + rx_size - 3;
         if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
@@ -199,6 +287,15 @@ int main() {
       digitalWrite(GPIO::D6, GPIO::LOW);
       Flags::setFlag(false);
     }
+//    // update spot task
+//    if (spot.state() == RfMessage::SpotState::START) {
+//      auto &cfg     = spot.config();
+//      auto interval = std::chrono::duration<decltype(cfg.updateInterval), std::milli>(cfg.updateInterval);
+//      if (instant_spot.elapsed() >= interval) {
+//        spot.update();
+//        instant_spot.reset();
+//      }
+//    }
 #endif
   }
 }
