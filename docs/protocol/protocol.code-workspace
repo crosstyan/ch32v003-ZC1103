@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"protoc": {
+			"path": "/opt/homebrew/bin/protoc",
+			"options": [
+				"--cpp_out=${workspaceRoot}/proto/out",
+				"--proto_path=${workspaceRoot}/proto",
+			]
+		}
+	}
+}
