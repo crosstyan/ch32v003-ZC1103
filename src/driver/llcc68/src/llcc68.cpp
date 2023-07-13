@@ -100,47 +100,20 @@ int16_t LLCC68::transmit(uint8_t *data, size_t len, uint8_t addr) {
     return (RADIOLIB_ERR_PACKET_TOO_LONG);
   }
 
-  //  uint32_t timeout = 0;
-  //
-  //  // get currently active modem
-  //  uint8_t modem = getPacketType();
-  //  if (modem == RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-  //    // calculate timeout (150% of expected time-on-air)
-  //    timeout = static_cast<uint32_t >(getTimeOnAir(len) * 3) / static_cast<uint32_t>(2);
-  //
-  //  } else if (modem == RADIOLIB_SX126X_PACKET_TYPE_GFSK) {
-  //    // calculate timeout (500% of expected time-on-air)
-  //    timeout = getTimeOnAir(len) * 5;
-  //  } else {
-  //    return (RADIOLIB_ERR_UNKNOWN);
-  //  }
-  //
-  //   RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
+  // I'm sure it's LoRA
+  // wait for 125% of the calculated time on air
+  auto timeout = getTimeOnAir(len) * 5u / 4u;
+  RADIOLIB_DEBUG_PRINTLN("Timeout in %lu us", timeout);
 
   // start transmission
   state = startTransmit(data, len, addr);
   RADIOLIB_ASSERT(state);
 
-  // get ms
-  //  timeout = timeout / 1000;
-  // NOTE: Don't get paranoid...
-  //
-  //   wait for packet transmission or timeout
-  //  uint32_t start = this->mod->hal->millis();
-  //  while (!this->mod->hal->digitalRead(this->mod->getIrq())) {
-  //    this->mod->hal->yield();
-  //    if (this->mod->hal->millis() - start > timeout) {
-  //      finishTransmit();
-  //      return (RADIOLIB_ERR_TX_TIMEOUT);
-  //    }
-  //  }
-  //  uint32_t elapsed = this->mod->hal->millis() - start;
+  auto ms = timeout / 1000;
+  mod->hal->delay(ms);
+  state = startReceive();
+  RADIOLIB_ASSERT(state);
 
-  // update data rate
-  // Why the data rate need to be updated?
-  // this->dataRateMeasured = (len * 8.0) / (elapsed / 1000);
-
-  //  clearIrqStatus();
   return RADIOLIB_ERR_NONE;
 }
 
@@ -340,9 +313,9 @@ int16_t LLCC68::startTransmit(uint8_t *data, size_t len, uint8_t addr) {
   RADIOLIB_ASSERT(state);
 
   // set DIO mapping
-  state = setDioIrqParams(RADIOLIB_SX126X_IRQ_TX_DONE | RADIOLIB_SX126X_IRQ_TIMEOUT, RADIOLIB_SX126X_IRQ_TX_DONE, RADIOLIB_SX126X_IRQ_TX_DONE);
+  //  state = setDioIrqParams(RADIOLIB_SX126X_IRQ_TX_DONE | RADIOLIB_SX126X_IRQ_TIMEOUT, RADIOLIB_SX126X_IRQ_TX_DONE, RADIOLIB_SX126X_IRQ_TX_DONE);
   //  state = setDioIrqParams(RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE, RADIOLIB_SX126X_IRQ_NONE);
-  RADIOLIB_ASSERT(state);
+  // RADIOLIB_ASSERT(state);
 
   // set buffer pointers
   state = setBufferBaseAddress();
@@ -377,7 +350,7 @@ int16_t LLCC68::startTransmit(uint8_t *data, size_t len, uint8_t addr) {
 
 int16_t LLCC68::finishTransmit() {
   // clear interrupt flags
-  clearIrqStatus();
+  // clearIrqStatus();
 
   // set mode to stand by to disable transmitter/RF switch
   // standby();
@@ -540,11 +513,6 @@ int16_t LLCC68::readData(uint8_t *data, size_t len) {
 }
 
 int16_t LLCC68::startChannelScan(uint8_t symbolNum, uint8_t detPeak, uint8_t detMin) {
-  // check active modem
-  if (getPacketType() != RADIOLIB_SX126X_PACKET_TYPE_LORA) {
-    return (RADIOLIB_ERR_WRONG_MODEM);
-  }
-
   // set mode to standby
   int16_t state = standby();
   RADIOLIB_ASSERT(state);
@@ -1897,7 +1865,7 @@ bool LLCC68::findChip(const char *verStr) {
     // check version register
     if (strncmp(verStr, version, 6) == 0) {
       RADIOLIB_DEBUG_PRINTLN("Found LLCC68: RADIOLIB_SX126X_REG_VERSION_STRING:");
-      utils::printWithSize(version, 6, true);
+      utils::printWithSize(reinterpret_cast<uint8_t *>(version), 6, true);
       printf("\n");
       flagFound = true;
     } else {

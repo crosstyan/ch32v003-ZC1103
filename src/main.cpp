@@ -145,7 +145,7 @@ int main() {
     }
     if (Flags::getFlag()) {
       printf("[INFO] RX flag set\n");
-      char rx_buf[256];
+      uint8_t rx_buf[256];
       uint16_t rx_size;
 
       // when a valid packet is received the state should be 0xc0
@@ -170,10 +170,10 @@ int main() {
           utils::printWithSize(rx_buf + rx_size - 3, 3, true);
           printf("\"\n");
         }
-        auto res = decoder.decode(rx_buf, rx_size);
+        auto [res, header] = decoder.decode(rx_buf, rx_size);
         if (res == MessageWrapper::WrapperDecodeResult::Finished) {
           auto payload = decoder.getOutput();
-          auto b       = boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
+          auto b       = RfMessage::boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
           if (b.has_value()) {
             auto &v = b.value();
             printf("[INFO] boring: led=%d, comments=\"", v.led);
