@@ -78,9 +78,9 @@ restart:
   // expect to be 0x03
   printf("[DEBUG] HEADER_SIZE=%d\n", MessageWrapper::HEADER_SIZE);
 #ifdef TX
-  printf("[INFO] TX mode\n");
+  printf("[INFO] mode=TX\n");
 #else
-  printf("RX mode\n");
+  printf("[INFO] mode=RX\n");
 #endif
   LED::begin();
 #ifdef TX
