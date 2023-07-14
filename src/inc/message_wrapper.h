@@ -67,6 +67,16 @@ const char *decodeResultToString(WrapperDecodeResult result);
 
 void printHeader(const WrapperHeader &header);
 
+
+/**
+   * @brief decode the header of the message
+   * @param message
+   * @param size
+   * @param is_simple skip parse the address field. i.e. SimpleWrapper. Message id would be ignored as well.
+   * @return
+ */
+etl::optional<WrapperHeader> decodeHeader(const uint8_t *message, size_t size, bool is_simple = false);
+
 /// the unique packet id is the packet id + packet current count
 uint16_t getUniquePktId(const WrapperHeader &header);
 
@@ -255,40 +265,6 @@ public:
         return decode(separator, size, is_simple);
       }
   };
-
-  /**
-   * @brief decode the header of the message
-   * @param message
-   * @param size
-   * @param is_simple skip parse the address field. i.e. SimpleWrapper. Message id would be ignored as well.
-   * @return
-   */
-  static etl::optional<WrapperHeader> decodeHeader(const uint8_t *message, size_t size, bool is_simple = false) {
-    if (size < HEADER_SIZE) {
-      return etl::nullopt;
-    }
-    WrapperHeader header{};
-    if (!is_simple) {
-      memcpy(header.src, message, 3);
-      memcpy(header.dst, message + 3, 3);
-      header.pkt_id        = message[6];
-      header.pkt_cur_count = message[7];
-      // decode 8 & 9
-      auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
-      header.total_payload_size    = host_total_payload_size;
-      header.cur_payload_size      = message[10];
-    } else {
-      size_t offset        = 0;
-      header.pkt_cur_count = message[offset];
-      offset += 1;
-      // decode 8 & 9
-      auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + offset));
-      header.total_payload_size    = host_total_payload_size;
-      offset += 2;
-      header.cur_payload_size = message[offset];
-    }
-    return etl::make_optional(header);
-  }
 
   [[nodiscard]] const etl::optional<etl::span<uint8_t>> getOutput() {
     if (!separator) {

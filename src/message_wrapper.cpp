@@ -42,3 +42,32 @@ const char *MessageWrapper::decodeResultToString(MessageWrapper::WrapperDecodeRe
 uint16_t MessageWrapper::getUniquePktId(const WrapperHeader &header) {
   return (header.pkt_id << 8) | header.pkt_cur_count;
 }
+
+
+etl::optional<MessageWrapper:: WrapperHeader> MessageWrapper::decodeHeader(const uint8_t *message, size_t size, bool is_simple) {
+  using namespace MessageWrapper;
+  if (size < HEADER_SIZE) {
+    return etl::nullopt;
+  }
+  WrapperHeader header{};
+  if (!is_simple) {
+    memcpy(header.src, message, 3);
+    memcpy(header.dst, message + 3, 3);
+    header.pkt_id        = message[6];
+    header.pkt_cur_count = message[7];
+    // decode 8 & 9
+    auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
+    header.total_payload_size    = host_total_payload_size;
+    header.cur_payload_size      = message[10];
+  } else {
+    size_t offset        = 0;
+    header.pkt_cur_count = message[offset];
+    offset += 1;
+    // decode 8 & 9
+    auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + offset));
+    header.total_payload_size    = host_total_payload_size;
+    offset += 2;
+    header.cur_payload_size = message[offset];
+  }
+  return etl::make_optional(header);
+}
