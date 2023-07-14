@@ -1,6 +1,6 @@
 // #define TX
 //  #define DISABLE_LED
-# define DISABLE_STANDBY
+#define DISABLE_STANDBY
 
 #include "funconfig.h"
 #include "clock.h"
@@ -33,6 +33,8 @@ static const pin_size_t TX_EN_PIN = GPIO::C2;
 static const auto ADDR_BYTES                     = 3;
 static const uint8_t MY_ADDR[ADDR_BYTES]         = {0x01, 0x02, 0x03};
 static const uint8_t BROAD_CAST_ADDR[ADDR_BYTES] = {0xFF, 0xFF, 0xFF};
+
+static const auto DECODE_BUFFER_SIZE = 384;
 
 bool isValidAddr(const uint8_t *addr) {
   auto is_bc_addr = memcmp(addr, BROAD_CAST_ADDR, ADDR_BYTES) == 0;
@@ -78,22 +80,21 @@ restart:
 #else
   printf("RX mode\n");
 #endif
-
+  LED::begin();
+#ifdef TX
   uint8_t src[3] = {0x01, 0x02, 0x03};
   uint8_t dst[3] = {0xff, 0xff, 0xff};
   uint8_t pkt_id = 0;
   auto instant   = Instant();
   auto d         = std::chrono::duration<uint16_t, std::milli>(500);
-  LED::begin();
-  auto rng = etl::random_xorshift();
+  auto rng       = etl::random_xorshift();
   rng.initialise(0);
   uint8_t rgb;
-#ifdef TX
   auto encoder = MessageWrapper::Encoder<MessageWrapper::MAX_ENCODER_OUTPUT_SIZE>(src, dst, pkt_id);
 #else
-  auto decoder    = MessageWrapper::Decoder();
-  auto instant_rx = Instant();
-  auto d_rx       = std::chrono::duration<uint16_t, std::milli>(1);
+  auto decoder      = MessageWrapper::Decoder<DECODE_BUFFER_SIZE>();
+  auto instant_rx   = Instant();
+  auto d_rx         = std::chrono::duration<uint16_t, std::milli>(1);
   auto instant_spot = Instant();
   // auto spot_cfg = RfMessage::SpotConfig::defaultValue();
   auto counter = 0;
@@ -101,8 +102,15 @@ restart:
   // and the execution would get stuck
   // swap etl::map with std::map could solve the problem
   // I'm not sure if it will appear later... Let's hope not
-  auto spot         = RfMessage::Spot();
+  auto spot = RfMessage::Spot();
+  // a experimental padding
   auto v = etl::vector<uint8_t, 128>();
+  res    = rf.startReceive();
+  if (res != RADIOLIB_ERR_NONE) {
+    printf("[ERROR] failed to start receiving, code %d\n", res);
+    Delay_Ms(1000);
+    goto restart;
+  }
 #endif
 
 #ifndef DISABLE_STANDBY
@@ -187,16 +195,6 @@ restart:
       encoder.reset(src, dst, pkt_id);
     }
 #else // RX
-    // I guess some reorder magic is happening here
-    // I'm not sure if standby is working...
-    // See also `exti.cpp`
-    while (instant_rx.elapsed() < d_rx) {
-      printf("*");
-      rf.startReceive();
-      if (instant_rx.elapsed() >= d_rx) {
-        printf("\n");
-      }
-    }
 #ifndef DISABLE_STANDBY
     __WFE();
     // restore clock to full speed
@@ -205,59 +203,59 @@ restart:
 #endif
     if (Flags::getFlag()) {
       printf("[INFO] RX flag set\n");
-      uint8_t rx_buf[256];
+      auto span = decoder.getSpan();
       uint16_t rx_size;
 
-      // when a valid packet is received the state should be 0xc0
-      // (at least the rx_pkt_state would be 0x00)
-      // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
-      // one should only use interrupt to detect the packet
+      if (span.has_value()) {
+        auto rx_buf = span.value();
+        // when a valid packet is received the state should be 0xc0
+        // (at least the rx_pkt_state would be 0x00)
+        // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
+        // one should only use interrupt to detect the packet
 
-      // TODO: sleep and duty cycle (see `startReceiveDutyCycleAuto`)
-      // polling for now... interrupt is not working
-      // check `setDioIrqParams`
-      if (auto maybe_len = rf.tryReceive(reinterpret_cast<uint8_t *>(rx_buf))) {
-        digitalWrite(GPIO::D6, GPIO::HIGH);
-        rx_size = maybe_len.value();
-        auto h  = decoder.decodeHeader(rx_buf, rx_size);
-        if (h.has_value()) {
-          printf("[INFO] ");
-          decoder.printHeader(h.value());
-        } else {
-          printf("[ERROR] dump: ");
-          utils::printWithSize(rx_buf, rx_size, true);
-          printf("\n");
-        }
-        auto end_padding = rx_buf + rx_size - 3;
-        if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
-          printf("[ERROR] end padding is not correct. gets \"");
-          utils::printWithSize(rx_buf + rx_size - 3, 3, true);
-          printf("\"\n");
-        }
-        auto [res, header] = decoder.decode(rx_buf, rx_size);
-        if (res == MessageWrapper::WrapperDecodeResult::Finished) {
-          auto payload = decoder.getOutput();
-          auto b       = RfMessage::boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
-          if (b.has_value()) {
-            auto &v = b.value();
-            printf("[INFO] boring: led=%d, comments=\"", v.led);
-            for (auto c : v.comments) {
-              printf("%c", c);
-            }
+        // TODO: sleep and duty cycle (see `startReceiveDutyCycleAuto`)
+        // polling for now... interrupt is not working
+        // check `setDioIrqParams`
+        if (auto maybe_len = rf.tryReceive(reinterpret_cast<uint8_t *>(rx_buf.begin()))) {
+          digitalWrite(GPIO::D6, GPIO::HIGH);
+          rx_size          = maybe_len.value();
+          auto end_padding = rx_buf.begin() + rx_size - 3;
+          if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
+            printf("[ERROR] end padding is not correct. gets \"");
+            utils::printWithSize(end_padding, 3, true);
             printf("\"\n");
-#ifdef DISABLE_LED
-            LED::setColr(false, false, false);
-#else
-            LED::setColor(b->led);
-#endif
-          } else {
-            printf("[ERROR] failed to decode boring\n");
           }
-        } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
-          printf("[INFO] unfinished\n");
-        } else {
-          printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
-          decoder.reset();
+          auto [res, header] = decoder.decode(rx_size);
+          printf("[INFO] ");
+          if (res == MessageWrapper::WrapperDecodeResult::Finished) {
+            MessageWrapper::printHeader(header);
+            auto payload_ = decoder.getOutput();
+            if (payload_.has_value()) {
+              auto payload = payload_.value();
+              auto b       = RfMessage::boring::fromBytes(payload.data());
+              if (b.has_value()) {
+                auto &v = b.value();
+                printf("[INFO] boring: led=%d, comments=\"", v.led);
+                for (auto c : v.comments) {
+                  printf("%c", c);
+                }
+                printf("\"\n");
+#ifdef DISABLE_LED
+                LED::setColr(false, false, false);
+#else
+                LED::setColor(b->led);
+#endif
+              }
+            } else {
+              printf("[ERROR] failed to decode boring\n");
+            }
+          } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
+            MessageWrapper::printHeader(header);
+            printf("[INFO] unfinished\n");
+          } else {
+            printf("[ERROR] WrapperDecodeError:%s\n", MessageWrapper::decodeResultToString(res));
+            decoder.reset();
+          }
         }
       }
       digitalWrite(GPIO::D6, GPIO::LOW);
