@@ -61,11 +61,13 @@ etl::optional<MessageWrapper::WrapperHeader> MessageWrapper:: decodeHeader(const
     printf(">?<\n");
     auto val = *(message + 8);
     auto val2 = *(message+9);
+    uint8_t temp[2];
+    std::memcpy(temp, message+8, 2);
     printf("val1: %d val2:%d\n", val, val2);
-    auto val16 = *reinterpret_cast<const uint16_t *>(message+8);
+    auto val16 = *reinterpret_cast<const uint16_t *>(temp);
     printf("val two value: %d", val16);
     printf("addr: %d\n", message + 8);
-    auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
+    auto host_total_payload_size = __ntohs(val16);
     printf("sz: %d\n", host_total_payload_size);
     header.total_payload_size    = host_total_payload_size;
     header.cur_payload_size      = message[10];
