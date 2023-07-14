@@ -328,9 +328,9 @@ public:
   etl::delegate<void(uint8_t)> setColorCallback = [](uint8_t) {};
 
 private:
-  etl::vector<uint8_t, 40> reserved;
   SpotState state_;
-  etl::vector<etl::pair<Track, CalcState>, MAX_TRACK_SIZE> tracks_;
+  etl::array<etl::pair<Track, CalcState>, MAX_TRACK_SIZE> tracks_;
+  uint8_t activated_track_num;
   SpotConfig config_;
 
 public:
@@ -380,13 +380,13 @@ public:
     }
     offset += 1;
     for (auto i = 0; i < track_count; ++i) {
-      auto track = Track::fromBytes(bytes + offset);
-      if (!track.has_value()) {
-        return track.error();
-      } else {
-        offset += track.value().sizeNeeded();
-        addTrack(std::move(track.value()));
-      }
+      auto &[t, s] = tracks_[i];
+      t.fromBytes(bytes + offset);
+      s.startTime            = 0;
+      s.lastIntegralTime     = 0;
+      s.lastIntegralDistance = 0;
+      s.maxDistance          = t.getMaxKey();
+      activated_track_num += 1;
     }
     return ParseResult::OK;
   }
@@ -420,36 +420,9 @@ public:
     return size;
   }
 
-  /// serialize tracks the Spot object has to bytes
-  size_t toBytes(uint8_t *bytes) {
-    size_t offset = 0;
-    bytes[offset] = SPOT_MAGIC;
-    offset += 1;
-    bytes[offset] = static_cast<uint8_t>(tracks_.size());
-    offset += 1;
-    for (auto &track : tracks_) {
-      auto &[t, calc] = track;
-      auto tSize      = serd::toBytes(t, bytes + offset);
-      offset += tSize;
-    }
-    return offset;
-  }
-
   /// use std::move to avoid copy
   void setSpotConfig(SpotConfig cfg) {
     this->config_ = cfg;
-  }
-
-  /// use std::move to avoid copy
-  void addTrack(Track track) {
-    auto calcState = CalcState{
-        .startTime                = 0,
-        .lastIntegralTime         = 0,
-        .lastIntegralRelativeTime = 0,
-        .lastIntegralDistance     = 0,
-        .maxDistance              = track.getMaxKey(),
-    };
-    tracks_.push_back(etl::make_pair(track, calcState));
   }
 
   void start() {
@@ -473,7 +446,14 @@ public:
   }
 
   void clear() {
-    tracks_.clear();
+    for (auto &[t, s] : tracks_) {
+      t.clear();
+      s.lastIntegralDistance     = 0;
+      s.lastIntegralRelativeTime = 0;
+      s.maxDistance              = 0;
+      s.lastIntegralTime         = 0;
+    }
+    activated_track_num = 0;
   }
 
   void update() {
@@ -483,8 +463,8 @@ public:
     bool isChanged = false;
     etl::vector<bool, MAX_TRACK_SIZE> isAllStop;
 
-    for (auto &track : tracks_) {
-      auto &[t, calc] = track;
+    for (auto i = 0; i < activated_track_num; i++) {
+      auto &[t, calc] = tracks_[i];
       auto now        = millis();
       auto newState   = nextState(calc, now, t, config_);
 
@@ -495,7 +475,6 @@ public:
           isChanged = true;
           setColorCallback(t.color);
         }
-
         calc = newCalc;
         isAllStop.push_back(false);
       } else {

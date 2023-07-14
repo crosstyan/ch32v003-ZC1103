@@ -14,6 +14,7 @@
 #include "utils.h"
 #include <printf.h>
 #include "led.h"
+#include "adc.h"
 #include <etl/random.h>
 #include "flags.h"
 #include "flash.h"
@@ -52,6 +53,7 @@ int main() {
 restart:
   SystemInit();
   SysTick_init();
+  adc_init();
   printf("[INFO] booting\n");
 
   pin_size_t LED_pin = GPIO::D6;
@@ -232,19 +234,79 @@ restart:
             auto payload_ = decoder.getOutput();
             if (payload_.has_value()) {
               auto payload = payload_.value();
-              auto b       = RfMessage::boring::fromBytes(payload.data());
-              if (b.has_value()) {
-                auto &v = b.value();
-                printf("[INFO] boring: led=%d, comments=\"", v.led);
-                for (auto c : v.comments) {
-                  printf("%c", c);
-                }
-                printf("\"\n");
+              auto magic   = payload[0];
+              switch (magic) {
+                case RfMessage::BORING_MAGIC: {
+                  auto b = RfMessage::boring::fromBytes(reinterpret_cast<const uint8_t *>(payload.data()));
+                  if (b.has_value()) {
+                    auto &v = b.value();
+                    printf("[INFO] boring: led=%d, comments=\"", v.led);
+                    for (auto c : v.comments) {
+                      printf("%c", c);
+                    }
+                    printf("\"\n");
 #ifdef DISABLE_LED
-                LED::setColr(false, false, false);
+                    LED::setColr(false, false, false);
 #else
-                LED::setColor(b->led);
+                    LED::setColor(b->led);
 #endif
+                  } else {
+                    printf("[ERROR] failed to decode boring\n");
+                  }
+                  break;
+                }
+                case RfMessage::COMMAND_MAGIC: {
+                  auto c = RfMessage::CommandMessage::fromBytes(payload.data());
+                  if (c.has_value()) {
+                    auto command = c.value();
+                    switch (command) {
+                      case RfMessage::Command::START: {
+                        spot.start();
+                      }
+                      case RfMessage::Command::STOP: {
+                        spot.stop();
+                      }
+                      case RfMessage::Command::Ping: {
+                        auto val = adc_get();
+                        printf("[INFO] ping: %d\n", val);
+                        // TODO: write a encode function to encode the value (pong)
+                        // directly into the buffer to avoid the creation of Encoder object
+                        uint8_t b[4] = {0};
+                        // would switch to RX mode after transmission
+                        auto st = rf.transmit(b, 4);
+                        if (st != RADIOLIB_ERR_NONE) {
+                          printf("[ERROR] failed to transmit, code %d\n", st);
+                        }
+                      }
+                    }
+                  } else {
+                    printf("[ERROR] failed to decode command\n");
+                  }
+                  break;
+                }
+                case RfMessage::SPOT_CONFIG_MAGIC: {
+                  auto maybe = RfMessage::SpotConfig::fromBytes(payload.data());
+                  if (maybe.has_value()) {
+                    auto config = maybe.value();
+                    spot.setConfig(config);
+                    printf("[INFO] spot config set\n");
+                  }
+                  break;
+                }
+                case RfMessage::SPOT_MAGIC: {
+                  spot.fromBytes(payload.data());
+                  printf("[INFO] spot set\n");
+                  break;
+                }
+                case RfMessage::SET_CURRENT_MAGIC: {
+                  auto maybe = RfMessage::SetCurrent::fromBytes(payload.data());
+                  if (maybe.has_value()) {
+                    auto current = maybe.value().current_id;
+                    printf("[INFO] set current to %d\n", current);
+                    Current::set(current);
+                  }
+                  break;
+                }
               }
             } else {
               printf("[ERROR] failed to decode boring\n");
@@ -261,15 +323,15 @@ restart:
       digitalWrite(GPIO::D6, GPIO::LOW);
       Flags::setFlag(false);
     }
-//    // update spot task
-//    if (spot.state() == RfMessage::SpotState::START) {
-//      auto &cfg     = spot.config();
-//      auto interval = std::chrono::duration<decltype(cfg.updateInterval), std::milli>(cfg.updateInterval);
-//      if (instant_spot.elapsed() >= interval) {
-//        spot.update();
-//        instant_spot.reset();
-//      }
-//    }
+   // update spot task
+    if (spot.state() == RfMessage::SpotState::START) {
+      auto &cfg     = spot.config();
+      auto interval = std::chrono::duration<decltype(cfg.updateInterval), std::milli>(cfg.updateInterval);
+      if (instant_spot.elapsed() >= interval) {
+        spot.update();
+        instant_spot.reset();
+      }
+    }
 #endif
   }
 }
