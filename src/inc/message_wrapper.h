@@ -278,7 +278,8 @@ public:
 
   etl::optional<etl::span<uint8_t>> getSpan() {
     if (!separator) {
-      return etl::span(output.begin(), output.end());
+      auto s = etl::span(output.begin(), output.end());
+      return etl::make_optional(s);
     } else if (separator > output.end()) {
       return etl::nullopt;
     } else {
