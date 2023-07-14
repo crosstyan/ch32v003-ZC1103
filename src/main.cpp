@@ -122,11 +122,11 @@ restart:
   EXTI->FTENR |= EXTI_Line9;
 
   // configure AWU prescaler
-  PWR->AWUPSC |= PWR_AWU_Prescaler_4096;
+  PWR->AWUPSC |= PWR_AWU_Prescaler_2048;
 
   // configure AWU window comparison value
   PWR->AWUWR &= ~0x3f;
-  PWR->AWUWR |= 63;
+  PWR->AWUWR |= 62;
 
   // enable AWU
   PWR->AWUCSR |= (1 << 1);
