@@ -207,7 +207,6 @@ public:
         return etl::pair(WrapperDecodeResult::TotalPayloadSizeTooLarge, header);
       }
       separator = nullptr;
-      std::fill(output.begin(), output.end(), 0);
       std::memcpy(output.begin(), message + HEADER_SIZE, header.cur_payload_size);
       // past-the-end
       separator = output.begin() + header.cur_payload_size + 1;

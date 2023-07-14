@@ -301,6 +301,9 @@ restart:
                   }
                   break;
                 }
+                default: {
+                  printf("[WARN] unknown magic %d\n", magic);
+                }
               }
             } else {
               printf("[ERROR] failed to decode boring\n");
