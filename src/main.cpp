@@ -98,15 +98,9 @@ restart:
   auto instant_rx   = Instant();
   auto d_rx         = std::chrono::duration<uint16_t, std::milli>(1);
   auto instant_spot = Instant();
-  auto counter = 0;
+  auto counter      = 0;
   // pay attention to the stack size!
   auto spot = RfMessage::Spot();
-  res    = rf.startReceive();
-  if (res != RADIOLIB_ERR_NONE) {
-    printf("[ERROR] failed to start receiving, code %d\n", res);
-    Delay_Ms(1000);
-    goto restart;
-  }
 #endif
 
 #ifndef DISABLE_STANDBY
@@ -191,6 +185,13 @@ restart:
       encoder.reset(src, dst, pkt_id);
     }
 #else // RX
+    while (instant_rx.elapsed() < d_rx) {
+      printf("*");
+      rf.startReceive();
+      if (instant_rx.elapsed() >= d_rx) {
+        printf("\n");
+      }
+    }
 #ifndef DISABLE_STANDBY
     __WFE();
     // restore clock to full speed
@@ -199,11 +200,16 @@ restart:
 #endif
     if (Flags::getFlag()) {
       printf("[INFO] RX flag set\n");
-      auto span = decoder.getSpan();
+      auto rx_buf = decoder.getSpan();
+      printf("???\n");
       uint16_t rx_size;
+      printf("????\n");
 
-      if (span.has_value()) {
-        auto rx_buf = span.value();
+      // if (span.has_value()) {
+      printf("?????\n");
+        printf("[DEBUG] getSpan()");
+      printf("??????\n");
+        // auto rx_buf = span;
         // when a valid packet is received the state should be 0xc0
         // (at least the rx_pkt_state would be 0x00)
         // (sync_word_rev = 1, preamble_rev = 1) but the pkg_flag is useless
@@ -212,16 +218,15 @@ restart:
         // TODO: sleep and duty cycle (see `startReceiveDutyCycleAuto`)
         // polling for now... interrupt is not working
         // check `setDioIrqParams`
+      printf("???????\n");
         if (auto maybe_len = rf.tryReceive(reinterpret_cast<uint8_t *>(rx_buf.begin()))) {
+          printf("????????\n");
           digitalWrite(GPIO::D6, GPIO::HIGH);
           rx_size          = maybe_len.value();
-          auto end_padding = rx_buf.begin() + rx_size - 3;
-          if (memcmp(end_padding, "\x00\x00\x00", 3) != 0) {
-            printf("[ERROR] end padding is not correct. gets \"");
-            utils::printWithSize(end_padding, 3, true);
-            printf("\"\n");
-          }
+          printf("rx_size: %d\n", rx_size);
+          printf("?????????\n");
           auto [res, header] = decoder.decode(rx_size);
+          printf("??????????\n");
           printf("[INFO] ");
           if (res == MessageWrapper::WrapperDecodeResult::Finished) {
             MessageWrapper::printHeader(header);
@@ -303,7 +308,7 @@ restart:
                 }
               }
             } else {
-              printf("[ERROR] failed to decode boring\n");
+              printf("[ERROR] failed to decode packet\n");
             }
           } else if (res == MessageWrapper::WrapperDecodeResult::Unfinished) {
             MessageWrapper::printHeader(header);
@@ -313,11 +318,13 @@ restart:
             decoder.reset();
           }
         }
-      }
+//      } else {
+//        printf("[ERROR] can't get span.");
+//      }
       digitalWrite(GPIO::D6, GPIO::LOW);
       Flags::setFlag(false);
     }
-   // update spot task
+    // update spot task
     if (spot.state() == RfMessage::SpotState::START) {
       auto &cfg     = spot.config();
       auto interval = std::chrono::duration<decltype(cfg.updateInterval), std::milli>(cfg.updateInterval);

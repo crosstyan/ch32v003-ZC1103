@@ -42,3 +42,44 @@ const char *MessageWrapper::decodeResultToString(MessageWrapper::WrapperDecodeRe
 uint16_t MessageWrapper::getUniquePktId(const WrapperHeader &header) {
   return (header.pkt_id << 8) | header.pkt_cur_count;
 }
+
+
+etl::optional<MessageWrapper::WrapperHeader> MessageWrapper:: decodeHeader(const uint8_t *message, size_t size, bool is_simple) {
+  printf("?!?\n");
+  using namespace MessageWrapper;
+  if (size < HEADER_SIZE) {
+    return etl::nullopt;
+  }
+  WrapperHeader header{};
+  printf("??!?\n");
+  if (!is_simple) {
+    memcpy(header.src, message, 3);
+    memcpy(header.dst, message + 3, 3);
+    header.pkt_id        = message[6];
+    header.pkt_cur_count = message[7];
+    // decode 8 & 9
+    printf(">?<\n");
+    auto val = *(message + 8);
+    auto val2 = *(message+9);
+    printf("val1: %d val2:%d\n", val, val2);
+    auto val16 = *reinterpret_cast<const uint16_t *>(message+8);
+    printf("val two value: %d", val16);
+    printf("addr: %d\n", message + 8);
+    auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
+    printf("sz: %d\n", host_total_payload_size);
+    header.total_payload_size    = host_total_payload_size;
+    header.cur_payload_size      = message[10];
+    printf("???!?\n");
+  } else {
+    size_t offset        = 0;
+    header.pkt_cur_count = message[offset];
+    offset += 1;
+    // decode 8 & 9
+    auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + offset));
+    header.total_payload_size    = host_total_payload_size;
+    offset += 2;
+    header.cur_payload_size = message[offset];
+  }
+  printf("????!?\n");
+  return etl::make_optional(header);
+}

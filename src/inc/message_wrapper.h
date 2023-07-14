@@ -10,6 +10,7 @@
 #include <etl/vector.h>
 #include <etl/span.h>
 #include <cstring>
+#include "printf.h"
 
 inline void static push_back_many(etl::ivector<uint8_t> &vec, const char *data, size_t size) {
   for (size_t i = 0; i < size; i++) {
@@ -66,6 +67,15 @@ enum class WrapperDecodeResult {
 const char *decodeResultToString(WrapperDecodeResult result);
 
 void printHeader(const WrapperHeader &header);
+
+/**
+   * @brief decode the header of the message
+   * @param message
+   * @param size
+   * @param is_simple skip parse the address field. i.e. SimpleWrapper. Message id would be ignored as well.
+   * @return
+ */
+etl::optional<WrapperHeader> decodeHeader(const uint8_t *message, size_t size, bool is_simple = false);
 
 /// the unique packet id is the packet id + packet current count
 uint16_t getUniquePktId(const WrapperHeader &header);
@@ -185,20 +195,27 @@ public:
    * @brief when `WrapperDecodeResult::Finished` is returned then use `getOutput()` to retrieve the output
    */
   etl::pair<MessageWrapper::WrapperDecodeResult, MessageWrapper::WrapperHeader> decode(const uint8_t *message, size_t size, bool is_simple = false) {
+    printf("!\n");
     auto h = decodeHeader(message, size, is_simple);
     if (!h.has_value()) {
+      printf("!?\n");
       return etl::pair(WrapperDecodeResult::BadHeader, WrapperHeader{});
     }
     // first packet
+    printf("!!?\n");
     if (!_decoding) {
+      printf("!!!??\n");
       this->header = h.value();
       _decoding    = true;
+      printf("!!\n");
       if (header.total_payload_size > MAX_DECODER_OUTPUT_SIZE) {
         return etl::pair(WrapperDecodeResult::TotalPayloadSizeTooLarge, header);
       }
       separator = nullptr;
-      std::fill(output.begin(), output.end(), 0);
+      printf("!!!\n");
+      // std::fill(output.begin(), output.end(), 0);
       std::memcpy(output.begin(), message + HEADER_SIZE, header.cur_payload_size);
+      printf("!!!!\n");
       // past-the-end
       separator = output.begin() + header.cur_payload_size + 1;
 
@@ -225,14 +242,9 @@ public:
         return etl::pair(WrapperDecodeResult::UnexpectedPktCount, header);
       }
       // push_back_many(output, message + HEADER_SIZE, header.cur_payload_size);
-      auto s_ = getSpan();
-      if (s_.has_value()){
-        auto s = s_.value();
-        std::memcpy(s.begin(), message + HEADER_SIZE, header.cur_payload_size);
-        separator = s.begin() + header.cur_payload_size + 1;
-      }else {
-        return etl::pair(WrapperDecodeResult::BadSpan, header);
-      }
+      auto s = getSpan();
+      std::memcpy(s.begin(), message + HEADER_SIZE, header.cur_payload_size);
+      separator = s.begin() + header.cur_payload_size + 1;
       if (output.size() >= header.total_payload_size) {
         _decoding = false;
         return etl::pair(WrapperDecodeResult::Finished, header);
@@ -249,46 +261,14 @@ public:
    * @return
    */
   etl::pair<MessageWrapper::WrapperDecodeResult, MessageWrapper::WrapperHeader> decode(size_t size, bool is_simple = false){
-      if (separator == nullptr){
+      if (!separator){
+        printf(">>\n");
         return decode(output.begin(), size, is_simple);
       } else {
         return decode(separator, size, is_simple);
       }
   };
 
-  /**
-   * @brief decode the header of the message
-   * @param message
-   * @param size
-   * @param is_simple skip parse the address field. i.e. SimpleWrapper. Message id would be ignored as well.
-   * @return
-   */
-  static etl::optional<WrapperHeader> decodeHeader(const uint8_t *message, size_t size, bool is_simple = false) {
-    if (size < HEADER_SIZE) {
-      return etl::nullopt;
-    }
-    WrapperHeader header{};
-    if (!is_simple) {
-      memcpy(header.src, message, 3);
-      memcpy(header.dst, message + 3, 3);
-      header.pkt_id        = message[6];
-      header.pkt_cur_count = message[7];
-      // decode 8 & 9
-      auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + 8));
-      header.total_payload_size    = host_total_payload_size;
-      header.cur_payload_size      = message[10];
-    } else {
-      size_t offset        = 0;
-      header.pkt_cur_count = message[offset];
-      offset += 1;
-      // decode 8 & 9
-      auto host_total_payload_size = __ntohs(*reinterpret_cast<const uint16_t *>(message + offset));
-      header.total_payload_size    = host_total_payload_size;
-      offset += 2;
-      header.cur_payload_size = message[offset];
-    }
-    return etl::make_optional(header);
-  }
 
   [[nodiscard]] const etl::optional<etl::span<uint8_t>> getOutput() {
     if (!separator) {
@@ -301,14 +281,18 @@ public:
     }
   };
 
-  etl::optional<etl::span<uint8_t>> getSpan() {
+  etl::span<uint8_t> getSpan() {
+    printf("here\n");
     if (!separator) {
-      return etl::span(output.begin(), output.end());
+      printf("there\n");
+      auto s = etl::span(output.begin(), output.end());
+      return s;
     } else if (separator > output.end()) {
-      return etl::nullopt;
+      auto s = etl::span(output.begin(), output.end());
+      return s;
     } else {
       auto s = etl::span(separator, output.end());
-      return etl::make_optional(s);
+      return s;
     }
   }
 
