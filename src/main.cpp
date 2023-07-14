@@ -1,6 +1,6 @@
 // #define TX
 //  #define DISABLE_LED
-#define DISABLE_STANDBY
+//#define DISABLE_STANDBY
 
 #include "funconfig.h"
 #include "clock.h"
@@ -192,13 +192,15 @@ restart:
     }
 #else // RX
 #ifndef DISABLE_STANDBY
+    disableSystemTickExti();
     __WFE();
     // restore clock to full speed
-    SystemInit48HSI();
-    printf("[INFO] wake up with %d\n", counter++);
+    SystemInit();
+    printf("[INFO] WKC=%d\n", counter++);
 #endif
     if (Flags::getFlag()) {
-      printf("[INFO] RX flag set\n");
+      enableSystemTickExti();
+      printf("[INFO] RXFlag=True\n");
       auto span = decoder.getSpan();
       uint16_t rx_size;
 

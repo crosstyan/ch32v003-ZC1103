@@ -4,14 +4,6 @@
 
 #include "system_tick.h"
 
-/* some bit definitions for systick regs */
-#define SYSTICK_SR_CNTIF (1<<0)
-#define SYSTICK_CTLR_STE (1<<0)
-#define SYSTICK_CTLR_STIE (1<<1)
-#define SYSTICK_CTLR_STCLK (1<<2)
-#define SYSTICK_CTLR_STRE (1<<3)
-#define SYSTICK_CTLR_SWIE (1<<31)
-
 volatile uint64_t systick_cnt;
 
 /*
@@ -35,6 +27,13 @@ void SysTick_init() {
   SysTick->CNT = 0;
   systick_cnt = 0;
 
+  /*
+   SysTick->CTLR = SysTick_CTLR_INIT | //向上计数从0 开始，向下计数从比较值开始；
+                   SysTick_CTLR_STRE |
+                   SysTick_CTLR_STCLK |  //HCLK 做时基；
+                   SysTick_CTLR_STIE |  //使能计数器中断；
+                   SysTick_CTLR_STE;   //启动系统计数器STK；
+  */
   /* Enable SysTick counter, IRQ, HCLK/1 */
   SysTick->CTLR = SYSTICK_CTLR_STE | SYSTICK_CTLR_STIE |
                   SYSTICK_CTLR_STCLK;
@@ -74,3 +73,4 @@ uint64_t micros() {
   return systick_cnt * 1000;
   #endif
 }
+
