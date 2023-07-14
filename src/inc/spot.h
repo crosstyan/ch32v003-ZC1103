@@ -110,14 +110,17 @@ struct SpotConfig {
       return etl::expected<SpotConfig, ParseResult>(ue);
     }
     offset += sizeof SPOT_CONFIG_MAGIC;
-    auto circleLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
+    uint8_t temp[sizeof(fixed_16_16)];
+    std::memcpy(temp, bytes + offset, sizeof(fixed_16_16));
+    auto circleLength      = __ntohl(*reinterpret_cast<const uint32_t *>(temp));
     auto fixedCircleLength = cnl::wrap<fixed_16_16>(circleLength);
     offset += sizeof circleLength;
     if (fixedCircleLength > 500) {
       auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);
       return etl::expected<SpotConfig, ParseResult>(ue);
     }
-    auto lineLength      = __ntohl(*reinterpret_cast<const uint32_t *>(bytes + offset));
+    std::memcpy(temp, bytes + offset, sizeof(fixed_16_16));
+    auto lineLength      = __ntohl(*reinterpret_cast<const uint32_t *>(temp));
     auto fixedLineLength = cnl::wrap<fixed_16_16>(lineLength);
     offset += sizeof lineLength;
     if (fixedLineLength > fixedCircleLength) {

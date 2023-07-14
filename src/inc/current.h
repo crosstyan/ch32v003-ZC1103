@@ -42,7 +42,9 @@ etl::expected<uint16_t, ParseResult> fromBytes(u8 *bytes) {
     auto ue = etl::unexpected<ParseResult>(ParseResult::MAGIC_ERROR);
     return etl::expected<uint16_t, ParseResult>(std::move(ue));
   }
-  auto current = __ntohs(*(u16 *)(bytes + 1));
+  uint8_t temp[2];
+  std::memcpy(temp, bytes+1, 2);
+  auto current = __ntohs(*reinterpret_cast<uint16_t *>(temp));
   // check for absurd value
   if (current > 400) {
     auto ue = etl::unexpected<ParseResult>(ParseResult::VALUE_ERROR);

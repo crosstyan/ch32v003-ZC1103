@@ -111,9 +111,9 @@ public:
     return retrieveByVal<uint16_t, speed_type>(keys, speeds, key);
   }
 
-  void clear(){
-    color = 0;
-    id = 0;
+  void clear() {
+    color  = 0;
+    id     = 0;
     maxKey = 0;
     keys.clear();
     speeds.clear();
@@ -141,20 +141,25 @@ public:
     }
     offset += sizeof speed_count;
     for (auto j = 0; j < speed_count; ++j) {
-      auto distance = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
+      uint8_t temp[2];
+      std::memcpy(temp, bytes + offset, 2);
+      auto distance = __ntohs(*reinterpret_cast<uint16_t *>(temp));
       if (distance > 6000) {
         return ParseResult::VALUE_ERROR;
       }
       offset += sizeof distance;
       if constexpr (sizeof(speed_type) == 2) {
-        auto speed       = __ntohs(*reinterpret_cast<uint16_t *>(bytes + offset));
+        std::memcpy(temp, bytes + offset, 2);
+        auto speed       = __ntohs(*reinterpret_cast<uint16_t *>(temp));
         auto fixed_speed = cnl::wrap<speed_type>(speed);
         if (fixed_speed > 10) {
           return ParseResult::VALUE_ERROR;
         }
         this->addSpeed(distance, fixed_speed);
       } else if constexpr (sizeof(speed_type) == 4) {
-        auto speed       = __ntohl(*reinterpret_cast<uint32_t *>(bytes + offset));
+        uint8_t temp[sizeof(speed_type)];
+        std::memcpy(temp, bytes + offset, sizeof(speed_type));
+        auto speed       = __ntohl(*reinterpret_cast<uint32_t *>(temp));
         auto fixed_speed = cnl::wrap<speed_type>(speed);
         if (fixed_speed > 10) {
           return ParseResult::VALUE_ERROR;
