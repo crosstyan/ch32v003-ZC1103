@@ -35,7 +35,7 @@ static const auto ADDR_BYTES                     = 3;
 static const uint8_t MY_ADDR[ADDR_BYTES]         = {0x01, 0x02, 0x03};
 static const uint8_t BROAD_CAST_ADDR[ADDR_BYTES] = {0xFF, 0xFF, 0xFF};
 
-static const auto DECODE_BUFFER_SIZE = 384;
+static const auto DECODE_BUFFER_SIZE = 512;
 
 bool isValidAddr(const uint8_t *addr) {
   auto is_bc_addr = memcmp(addr, BROAD_CAST_ADDR, ADDR_BYTES) == 0;
@@ -98,15 +98,9 @@ restart:
   auto instant_rx   = Instant();
   auto d_rx         = std::chrono::duration<uint16_t, std::milli>(1);
   auto instant_spot = Instant();
-  // auto spot_cfg = RfMessage::SpotConfig::defaultValue();
   auto counter = 0;
-  // track is the problem here
-  // and the execution would get stuck
-  // swap etl::map with std::map could solve the problem
-  // I'm not sure if it will appear later... Let's hope not
+  // pay attention to the stack size!
   auto spot = RfMessage::Spot();
-  // a experimental padding
-  auto v = etl::vector<uint8_t, 128>();
   res    = rf.startReceive();
   if (res != RADIOLIB_ERR_NONE) {
     printf("[ERROR] failed to start receiving, code %d\n", res);

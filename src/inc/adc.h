@@ -6,6 +6,7 @@
 #define SIMPLE_ADC_H
 
 #include <ch32v003fun.h>
+#include "gpio.h"
 // A1 is analog channel 1
 static const pin_size_t PWD_PIN      = GPIO::A1;
 static const auto PWD_PIN_GROUP      = GPIOA;
